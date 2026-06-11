@@ -81,13 +81,13 @@ textarea{resize:vertical;min-height:52px;}
 .turno-paciente{font-size:14px;font-weight:500;color:var(--text);}
 .turno-meta{font-size:12px;color:var(--text3);margin-top:2px;}
 .turno-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-
+ 
 /* GOOGLE AUTH BANNER */
 .auth-banner{background:#fff3cd;border:1px solid #ffc107;border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .auth-banner.conectado{background:var(--green-bg);border-color:var(--green-border);}
 .auth-banner-text{font-size:13px;color:var(--text);}
 .auth-banner-text strong{display:block;font-size:14px;margin-bottom:2px;}
-
+ 
 /* LINK MEET */
 .meet-link-box{background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:1.25rem;margin-top:12px;animation:fadeUp 0.3s ease both;}
 .meet-link-title{font-size:13px;font-weight:500;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
@@ -106,7 +106,7 @@ textarea{resize:vertical;min-height:52px;}
 .btn-gmail:hover{background:#c0392b;}
 .btn-meet{background:#1a73e8;color:white;border:none;border-radius:var(--r-sm);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;}
 .btn-meet:hover{background:#1558d6;}
-
+ 
 .medicos-check-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
 .medico-check{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);cursor:pointer;transition:all 0.12s;background:var(--bg);}
 .medico-check:hover{border-color:var(--accent);background:var(--accent2);}
@@ -114,7 +114,7 @@ textarea{resize:vertical;min-height:52px;}
 .medico-check input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
 .medico-check-nombre{font-size:13px;color:var(--text);}
 .medico-check-mat{font-size:11px;color:var(--text3);margin-left:auto;font-family:'DM Mono',monospace;}
-
+ 
 .timeline{display:flex;flex-direction:column;}
 .tl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
 .tl-item:last-child{border-bottom:none;}
@@ -145,7 +145,7 @@ tr:hover td{background:var(--bg);}
 </head>
 <body>
 <div class="layout">
-
+ 
 <aside class="sidebar">
   <div class="sidebar-top">
     <div class="logo">
@@ -178,7 +178,7 @@ tr:hover td{background:var(--bg);}
     </div>
   </div>
 </aside>
-
+ 
 <main class="main">
   <div class="page-hdr">
     <div>
@@ -193,10 +193,10 @@ tr:hover td{background:var(--bg);}
       </button>
     </div>
   </div>
-
+ 
   <!-- AGENDA -->
   <div id="sec-agenda">
-
+ 
     <!-- BANNER AUTH GOOGLE -->
     <div class="auth-banner" id="auth-banner">
       <div class="auth-banner-text">
@@ -208,13 +208,13 @@ tr:hover td{background:var(--bg);}
         Conectar con Google
       </a>
     </div>
-
+ 
     <div class="three-col">
       <div class="metric"><div class="metric-lbl">Turnos totales</div><div class="metric-val blue" id="cnt-total">0</div><div class="metric-hint">programados</div></div>
       <div class="metric"><div class="metric-lbl">Próximo</div><div class="metric-val amber" id="cnt-proximo" style="font-size:16px;margin-top:4px;">—</div><div class="metric-hint" id="cnt-proximo-nombre">sin turnos</div></div>
       <div class="metric"><div class="metric-lbl">Hoy</div><div class="metric-val green" id="cnt-hoy">0</div><div class="metric-hint">turnos para hoy</div></div>
     </div>
-
+ 
     <div class="two-col">
       <div>
         <div class="card">
@@ -227,7 +227,7 @@ tr:hover td{background:var(--bg);}
           </div>
         </div>
       </div>
-
+ 
       <div>
         <div class="card">
           <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Log de actividad</div><span class="badge b-gray" id="log-count">0</span></div>
@@ -235,7 +235,7 @@ tr:hover td{background:var(--bg);}
             <div class="timeline" id="log-timeline"><div style="text-align:center;padding:2rem 0;color:var(--text3);font-size:13px;">Sin actividad aún</div></div>
           </div>
         </div>
-
+ 
         <div id="links-box" style="display:none;">
           <div class="card">
             <div class="card-hdr"><div class="card-title">Links del turno seleccionado</div></div>
@@ -245,7 +245,7 @@ tr:hover td{background:var(--bg);}
       </div>
     </div>
   </div>
-
+ 
   <!-- MÉDICOS -->
   <div id="sec-medicos" style="display:none;">
     <div class="two-col">
@@ -274,12 +274,12 @@ tr:hover td{background:var(--bg);}
   </div>
 </main>
 </div>
-
+ 
 <!-- MODAL PROGRAMAR TURNO -->
 <div class="modal-bg" id="modal-turno">
   <div class="modal">
     <div class="modal-title">Programar turno con Google Meet</div>
-
+ 
     <div class="form-grid">
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" placeholder="Apellido, Nombre del paciente"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
@@ -296,13 +296,13 @@ tr:hover td{background:var(--bg);}
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
-
+ 
     <div class="divider">Médicos participantes</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Todos recibirán el mismo link de Google Meet.</div>
     <div class="medicos-check-list" id="medicos-check-list"></div>
-
+ 
     <div class="loading" id="loading-turno" style="margin-top:12px;"><div class="spinner"></div>Creando reunión en Google Meet...</div>
-
+ 
     <div id="turno-resultado" style="display:none;margin-top:14px;">
       <div class="meet-link-box">
         <div class="meet-link-title">
@@ -316,7 +316,7 @@ tr:hover td{background:var(--bg);}
         <div id="links-resultado"></div>
       </div>
     </div>
-
+ 
     <div class="modal-footer">
       <button class="btn-sm" onclick="cerrarModal()">Cerrar</button>
       <button class="btn-sm primary" id="btn-guardar-turno" onclick="guardarTurno()">
@@ -326,11 +326,11 @@ tr:hover td{background:var(--bg);}
     </div>
   </div>
 </div>
-
+ 
 <script>
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 document.getElementById('t-fecha').value = '2026-06-19';
-
+ 
 // ===== AUTH STATUS =====
 async function checkAuth() {
   const res = await fetch('/api/auth-status');
@@ -341,7 +341,7 @@ async function checkAuth() {
     banner.innerHTML = `<div class="auth-banner-text"><strong style="color:var(--green);">✓ Google Calendar conectado</strong>Podés crear turnos con Google Meet.</div><span class="badge b-green">Activo</span>`;
   }
 }
-
+ 
 // ===== NAV =====
 function showSection(id, el) {
   ['agenda','medicos'].forEach(s => document.getElementById('sec-'+s).style.display='none');
@@ -353,7 +353,7 @@ function showSection(id, el) {
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos') cargarMedicos();
 }
-
+ 
 // ===== MÉDICOS =====
 let medicosData=[];
 async function cargarMedicos(){
@@ -384,7 +384,7 @@ async function agregarMedico(){
   await cargarMedicos();
 }
 async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE'});await cargarMedicos();}
-
+ 
 // ===== TURNOS =====
 let turnos=[];
 function renderAgenda(){
@@ -412,7 +412,7 @@ function renderAgenda(){
     </div>`;
   }).join('');
 }
-
+ 
 function verLinks(id){
   const t=turnos.find(x=>x.id===id);
   if(!t)return;
@@ -420,9 +420,9 @@ function verLinks(id){
   document.getElementById('links-box').style.display='block';
   document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
 }
-
+ 
 function msg(link,nombre){return`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP:\n\n📹 Google Meet: ${link}\n\nFecha: ${document.getElementById('current-date').textContent}\nNo necesitás instalar nada, hacé click al horario indicado.\n\nSaludes,\nMEDGRUP Medicina Laboral`;}
-
+ 
 function renderLinksBox(t){
   const linkHtml=(nombre,rol)=>`<div class="participante-link">
     <div class="participante-nombre">${nombre} <span class="participante-rol ${rol==='medico'?'rol-medico':'rol-paciente'}">${rol==='medico'?'Médico':'Paciente'}</span></div>
@@ -444,7 +444,7 @@ function renderLinksBox(t){
   html+=linkHtml(t.paciente,'paciente');
   document.getElementById('links-body').innerHTML=html;
 }
-
+ 
 // MODAL
 function abrirModalTurno(){
   document.getElementById('modal-turno').classList.add('open');
@@ -454,7 +454,7 @@ function abrirModalTurno(){
   cargarMedicos();
 }
 function cerrarModal(){document.getElementById('modal-turno').classList.remove('open');}
-
+ 
 async function guardarTurno(){
   const paciente=document.getElementById('t-paciente').value.trim();
   if(!paciente){alert('Ingresá el nombre del paciente');return;}
@@ -465,28 +465,28 @@ async function guardarTurno(){
   const checks=document.querySelectorAll('#medicos-check-list input[type=checkbox]:checked');
   const medicosSel=[...checks].map(c=>c.value);
   if(!medicosSel.length){alert('Seleccioná al menos un médico');return;}
-
+ 
   document.getElementById('btn-guardar-turno').style.display='none';
   document.getElementById('loading-turno').style.display='flex';
-
+ 
   try{
     const res=await fetch('/api/crear-turno',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paciente,medicos:medicosSel,tipo,fecha,hora,motivo})});
     const data=await res.json();
     document.getElementById('loading-turno').style.display='none';
-
+ 
     if(data.needsAuth){
       alert('Necesitás conectar tu Google Calendar primero. Hacé click en "Conectar con Google".');
       cerrarModal();return;
     }
     if(!data.ok){alert('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
-
+ 
     const turno={id:Date.now().toString(),paciente,fecha,hora,medicos:medicosSel,tipo,meetLink:data.meetLink,eventoLink:data.eventoLink};
     turnos.push(turno);
     renderAgenda();
-
+ 
     const fechaLabel=new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('res-resumen').textContent=`${paciente} — ${fechaLabel} a las ${hora} hs`;
-
+ 
     let linksHtml=`<div class="participante-link"><div class="participante-nombre">Todos los participantes <span class="participante-rol rol-medico">mismo link</span></div><div class="link-row"><div class="link-url">${data.meetLink}</div><button class="btn-sm" onclick="copiar('${data.meetLink}')">Copiar</button></div><div class="share-btns"><button class="btn-meet" onclick="window.open('${data.meetLink}','_blank')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M15 8v8H9V8h6m1-2H8c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h8c.55 0 1-.45 1-1V7c0-.55-.45-1-1-1zm4 3.5-4 2.5 4 2.5V9.5z"/></svg>Abrir en Meet</button><a href="${data.eventoLink}" target="_blank" class="btn-sm">Ver en Calendar</a></div></div>`;
     [...medicosSel,paciente].forEach(nombre=>{
       const texto=`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP:\n\n📹 Google Meet: ${data.meetLink}\n\nFecha: ${fechaLabel} a las ${hora} hs\n\nSaludes,\nMEDGRUP Medicina Laboral`;
@@ -494,27 +494,27 @@ async function guardarTurno(){
     });
     document.getElementById('links-resultado').innerHTML=linksHtml;
     document.getElementById('turno-resultado').style.display='block';
-
+ 
     addLog('green',`Turno creado con Google Meet`,`${paciente} — ${fechaLabel} ${hora}`);
     addLog('blue','Link Meet generado',data.meetLink);
-
+ 
   }catch(e){
     document.getElementById('loading-turno').style.display='none';
     document.getElementById('btn-guardar-turno').style.display='inline-flex';
     alert('Error: '+e.message);
   }
 }
-
+ 
 // LOG
 const logEvents=[];
 function addLog(tipo,desc,sub){logEvents.unshift({tipo,desc,sub,hora:new Date().toLocaleTimeString('es-AR')});document.getElementById('log-count').textContent=logEvents.length;document.getElementById('log-timeline').innerHTML=logEvents.map(e=>`<div class="tl-item"><div class="tl-dot ${e.tipo}"></div><div class="tl-time">${e.hora}</div><div><div class="tl-desc">${e.desc}</div>${e.sub?`<div class="tl-sub">${e.sub}</div>`:''}</div></div>`).join('');}
-
+ 
 async function copiar(txt){await navigator.clipboard.writeText(txt);alert('Link copiado ✓');}
-
+ 
 // INIT
 checkAuth();
 cargarMedicos();
-
+ 
 // Si viene de auth ok
 if(new URLSearchParams(location.search).get('auth')==='ok'){
   history.replaceState({},'','/');
