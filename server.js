@@ -11,10 +11,45 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Crear sala de Daily para una consulta
+// Base de médicos en memoria (luego conectamos DB)
+let medicos = [
+  { id: 1, nombre: 'Dr. Barboza, Raúl', matricula: 'MP 12.847', especialidad: 'Medicina Laboral', activo: true },
+  { id: 2, nombre: 'Dr. Muroni, Esteban', matricula: '', especialidad: 'Medicina Laboral', activo: true },
+];
+
+// GET médicos
+app.get('/api/medicos', (req, res) => {
+  res.json(medicos.filter(m => m.activo));
+});
+
+// POST agregar médico
+app.post('/api/medicos', (req, res) => {
+  const { nombre, matricula, especialidad } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'El nombre es requerido' });
+  const nuevo = {
+    id: Date.now(),
+    nombre,
+    matricula: matricula || '',
+    especialidad: especialidad || 'Medicina Laboral',
+    activo: true
+  };
+  medicos.push(nuevo);
+  res.json({ ok: true, medico: nuevo });
+});
+
+// DELETE médico
+app.delete('/api/medicos/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const m = medicos.find(m => m.id === id);
+  if (!m) return res.status(404).json({ error: 'Médico no encontrado' });
+  m.activo = false;
+  res.json({ ok: true });
+});
+
+// POST crear sala Daily
 app.post('/api/crear-sala', async (req, res) => {
   try {
-    const { paciente, medico } = req.body;
+    const { paciente, medico, tipo } = req.body;
     const nombreSala = `medgrup-${Date.now()}`;
 
     const response = await fetch('https://api.daily.co/v1/rooms', {
@@ -30,7 +65,7 @@ app.post('/api/crear-sala', async (req, res) => {
           enable_chat: true,
           start_audio_off: false,
           start_video_off: false,
-          exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // expira en 24hs
+          exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24),
           eject_at_room_exp: true,
           max_participants: 5
         }
@@ -38,53 +73,27 @@ app.post('/api/crear-sala', async (req, res) => {
     });
 
     const sala = await response.json();
-
-    if (!response.ok) {
-      console.error('Error Daily:', sala);
-      return res.status(500).json({ error: 'No se pudo crear la sala', detalle: sala });
-    }
-
-    const ahora = new Date().toISOString();
+    if (!response.ok) return res.status(500).json({ error: 'No se pudo crear la sala', detalle: sala });
 
     res.json({
       ok: true,
       sala: sala.name,
       url: sala.url,
       url_medico: sala.url + '?t=owner',
-      creada_en: ahora,
+      creada_en: new Date().toISOString(),
       paciente: paciente || 'No especificado',
-      medico: medico || 'Dr. Barboza'
+      medico: medico || 'Sin asignar'
     });
 
-  } catch (err) {
-    console.error('Error servidor:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Obtener salas existentes
-app.get('/api/salas', async (req, res) => {
-  try {
-    const response = await fetch('https://api.daily.co/v1/rooms', {
-      headers: { 'Authorization': `Bearer ${DAILY_API_KEY}` }
-    });
-    const data = await response.json();
-    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() });
-});
+app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-// Todas las rutas no-API van al frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`MEDGRUP corriendo en puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`MEDGRUP corriendo en puerto ${PORT}`));
