@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MEDGRUP — Telemedicina</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --surface2: #eeece8;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1c1b18;
+  --text2: #6b6860;
+  --text3: #a8a49e;
+  --accent: #1a4f8a;
+  --accent2: #eaf1fb;
+  --green: #256644;
+  --green-bg: #eef7f2;
+  --green-border: rgba(37,102,68,0.2);
+  --red: #b83232;
+  --red-bg: #fdf1f0;
+  --amber: #a05c0a;
+  --amber-bg: #fdf6ec;
+  --r: 12px;
+  --r-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* LAYOUT */
+.layout{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{
+  width:230px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:0;
+  position:fixed;top:0;left:0;bottom:0;z-index:100;
+}
+.sidebar-top{padding:1.5rem;}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;}
+.logo-sq{width:36px;height:36px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-sq svg{width:20px;height:20px;fill:white;}
+.logo-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);}
+.logo-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.8px;text-transform:uppercase;}
+
+.nav-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-family:'DM Mono',monospace;padding:0 0.5rem 0.4rem;margin-bottom:2px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;cursor:pointer;color:var(--text2);font-size:13.5px;border-radius:var(--r-sm);transition:all 0.12s;margin-bottom:2px;border:1px solid transparent;}
+.nav-item:hover{background:var(--bg);color:var(--text);}
+.nav-item.active{background:var(--accent2);color:var(--accent);font-weight:500;border-color:rgba(26,79,138,0.12);}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;}
+.nav-item.dim{opacity:0.35;pointer-events:none;}
+
+.sidebar-footer{margin-top:auto;padding:1.25rem;border-top:1px solid var(--border);}
+.client-pill{background:var(--surface2);border-radius:var(--r-sm);padding:10px 12px;}
+.client-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:3px;}
+.online-dot{width:7px;height:7px;background:#22c55e;border-radius:50%;display:inline-block;margin-right:5px;}
+.client-name{font-size:13px;font-weight:500;color:var(--text);}
+.client-loc{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* MAIN */
+.main{margin-left:230px;flex:1;padding:2rem;}
+
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;}
+.page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;}
+.page-sub{font-size:13px;color:var(--text2);margin-top:3px;}
+.date-chip{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;}
+
+/* SECTION */
+.section{display:none;}
+.section.active{display:block;animation:fadeUp 0.3s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
+.tab{padding:10px 16px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.12s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:1.25rem;}
+.card-hdr{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:7px;}
+.card-title svg{width:15px;height:15px;color:var(--text3);}
+.card-body{padding:1.25rem;}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+.form-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;color:var(--text3);}
+select,input[type=text],input[type=date],textarea{
+  font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;
+  border:1px solid var(--border2);border-radius:var(--r-sm);
+  background:var(--bg);color:var(--text);outline:none;width:100%;
+  transition:border-color 0.12s,box-shadow 0.12s;
+}
+select:focus,input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,79,138,0.08);background:white;}
+textarea{resize:vertical;min-height:64px;}
+
+/* BUTTONS */
+.btn-full{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.12s;}
+.btn-full:hover{background:#163f6e;}
+.btn-full:disabled{background:var(--text3);cursor:not-allowed;}
+.btn-full svg{width:17px;height:17px;}
+.btn-sm{font-size:12px;padding:6px 12px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;display:inline-flex;align-items:center;gap:5px;}
+.btn-sm:hover{background:var(--surface2);color:var(--text);}
+.btn-danger{background:var(--red);color:white;border-color:var(--red);}
+.btn-danger:hover{background:#8f2020;color:white;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;font-family:'DM Mono',monospace;}
+.b-green{background:var(--green-bg);color:var(--green);}
+.b-blue{background:var(--accent2);color:var(--accent);}
+.b-gray{background:var(--surface2);color:var(--text2);}
+.b-red{background:var(--red-bg);color:var(--red);}
+.b-amber{background:var(--amber-bg);color:var(--amber);}
+
+/* LINK BOX */
+.link-box{
+  background:var(--accent2);border:1px solid rgba(26,79,138,0.15);
+  border-radius:var(--r);padding:1.25rem;margin-top:1rem;
+}
+.link-box-title{font-size:12px;font-weight:500;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.link-url{
+  font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);
+  background:white;border:1px solid rgba(26,79,138,0.2);border-radius:var(--r-sm);
+  padding:8px 10px;word-break:break-all;margin-bottom:8px;
+}
+.link-actions{display:flex;gap:8px;}
+
+/* SUCCESS */
+.success-box{background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:1.25rem;animation:fadeUp 0.3s ease both;}
+.success-title{font-size:14px;font-weight:500;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+
+/* CONSULTA EN CURSO */
+.consulta-activa{
+  background:#0f172a;border-radius:var(--r);padding:1.5rem;color:white;
+  display:flex;flex-direction:column;align-items:center;gap:1rem;
+}
+.rec-badge{background:rgba(220,38,38,0.9);color:white;font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;}
+.rec-dot{width:6px;height:6px;background:white;border-radius:50%;animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* TIMELINE */
+.timeline{display:flex;flex-direction:column;}
+.tl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.tl-item:last-child{border-bottom:none;}
+.tl-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.tl-dot.green{background:var(--green);}
+.tl-dot.blue{background:var(--accent);}
+.tl-dot.amber{background:var(--amber);}
+.tl-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:52px;flex-shrink:0;margin-top:1px;}
+.tl-desc{font-size:13px;color:var(--text);}
+.tl-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;color:var(--text3);padding:0 1.25rem 8px;font-weight:400;}
+td{padding:11px 1.25rem;border-top:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:hover td{background:var(--bg);}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;box-shadow:var(--shadow);}
+.metric-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-family:'DM Mono',monospace;margin-bottom:6px;}
+.metric-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;}
+.metric-val.green{color:var(--green);}
+.metric-val.blue{color:var(--accent);}
+.metric-val.amber{color:var(--amber);}
+.metric-hint{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:0.5rem 0;}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <div class="logo-sq">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">MEDGRUP</div>
+        <div class="logo-sub">Medicina Laboral</div>
+      </div>
+    </div>
+
+    <div class="nav-lbl">Módulos</div>
+    <div class="nav-item active" onclick="nav('telemedicina',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Telemedicina
+    </div>
+    <div class="nav-item dim">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+      Exámenes
+    </div>
+    <div class="nav-item dim">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Auditoría IA
+    </div>
+    <div class="nav-item dim">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Ausentismo
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="client-pill">
+      <div class="client-lbl">Cliente activo</div>
+      <div class="client-name"><span class="online-dot"></span>LOGANT S.A.</div>
+      <div class="client-loc">Tierra del Fuego</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-hdr">
+    <div>
+      <div class="page-title" id="page-title">Telemedicina</div>
+      <div class="page-sub" id="page-sub">Videoconsultas con grabación y certificado digital</div>
+    </div>
+    <div class="date-chip" id="current-date"></div>
+  </div>
+
+  <!-- TELEMEDICINA -->
+  <div class="section active" id="sec-telemedicina">
+
+    <div class="tabs">
+      <div class="tab active" onclick="teleTab('nueva',this)">Nueva consulta</div>
+      <div class="tab" onclick="teleTab('historial',this)">Historial</div>
+    </div>
+
+    <!-- NUEVA CONSULTA -->
+    <div id="tele-nueva">
+      <div class="two-col">
+
+        <!-- FORMULARIO -->
+        <div>
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Crear sala de consulta
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-lbl">Nombre del paciente</label>
+                  <input type="text" id="inp-paciente" placeholder="Apellido, Nombre"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Médico responsable</label>
+                  <select id="inp-medico">
+                    <option>Dr. Barboza, Raúl</option>
+                    <option>Otro médico</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Empresa del paciente</label>
+                  <select id="inp-empresa">
+                    <option>LOGANT S.A.</option>
+                    <option>Otra empresa</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Tipo de consulta</label>
+                  <select id="inp-tipo">
+                    <option>Junta médica</option>
+                    <option>Control de licencia</option>
+                    <option>Examen ocupacional</option>
+                    <option>Seguimiento</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label class="form-lbl">Motivo de consulta</label>
+                  <textarea id="inp-motivo" placeholder="Describí brevemente el motivo..."></textarea>
+                </div>
+              </div>
+
+              <button class="btn-full" id="btn-crear" onclick="crearSala()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                Crear sala y generar links
+              </button>
+
+              <div id="loading-crear" style="display:none;" class="loading">
+                <div class="spinner"></div>
+                Creando sala en Daily.co...
+              </div>
+            </div>
+          </div>
+
+          <!-- RESULTADO: LINKS -->
+          <div id="links-resultado" style="display:none;">
+            <div class="success-box">
+              <div class="success-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+                Sala creada correctamente
+              </div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:1rem;">Grabación automática activada. Los links expiran en 24 horas.</div>
+
+              <div class="link-box">
+                <div class="link-box-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  Link del paciente / junta médica — enviá este link
+                </div>
+                <div class="link-url" id="link-paciente">—</div>
+                <div class="link-actions">
+                  <button class="btn-sm" onclick="copiar('link-paciente', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copiar link
+                  </button>
+                  <button class="btn-sm" onclick="abrirLink('link-paciente')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Abrir en nueva pestaña
+                  </button>
+                </div>
+              </div>
+
+              <div class="link-box" style="margin-top:10px;background:#f0f7ff;border-color:rgba(26,79,138,0.2);">
+                <div class="link-box-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Link del médico — tiene controles de moderador
+                </div>
+                <div class="link-url" id="link-medico">—</div>
+                <div class="link-actions">
+                  <button class="btn-sm" onclick="copiar('link-medico', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copiar link
+                  </button>
+                  <button class="btn-sm" onclick="abrirLink('link-medico')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Abrir en nueva pestaña
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div id="error-box" style="display:none;background:var(--red-bg);border:1px solid rgba(184,50,50,0.2);border-radius:var(--r);padding:1rem;margin-top:1rem;">
+            <div style="font-size:13px;font-weight:500;color:var(--red);margin-bottom:4px;">Error al crear la sala</div>
+            <div id="error-msg" style="font-size:12px;color:var(--text2);"></div>
+          </div>
+        </div>
+
+        <!-- LOG EN TIEMPO REAL -->
+        <div>
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                Log de actividad
+              </div>
+              <span class="badge b-gray" id="log-count">0 eventos</span>
+            </div>
+            <div class="card-body" style="padding-top:0.75rem;">
+              <div class="timeline" id="log-timeline">
+                <div style="text-align:center;padding:2rem 0;color:var(--text3);font-size:13px;">
+                  Los eventos aparecen aquí cuando creés una sala
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Instrucciones para el paciente
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="font-size:13px;line-height:1.8;color:var(--text2);">
+                <div style="margin-bottom:8px;">📋 <strong style="color:var(--text);">Antes de la consulta:</strong></div>
+                <div style="padding-left:1rem;margin-bottom:12px;">
+                  Asegurate de tener buena conexión a internet, cámara y micrófono habilitados. No necesitás instalar ninguna aplicación.
+                </div>
+                <div style="margin-bottom:8px;">🔗 <strong style="color:var(--text);">Para ingresar:</strong></div>
+                <div style="padding-left:1rem;margin-bottom:12px;">
+                  Hacé click en el link que te enviaron. Se abre directo en el navegador.
+                </div>
+                <div style="margin-bottom:8px;">📹 <strong style="color:var(--text);">Importante:</strong></div>
+                <div style="padding-left:1rem;">
+                  La consulta es grabada con fines médicos y legales conforme a la Ley 24.557.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div id="tele-historial" style="display:none;">
+      <div class="metrics">
+        <div class="metric"><div class="metric-lbl">Consultas este mes</div><div class="metric-val blue" id="cnt-mes">0</div><div class="metric-hint">creadas desde esta sesión</div></div>
+        <div class="metric"><div class="metric-lbl">Salas activas hoy</div><div class="metric-val green" id="cnt-hoy">0</div><div class="metric-hint">con grabación</div></div>
+        <div class="metric"><div class="metric-lbl">Última consulta</div><div class="metric-val amber" id="cnt-ultima" style="font-size:16px;margin-top:4px;">—</div><div class="metric-hint">paciente</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Consultas creadas en esta sesión</div>
+          <span class="badge b-blue" id="hist-count">0</span>
+        </div>
+        <div id="hist-tabla-wrapper">
+          <div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">Todavía no creaste ninguna consulta.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+</div>
+
+<script>
+// Fecha
+document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-AR',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+
+// NAV
+function nav(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// TABS
+function teleTab(id, el) {
+  document.querySelectorAll('[id^="tele-"]').forEach(s => s.style.display='none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tele-'+id).style.display='block';
+  el.classList.add('active');
+}
+
+// LOG
+const logEvents = [];
+function addLog(tipo, desc, sub) {
+  logEvents.unshift({tipo, desc, sub, hora: new Date().toLocaleTimeString('es-AR')});
+  renderLog();
+  document.getElementById('log-count').textContent = logEvents.length + ' eventos';
+}
+function renderLog() {
+  const colors = {green:'green', blue:'blue', amber:'amber'};
+  document.getElementById('log-timeline').innerHTML = logEvents.map(e => `
+    <div class="tl-item">
+      <div class="tl-dot ${colors[e.tipo]||'blue'}"></div>
+      <div class="tl-time">${e.hora}</div>
+      <div>
+        <div class="tl-desc">${e.desc}</div>
+        ${e.sub ? `<div class="tl-sub">${e.sub}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// HISTORIAL DE SALAS
+const salasCreadas = [];
+function renderHistorial() {
+  const n = salasCreadas.length;
+  document.getElementById('hist-count').textContent = n;
+  document.getElementById('cnt-mes').textContent = n;
+  document.getElementById('cnt-hoy').textContent = n;
+  if (n > 0) {
+    document.getElementById('cnt-ultima').textContent = salasCreadas[0].paciente || '—';
+  }
+  if (n === 0) return;
+  const rows = salasCreadas.map(s => `
+    <tr>
+      <td><strong>${s.paciente || 'Sin nombre'}</strong></td>
+      <td>${s.tipo}</td>
+      <td>${s.medico}</td>
+      <td>${s.hora}</td>
+      <td><span class="badge b-green">● Activa</span></td>
+      <td>
+        <button class="btn-sm" onclick="window.open('${s.url_paciente}','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Abrir
+        </button>
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('hist-tabla-wrapper').innerHTML = `
+    <table>
+      <thead><tr><th>Paciente</th><th>Tipo</th><th>Médico</th><th>Creada</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// CREAR SALA
+async function crearSala() {
+  const paciente = document.getElementById('inp-paciente').value.trim();
+  const medico = document.getElementById('inp-medico').value;
+  const tipo = document.getElementById('inp-tipo').value;
+
+  if (!paciente) {
+    alert('Por favor ingresá el nombre del paciente');
+    return;
+  }
+
+  document.getElementById('btn-crear').disabled = true;
+  document.getElementById('loading-crear').style.display = 'flex';
+  document.getElementById('links-resultado').style.display = 'none';
+  document.getElementById('error-box').style.display = 'none';
+
+  addLog('blue', 'Iniciando creación de sala...', 'Conectando con Daily.co');
+
+  try {
+    const res = await fetch('/api/crear-sala', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ paciente, medico, tipo })
+    });
+
+    const data = await res.json();
+
+    document.getElementById('loading-crear').style.display = 'none';
+    document.getElementById('btn-crear').disabled = false;
+
+    if (!data.ok) {
+      document.getElementById('error-box').style.display = 'block';
+      document.getElementById('error-msg').textContent = data.error || 'Error desconocido';
+      addLog('amber', 'Error al crear sala', data.error);
+      return;
+    }
+
+    // Mostrar links
+    document.getElementById('link-paciente').textContent = data.url;
+    document.getElementById('link-medico').textContent = data.url_medico;
+    document.getElementById('links-resultado').style.display = 'block';
+
+    // Log
+    addLog('green', 'Sala creada exitosamente', `Paciente: ${paciente}`);
+    addLog('blue', 'Grabación automática activada', 'Cloud recording — Daily.co');
+    addLog('green', 'Links generados y listos para enviar', data.sala);
+
+    // Guardar en historial
+    salasCreadas.unshift({
+      paciente,
+      medico,
+      tipo,
+      sala: data.sala,
+      url_paciente: data.url,
+      url_medico: data.url_medico,
+      hora: new Date().toLocaleTimeString('es-AR')
+    });
+    renderHistorial();
+
+  } catch (err) {
+    document.getElementById('loading-crear').style.display = 'none';
+    document.getElementById('btn-crear').disabled = false;
+    document.getElementById('error-box').style.display = 'block';
+    document.getElementById('error-msg').textContent = 'No se pudo conectar con el servidor: ' + err.message;
+    addLog('amber', 'Error de conexión', err.message);
+  }
+}
+
+// COPIAR
+async function copiar(id, btn) {
+  const texto = document.getElementById(id).textContent;
+  await navigator.clipboard.writeText(texto);
+  const orig = btn.innerHTML;
+  btn.textContent = '✓ Copiado';
+  setTimeout(() => btn.innerHTML = orig, 2000);
+}
+
+// ABRIR
+function abrirLink(id) {
+  const url = document.getElementById(id).textContent;
+  window.open(url, '_blank');
+}
+</script>
+</body>
+</html>
