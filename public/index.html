@@ -34,10 +34,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;}
 .page-sub{font-size:13px;color:var(--text2);margin-top:3px;}
 .date-chip{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;}
-.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
-.tab{padding:10px 16px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.12s;}
-.tab:hover{color:var(--text);}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:1.25rem;}
 .card-hdr{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .card-title{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:7px;}
@@ -51,12 +47,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .form-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;color:var(--text3);}
 select,input[type=text],input[type=date],input[type=time],textarea{font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--bg);color:var(--text);outline:none;width:100%;transition:border-color 0.12s;}
 select:focus,input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,79,138,0.08);background:white;}
-textarea{resize:vertical;min-height:64px;}
+textarea{resize:vertical;min-height:52px;}
 .btn-full{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.12s;}
 .btn-full:hover{background:#163f6e;}
 .btn-full:disabled{background:var(--text3);cursor:not-allowed;}
-.btn-full.green{background:var(--green);}
-.btn-full.green:hover{background:#1a4d33;}
 .btn-sm{font-size:12px;padding:6px 12px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
 .btn-sm:hover{background:var(--surface2);color:var(--text);}
 .btn-sm.primary{background:var(--accent);color:white;border-color:var(--accent);}
@@ -65,7 +59,7 @@ textarea{resize:vertical;min-height:64px;}
 .btn-sm.success:hover{background:#1a4d33;}
 .btn-sm.danger{background:var(--red-bg);color:var(--red);border-color:rgba(184,50,50,0.2);}
 .btn-sm.danger:hover{background:var(--red);color:white;}
-.btn-end{background:var(--red);color:white;border-color:var(--red);font-size:13px;padding:8px 16px;}
+.btn-end{background:var(--red);color:white;border-color:var(--red);}
 .btn-end:hover{background:#8f2020;color:white;}
 .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;font-family:'DM Mono',monospace;}
 .b-green{background:var(--green-bg);color:var(--green);}
@@ -73,8 +67,6 @@ textarea{resize:vertical;min-height:64px;}
 .b-gray{background:var(--surface2);color:var(--text2);}
 .b-red{background:var(--red-bg);color:var(--red);}
 .b-amber{background:var(--amber-bg);color:var(--amber);}
-
-/* METRIC */
 .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem;box-shadow:var(--shadow);}
 .metric-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-family:'DM Mono',monospace;margin-bottom:6px;}
 .metric-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;}
@@ -82,8 +74,6 @@ textarea{resize:vertical;min-height:64px;}
 .metric-val.blue{color:var(--accent);}
 .metric-val.amber{color:var(--amber);}
 .metric-hint{font-size:11px;color:var(--text3);margin-top:4px;}
-
-/* TURNO CARD */
 .turno-item{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;transition:background 0.1s;}
 .turno-item:last-child{border-bottom:none;}
 .turno-item:hover{background:var(--bg);}
@@ -92,9 +82,7 @@ textarea{resize:vertical;min-height:64px;}
 .turno-info{flex:1;}
 .turno-paciente{font-size:14px;font-weight:500;color:var(--text);}
 .turno-meta{font-size:12px;color:var(--text3);margin-top:2px;}
-.turno-actions{display:flex;gap:6px;align-items:center;}
-
-/* VIDEO */
+.turno-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .video-container{display:none;background:#0f172a;border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;}
 .video-container.active{display:block;animation:fadeUp 0.3s ease both;}
 .video-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(0,0,0,0.5);}
@@ -104,12 +92,26 @@ textarea{resize:vertical;min-height:64px;}
 #daily-frame{width:100%;height:480px;border:none;}
 .video-bottombar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(0,0,0,0.5);}
 .video-timer{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,0.7);}
-
-/* LINK BOX */
-.link-copy-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
-.link-copy-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);background:white;border:1px solid rgba(26,79,138,0.2);border-radius:var(--r-sm);padding:7px 10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
-/* TIMELINE */
+.participante-link{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;}
+.participante-link:last-child{margin-bottom:0;}
+.participante-nombre{font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.participante-rol{font-size:10px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:10px;}
+.rol-medico{background:var(--accent2);color:var(--accent);}
+.rol-paciente{background:var(--green-bg);color:var(--green);}
+.link-row{display:flex;align-items:center;gap:6px;}
+.link-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);background:white;border:1px solid rgba(26,79,138,0.15);border-radius:var(--r-sm);padding:6px 10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.share-btns{display:flex;gap:8px;margin-top:8px;}
+.btn-wa{background:#25D366;color:white;border:none;border-radius:var(--r-sm);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;}
+.btn-wa:hover{background:#1daa53;}
+.btn-gmail{background:#EA4335;color:white;border:none;border-radius:var(--r-sm);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;}
+.btn-gmail:hover{background:#c0392b;}
+.medicos-check-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.medico-check{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);cursor:pointer;transition:all 0.12s;background:var(--bg);}
+.medico-check:hover{border-color:var(--accent);background:var(--accent2);}
+.medico-check.selected{border-color:var(--accent);background:var(--accent2);}
+.medico-check input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
+.medico-check-nombre{font-size:13px;color:var(--text);}
+.medico-check-mat{font-size:11px;color:var(--text3);margin-left:auto;font-family:'DM Mono',monospace;}
 .timeline{display:flex;flex-direction:column;}
 .tl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
 .tl-item:last-child{border-bottom:none;}
@@ -120,33 +122,19 @@ textarea{resize:vertical;min-height:64px;}
 .tl-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:52px;flex-shrink:0;margin-top:1px;}
 .tl-desc{font-size:13px;color:var(--text);}
 .tl-sub{font-size:11px;color:var(--text3);margin-top:1px;}
-
-/* TABLE */
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;font-family:'DM Mono',monospace;color:var(--text3);padding:0 1.25rem 8px;font-weight:400;}
 td{padding:11px 1.25rem;border-top:1px solid var(--border);color:var(--text);vertical-align:middle;}
 tr:hover td{background:var(--bg);}
-
-/* LOADING */
 .loading{display:none;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:0.5rem 0;}
 .spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.error-box{background:var(--red-bg);border:1px solid rgba(184,50,50,0.2);border-radius:var(--r);padding:1rem;margin-top:1rem;display:none;}
-
-/* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;align-items:center;justify-content:center;}
 .modal-bg.open{display:flex;}
-.modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:fadeUp 0.2s ease both;}
+.modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:fadeUp 0.2s ease both;}
 .modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:1.25rem;letter-spacing:-0.3px;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
-
-/* WHATSAPP / GMAIL BTN */
-.share-btns{display:flex;gap:8px;margin-top:10px;}
-.btn-wa{background:#25D366;color:white;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;}
-.btn-wa:hover{background:#1daa53;}
-.btn-gmail{background:#EA4335;color:white;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;}
-.btn-gmail:hover{background:#c0392b;}
-
+.divider{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text3);font-family:'DM Mono',monospace;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
@@ -154,7 +142,6 @@ tr:hover td{background:var(--bg);}
 </head>
 <body>
 <div class="layout">
-
 <aside class="sidebar">
   <div class="sidebar-top">
     <div class="logo">
@@ -163,20 +150,16 @@ tr:hover td{background:var(--bg);}
     </div>
     <div class="nav-lbl">Módulos</div>
     <div class="nav-item active" onclick="showSection('agenda',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-      Agenda
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda
     </div>
     <div class="nav-item" onclick="showSection('medicos',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Médicos
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos
     </div>
     <div class="nav-item dim">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
-      Exámenes
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>Exámenes
     </div>
     <div class="nav-item dim">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Auditoría IA
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Auditoría IA
     </div>
   </div>
   <div class="sidebar-footer">
@@ -192,7 +175,7 @@ tr:hover td{background:var(--bg);}
   <div class="page-hdr">
     <div>
       <div class="page-title" id="page-title">Agenda</div>
-      <div class="page-sub" id="page-sub">Turnos programados y consultas inmediatas</div>
+      <div class="page-sub" id="page-sub">Turnos programados y videoconsultas</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
       <div class="date-chip" id="current-date"></div>
@@ -201,16 +184,13 @@ tr:hover td{background:var(--bg);}
         Programar turno
       </button>
       <button class="btn-sm success" onclick="consultaInmediata()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        Consulta inmediata
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polygon points="5,3 19,12 5,21"/></svg>
+        Inmediata
       </button>
     </div>
   </div>
 
-  <!-- ===== AGENDA ===== -->
   <div id="sec-agenda">
-
-    <!-- VIDEO (se muestra cuando se inicia una consulta) -->
     <div class="video-container" id="video-container">
       <div class="video-topbar">
         <div style="display:flex;align-items:center;gap:10px;">
@@ -229,131 +209,74 @@ tr:hover td{background:var(--bg);}
       </div>
     </div>
 
-    <!-- MÉTRICAS -->
     <div class="three-col">
-      <div class="metric"><div class="metric-lbl">Turnos hoy</div><div class="metric-val blue" id="cnt-hoy">0</div><div class="metric-hint">programados</div></div>
-      <div class="metric"><div class="metric-lbl">Próximo turno</div><div class="metric-val amber" id="cnt-proximo" style="font-size:18px;margin-top:4px;">—</div><div class="metric-hint" id="cnt-proximo-nombre">sin turnos</div></div>
-      <div class="metric"><div class="metric-lbl">Completados hoy</div><div class="metric-val green" id="cnt-completados">0</div><div class="metric-hint">consultas realizadas</div></div>
+      <div class="metric"><div class="metric-lbl">Turnos totales</div><div class="metric-val blue" id="cnt-total">0</div><div class="metric-hint">programados</div></div>
+      <div class="metric"><div class="metric-lbl">Próximo</div><div class="metric-val amber" id="cnt-proximo" style="font-size:16px;margin-top:4px;">—</div><div class="metric-hint" id="cnt-proximo-sub">sin turnos</div></div>
+      <div class="metric"><div class="metric-lbl">Hoy</div><div class="metric-val green" id="cnt-hoy">0</div><div class="metric-hint">turnos para hoy</div></div>
     </div>
 
     <div class="two-col">
-      <!-- AGENDA DEL DÍA -->
       <div>
         <div class="card">
           <div class="card-hdr">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Turnos del día
-            </div>
-            <span class="badge b-blue" id="badge-turnos">0 turnos</span>
+            <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Turnos programados</div>
+            <span class="badge b-blue" id="badge-turnos">0</span>
           </div>
-          <div id="agenda-lista">
-            <div style="text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;">
-              No hay turnos programados para hoy.<br>
-              <span style="font-size:12px;">Usá "Programar turno" para agregar uno.</span>
-            </div>
-          </div>
+          <div id="agenda-lista"><div style="text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;">Sin turnos. Usá "Programar turno" para crear uno.</div></div>
         </div>
 
-        <!-- DICTAMEN (aparece al finalizar consulta) -->
         <div id="form-dictamen" style="display:none;">
           <div class="card">
-            <div class="card-hdr">
-              <div class="card-title">Dictamen médico</div>
-              <span class="badge b-blue" id="dict-numero">N° —</span>
-            </div>
+            <div class="card-hdr"><div class="card-title">Dictamen médico</div><span class="badge b-blue" id="dict-numero">N° —</span></div>
             <div class="card-body">
               <div style="background:var(--surface2);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2);">
-                <strong style="color:var(--text);" id="dict-paciente">—</strong> &nbsp;·&nbsp;
-                <span id="dict-duracion">—</span> &nbsp;·&nbsp; Grabación guardada en Daily.co
+                <strong style="color:var(--text);" id="dict-paciente">—</strong> &nbsp;·&nbsp; <span id="dict-duracion">—</span> &nbsp;·&nbsp; Grabación guardada en Daily.co
               </div>
               <div class="form-grid">
                 <div class="form-group"><label class="form-lbl">Diagnóstico CIE-10</label>
-                  <select id="dict-diag">
-                    <option value="">Seleccionar...</option>
-                    <option value="Z00.0">Z00.0 — Control de salud</option>
-                    <option value="M54.5">M54.5 — Lumbalgia</option>
-                    <option value="F32.0">F32.0 — Episodio depresivo</option>
-                    <option value="J06.9">J06.9 — Infección respiratoria</option>
-                    <option value="Z73.0">Z73.0 — Burnout</option>
-                  </select>
+                  <select id="dict-diag"><option value="">Seleccionar...</option><option value="Z00.0">Z00.0 — Control de salud</option><option value="M54.5">M54.5 — Lumbalgia</option><option value="F32.0">F32.0 — Episodio depresivo</option><option value="J06.9">J06.9 — Infección resp.</option><option value="Z73.0">Z73.0 — Burnout</option></select>
                 </div>
                 <div class="form-group"><label class="form-lbl">Aptitud laboral</label>
                   <select id="dict-aptitud"><option value="apto">Apto</option><option value="restricc">Apto con restricciones</option><option value="no-apto">No apto</option></select>
                 </div>
                 <div class="form-group"><label class="form-lbl">Días de reposo</label><input type="text" id="dict-reposo" value="0"/></div>
-                <div class="form-group"><label class="form-lbl">Derivación</label>
-                  <select><option value="">Sin derivación</option><option>Clínica médica</option><option>Psiquiatría</option><option>Traumatología</option></select>
-                </div>
+                <div class="form-group"><label class="form-lbl">Derivación</label><select><option value="">Sin derivación</option><option>Clínica médica</option><option>Psiquiatría</option><option>Traumatología</option></select></div>
                 <div class="form-group full"><label class="form-lbl">Indicaciones</label><textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento..."></textarea></div>
               </div>
-              <button class="btn-full" onclick="guardarDictamen()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/></svg>
-                Guardar y emitir certificado
-              </button>
+              <button class="btn-full" onclick="guardarDictamen()">Guardar y emitir certificado</button>
               <div id="cert-ok" style="display:none;margin-top:12px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:1rem;">
-                <div style="font-size:14px;font-weight:500;color:var(--green);margin-bottom:4px;">✓ Certificado emitido</div>
-                <div id="cert-info" style="font-size:12px;color:var(--text2);"></div>
+                <div style="font-size:14px;font-weight:500;color:var(--green);">✓ Certificado emitido</div>
+                <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:4px;"></div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- LOG -->
       <div>
         <div class="card">
-          <div class="card-hdr">
-            <div class="card-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-              Log de actividad
-            </div>
-            <span class="badge b-gray" id="log-count">0 eventos</span>
-          </div>
-          <div class="card-body" style="padding-top:0.75rem;max-height:420px;overflow-y:auto;">
-            <div class="timeline" id="log-timeline">
-              <div style="text-align:center;padding:2rem 0;color:var(--text3);font-size:13px;">Sin actividad aún</div>
-            </div>
+          <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Log de actividad</div><span class="badge b-gray" id="log-count">0</span></div>
+          <div class="card-body" style="padding-top:0.75rem;max-height:400px;overflow-y:auto;">
+            <div class="timeline" id="log-timeline"><div style="text-align:center;padding:2rem 0;color:var(--text3);font-size:13px;">Sin actividad aún</div></div>
           </div>
         </div>
 
-        <!-- LINK DEL PACIENTE (aparece cuando hay consulta activa) -->
-        <div id="link-paciente-box" style="display:none;">
+        <div id="links-box" style="display:none;">
           <div class="card">
-            <div class="card-hdr"><div class="card-title">Link para el paciente</div></div>
-            <div class="card-body">
-              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Enviá este link al paciente para que se una:</div>
-              <div class="link-copy-row">
-                <div class="link-copy-url" id="link-paciente-url">—</div>
-                <button class="btn-sm" onclick="copiarLink()">Copiar</button>
-              </div>
-              <div class="share-btns">
-                <button class="btn-wa" onclick="compartirWA()">
-                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                  WhatsApp
-                </button>
-                <button class="btn-gmail" onclick="compartirGmail()">
-                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-                  Gmail
-                </button>
-              </div>
-            </div>
+            <div class="card-hdr"><div class="card-title">Links del turno</div></div>
+            <div class="card-body" id="links-body"></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ===== MÉDICOS ===== -->
   <div id="sec-medicos" style="display:none;">
     <div class="two-col">
       <div>
         <div class="card">
-          <div class="card-hdr">
-            <div class="card-title">Médicos activos</div>
-            <button class="btn-sm primary" onclick="abrirModalMedico()">+ Agregar</button>
-          </div>
-          <div id="medicos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Cargando...</div></div>
+          <div class="card-hdr"><div class="card-title">Médicos activos</div></div>
+          <div id="medicos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
         </div>
       </div>
       <div>
@@ -363,9 +286,7 @@ tr:hover td{background:var(--bg);}
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="new-nombre" placeholder="Dr. Apellido, Nombre"/></div>
               <div class="form-group"><label class="form-lbl">Matrícula</label><input type="text" id="new-matricula" placeholder="MP 00.000"/></div>
-              <div class="form-group"><label class="form-lbl">Especialidad</label>
-                <select id="new-especialidad"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Traumatología</option><option>Cardiología</option></select>
-              </div>
+              <div class="form-group"><label class="form-lbl">Especialidad</label><select id="new-esp"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Traumatología</option><option>Cardiología</option></select></div>
             </div>
             <button class="btn-full" onclick="agregarMedico()">Guardar médico</button>
             <div id="medico-ok" style="display:none;margin-top:10px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--green);">✓ Médico agregado</div>
@@ -378,323 +299,292 @@ tr:hover td{background:var(--bg);}
 </main>
 </div>
 
-<!-- MODAL: PROGRAMAR TURNO -->
+<!-- MODAL TURNO -->
 <div class="modal-bg" id="modal-turno">
   <div class="modal">
     <div class="modal-title">Programar turno</div>
     <div class="form-grid">
-      <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" placeholder="Apellido, Nombre"/></div>
+      <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" placeholder="Apellido, Nombre del paciente"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
         <select id="t-hora">
           <option>08:00</option><option>08:30</option><option>09:00</option><option>09:30</option>
           <option>10:00</option><option>10:30</option><option>11:00</option><option>11:30</option>
           <option>12:00</option><option>14:00</option><option>14:30</option><option>15:00</option>
-          <option>15:30</option><option>16:00</option><option>16:30</option><option>17:00</option>
+          <option>15:30</option><option selected>16:00</option><option>16:30</option><option>17:00</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-lbl">Médico</label><select id="t-medico"></select></div>
       <div class="form-group"><label class="form-lbl">Tipo</label>
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option></select>
       </div>
       <div class="form-group"><label class="form-lbl">Empresa</label>
         <select id="t-empresa"><option>LOGANT S.A.</option><option>Otra empresa</option></select>
       </div>
-      <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..." style="min-height:52px;"></textarea></div>
+      <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
-    <div id="loading-turno" class="loading"><div class="spinner"></div>Creando sala y generando link...</div>
-    <div id="turno-link-box" style="display:none;margin-top:12px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:1rem;">
-      <div style="font-size:13px;font-weight:500;color:var(--green);margin-bottom:6px;">✓ Turno programado — link generado</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Copiá este link y enviáselo al paciente por WhatsApp o Gmail:</div>
-      <div class="link-copy-row">
-        <div class="link-copy-url" id="turno-link-url">—</div>
-        <button class="btn-sm" onclick="copiarLinkTurno()">Copiar</button>
+    <div class="divider">Médicos participantes</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Seleccioná todos los que participarán — cada uno recibe su propio link de moderador.</div>
+    <div class="medicos-check-list" id="medicos-check-list"></div>
+    <div class="loading" id="loading-turno" style="margin-top:12px;"><div class="spinner"></div>Creando sala...</div>
+
+    <div id="turno-resultado" style="display:none;margin-top:14px;">
+      <div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:1rem;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:500;color:var(--green);">✓ Turno programado — <span id="res-resumen">—</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px;">Copiá y enviá cada link al participante correspondiente.</div>
       </div>
-      <div class="share-btns">
-        <button class="btn-wa" onclick="compartirWATurno()">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          WhatsApp
-        </button>
-        <button class="btn-gmail" onclick="compartirGmailTurno()">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-          Gmail
-        </button>
-      </div>
+      <div id="links-modal"></div>
     </div>
+
     <div class="modal-footer">
-      <button class="btn-sm" onclick="cerrarModal('modal-turno')">Cerrar</button>
-      <button class="btn-sm primary" id="btn-guardar-turno" onclick="guardarTurno()">Programar y generar link</button>
+      <button class="btn-sm" onclick="cerrarModal()">Cerrar</button>
+      <button class="btn-sm primary" id="btn-guardar-turno" onclick="guardarTurno()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Programar y generar links
+      </button>
     </div>
   </div>
 </div>
 
 <script>
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-document.getElementById('t-fecha').value = new Date().toISOString().split('T')[0];
+document.getElementById('t-fecha').value = '2026-06-19';
 
-// ===== NAV =====
-function showSection(id, el) {
-  ['agenda','medicos'].forEach(s => document.getElementById('sec-'+s).style.display = 'none');
-  document.getElementById('sec-'+id).style.display = 'block';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+function showSection(id,el){
+  ['agenda','medicos'].forEach(s=>document.getElementById('sec-'+s).style.display='none');
+  document.getElementById('sec-'+id).style.display='block';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
-  const info = {agenda:['Agenda','Turnos programados y consultas inmediatas'],medicos:['Médicos','Gestión del equipo médico']};
-  document.getElementById('page-title').textContent = info[id][0];
-  document.getElementById('page-sub').textContent = info[id][1];
-  if (id==='medicos') cargarMedicos();
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico']};
+  document.getElementById('page-title').textContent=info[id][0];
+  document.getElementById('page-sub').textContent=info[id][1];
+  if(id==='medicos')cargarMedicos();
 }
 
-// ===== MÉDICOS =====
-let medicosData = [];
-async function cargarMedicos() {
-  const res = await fetch('/api/medicos');
-  medicosData = await res.json();
+let medicosData=[];
+async function cargarMedicos(){
+  const res=await fetch('/api/medicos');
+  medicosData=await res.json();
   renderMedicos();
-  poblarSelectores();
+  renderMedicosCheck();
 }
-function renderMedicos() {
-  if (!medicosData.length) { document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Sin médicos.</div>'; return; }
-  document.getElementById('medicos-lista').innerHTML = `<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
-    medicosData.map(m=>`<tr><td><div style="font-weight:500;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);">${m.matricula||'Sin matrícula'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td><button class="btn-sm danger" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+
-    `</tbody></table>`;
+function renderMedicos(){
+  if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
+  document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
+    medicosData.map(m=>`<tr><td><div style="font-weight:500;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);">${m.matricula||'Sin matrícula'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td><button class="btn-sm danger" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
 }
-function poblarSelectores() {
-  const opts = medicosData.map(m=>`<option value="${m.nombre}">${m.nombre}</option>`).join('');
-  document.getElementById('t-medico').innerHTML = opts;
+function renderMedicosCheck(){
+  document.getElementById('medicos-check-list').innerHTML=medicosData.map(m=>
+    `<label class="medico-check selected" id="chk-${m.id}"><input type="checkbox" value="${m.nombre}" checked onchange="document.getElementById('chk-${m.id}').classList.toggle('selected',this.checked)"/><span class="medico-check-nombre">${m.nombre}</span><span class="medico-check-mat">${m.matricula||''}</span></label>`
+  ).join('');
 }
-async function agregarMedico() {
-  const nombre = document.getElementById('new-nombre').value.trim();
+async function agregarMedico(){
+  const nombre=document.getElementById('new-nombre').value.trim();
   document.getElementById('medico-ok').style.display='none';
   document.getElementById('medico-err').style.display='none';
-  if (!nombre) { document.getElementById('medico-err').style.display='block'; document.getElementById('medico-err').textContent='Ingresá el nombre'; return; }
-  const res = await fetch('/api/medicos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre,matricula:document.getElementById('new-matricula').value,especialidad:document.getElementById('new-especialidad').value})});
-  const data = await res.json();
-  if (!data.ok) return;
-  document.getElementById('new-nombre').value='';
-  document.getElementById('new-matricula').value='';
+  if(!nombre){document.getElementById('medico-err').style.display='block';document.getElementById('medico-err').textContent='Ingresá el nombre';return;}
+  const res=await fetch('/api/medicos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre,matricula:document.getElementById('new-matricula').value,especialidad:document.getElementById('new-esp').value})});
+  const data=await res.json();
+  if(!data.ok)return;
+  document.getElementById('new-nombre').value='';document.getElementById('new-matricula').value='';
   document.getElementById('medico-ok').style.display='block';
   await cargarMedicos();
 }
-async function eliminarMedico(id) {
-  if (!confirm('¿Eliminar este médico?')) return;
-  await fetch('/api/medicos/'+id,{method:'DELETE'});
-  await cargarMedicos();
-}
+async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE'});await cargarMedicos();}
 
-// ===== TURNOS =====
-let turnos = [];
-let consultaActual = null;
-let dictamenCount = 0;
+let turnos=[],consultaActual=null,dictCount=0;
 
-function renderAgenda() {
-  const hoy = new Date().toISOString().split('T')[0];
-  const turnoshoy = turnos.filter(t => t.fecha === hoy).sort((a,b) => a.hora.localeCompare(b.hora));
-  document.getElementById('cnt-hoy').textContent = turnoshoy.length;
-  document.getElementById('badge-turnos').textContent = turnoshoy.length + ' turnos';
-
-  const pendientes = turnoshoy.filter(t => t.estado !== 'completado');
-  if (pendientes.length > 0) {
-    document.getElementById('cnt-proximo').textContent = pendientes[0].hora;
-    document.getElementById('cnt-proximo-nombre').textContent = pendientes[0].paciente;
+function renderAgenda(){
+  const hoy=new Date().toISOString().split('T')[0];
+  const ordenados=[...turnos].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora));
+  document.getElementById('cnt-total').textContent=turnos.length;
+  document.getElementById('cnt-hoy').textContent=turnos.filter(t=>t.fecha===hoy).length;
+  document.getElementById('badge-turnos').textContent=turnos.length;
+  const futuros=ordenados.filter(t=>t.fecha>=hoy&&t.estado!=='completado');
+  if(futuros.length){
+    document.getElementById('cnt-proximo').textContent=futuros[0].hora;
+    document.getElementById('cnt-proximo-sub').textContent=futuros[0].paciente+' · '+new Date(futuros[0].fecha+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
   }
-
-  const completados = turnoshoy.filter(t => t.estado === 'completado').length;
-  document.getElementById('cnt-completados').textContent = completados;
-
-  if (!turnoshoy.length) {
-    document.getElementById('agenda-lista').innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;">No hay turnos para hoy.<br><span style="font-size:12px;">Usá "Programar turno" para agregar uno.</span></div>';
-    return;
-  }
-
-  document.getElementById('agenda-lista').innerHTML = turnoshoy.map(t => {
-    const esHoy = t.fecha === hoy;
-    const estadoBadge = t.estado === 'completado'
-      ? '<span class="badge b-green">✓ Completado</span>'
-      : t.estado === 'en-curso'
-      ? '<span class="badge b-red">● En curso</span>'
-      : '<span class="badge b-gray">Pendiente</span>';
-
-    const btnIniciar = t.estado === 'pendiente'
-      ? `<button class="btn-sm success" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`
-      : '';
-
-    const btnCopiar = t.linkPaciente
-      ? `<button class="btn-sm" onclick="copiarTexto('${t.linkPaciente}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar link</button>`
-      : '';
-
-    return `<div class="turno-item">
-      <div>
-        <div class="turno-hora">${t.hora}</div>
-        <div class="turno-hora-sub">${t.fecha === hoy ? 'Hoy' : t.fecha}</div>
-      </div>
-      <div class="turno-info">
-        <div class="turno-paciente">${t.paciente}</div>
-        <div class="turno-meta">${t.medico} &nbsp;·&nbsp; ${t.tipo} &nbsp;·&nbsp; ${t.empresa}</div>
-      </div>
+  if(!turnos.length){document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;">Sin turnos programados.</div>';return;}
+  document.getElementById('agenda-lista').innerHTML=ordenados.map(t=>{
+    const fechaLabel=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+    const estadoBadge=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-red">● En curso</span>':'<span class="badge b-gray">Pendiente</span>';
+    const btnIniciar=t.estado==='pendiente'?`<button class="btn-sm success" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
+    return`<div class="turno-item">
+      <div><div class="turno-hora">${t.hora}</div><div class="turno-hora-sub">${fechaLabel}</div></div>
+      <div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${t.medicos.join(', ')} · ${t.tipo}</div></div>
       <div class="turno-actions">
         ${estadoBadge}
-        ${btnCopiar}
+        <button class="btn-sm" onclick="verLinks('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Links</button>
         ${btnIniciar}
       </div>
     </div>`;
   }).join('');
 }
 
-// MODAL TURNO
-function abrirModalTurno() {
+function buildLinksHtml(t){
+  const msg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link de videoconsulta: ${link}\n\nFecha: ${new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})} a las ${t.hora} hs\n\nNo necesitás instalar nada. Hacé click al horario indicado.\n\nSaludes,\nMEDGRUP Medicina Laboral`;
+  let html='';
+  t.linksMedicos.forEach(lm=>{
+    const m=msg(lm.link,lm.nombre);
+    html+=`<div class="participante-link">
+      <div class="participante-nombre">${lm.nombre} <span class="participante-rol rol-medico">Médico — moderador</span></div>
+      <div class="link-row"><div class="link-url">${lm.link}</div><button class="btn-sm" onclick="copiar('${lm.link}')">Copiar</button></div>
+      <div class="share-btns">
+        <button class="btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${JSON.stringify(m)}))">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA
+        </button>
+        <button class="btn-gmail" onclick="window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(${JSON.stringify(m)}))">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail
+        </button>
+      </div>
+    </div>`;
+  });
+  const mp=msg(t.linkPaciente,t.paciente);
+  html+=`<div class="participante-link">
+    <div class="participante-nombre">${t.paciente} <span class="participante-rol rol-paciente">Paciente — invitado</span></div>
+    <div class="link-row"><div class="link-url">${t.linkPaciente}</div><button class="btn-sm" onclick="copiar('${t.linkPaciente}')">Copiar</button></div>
+    <div class="share-btns">
+      <button class="btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${JSON.stringify(mp)}))">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA
+      </button>
+      <button class="btn-gmail" onclick="window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(${JSON.stringify(mp)}))">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail
+      </button>
+    </div>
+  </div>`;
+  return html;
+}
+
+function verLinks(id){
+  const t=turnos.find(x=>x.id===id);
+  if(!t)return;
+  document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  document.getElementById('links-box').style.display='block';
+  document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
+}
+
+function abrirModalTurno(){
   document.getElementById('modal-turno').classList.add('open');
-  document.getElementById('turno-link-box').style.display = 'none';
-  document.getElementById('btn-guardar-turno').style.display = 'inline-flex';
-  poblarSelectores();
+  document.getElementById('turno-resultado').style.display='none';
+  document.getElementById('btn-guardar-turno').style.display='inline-flex';
+  document.getElementById('loading-turno').style.display='none';
+  cargarMedicos();
 }
-function cerrarModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function cerrarModal(){document.getElementById('modal-turno').classList.remove('open');}
 
-async function guardarTurno() {
-  const paciente = document.getElementById('t-paciente').value.trim();
-  if (!paciente) { alert('Ingresá el nombre del paciente'); return; }
-  const fecha = document.getElementById('t-fecha').value;
-  const hora = document.getElementById('t-hora').value;
-  const medico = document.getElementById('t-medico').value;
-  const tipo = document.getElementById('t-tipo').value;
-  const empresa = document.getElementById('t-empresa').value;
+async function guardarTurno(){
+  const paciente=document.getElementById('t-paciente').value.trim();
+  if(!paciente){alert('Ingresá el nombre del paciente');return;}
+  const fecha=document.getElementById('t-fecha').value;
+  const hora=document.getElementById('t-hora').value;
+  const tipo=document.getElementById('t-tipo').value;
+  const empresa=document.getElementById('t-empresa').value;
+  const checks=document.querySelectorAll('#medicos-check-list input[type=checkbox]:checked');
+  const medicosSel=[...checks].map(c=>c.value);
+  if(!medicosSel.length){alert('Seleccioná al menos un médico');return;}
 
-  document.getElementById('btn-guardar-turno').style.display = 'none';
-  document.getElementById('loading-turno').style.display = 'flex';
+  document.getElementById('btn-guardar-turno').style.display='none';
+  document.getElementById('loading-turno').style.display='flex';
 
-  try {
-    const res = await fetch('/api/crear-sala',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paciente,medico,tipo})});
-    const data = await res.json();
-    document.getElementById('loading-turno').style.display = 'none';
+  try{
+    const res=await fetch('/api/crear-sala',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paciente,medicos:medicosSel,tipo})});
+    const data=await res.json();
+    document.getElementById('loading-turno').style.display='none';
+    if(!data.ok){alert('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
 
-    if (!data.ok) { alert('Error: '+data.error); document.getElementById('btn-guardar-turno').style.display='inline-flex'; return; }
-
-    const turno = {id: Date.now().toString(), paciente, fecha, hora, medico, tipo, empresa, estado:'pendiente', linkPaciente: data.url, linkMedico: data.url_medico, sala: data.sala};
+    const turno={id:Date.now().toString(),paciente,fecha,hora,medicos:medicosSel,tipo,empresa,estado:'pendiente',linkPaciente:data.url,linksMedicos:data.links_medicos,sala:data.sala};
     turnos.push(turno);
     renderAgenda();
 
-    document.getElementById('turno-link-url').textContent = data.url;
-    document.getElementById('turno-link-box').style.display = 'block';
+    const fechaLabel=new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('res-resumen').textContent=`${paciente} — ${fechaLabel} ${hora} hs`;
+    document.getElementById('links-modal').innerHTML=buildLinksHtml(turno);
+    document.getElementById('turno-resultado').style.display='block';
 
-    addLog('green', 'Turno programado', `${paciente} — ${fecha} ${hora}`);
-    addLog('blue', 'Link generado', data.url);
+    addLog('green','Turno programado',`${paciente} — ${fechaLabel} ${hora}`);
+    addLog('blue','Links generados',`${medicosSel.length} médicos + paciente`);
 
-  } catch(e) {
-    document.getElementById('loading-turno').style.display = 'none';
-    document.getElementById('btn-guardar-turno').style.display = 'inline-flex';
+  }catch(e){
+    document.getElementById('loading-turno').style.display='none';
+    document.getElementById('btn-guardar-turno').style.display='inline-flex';
     alert('Error: '+e.message);
   }
 }
 
-// CONSULTA INMEDIATA
-async function consultaInmediata() {
-  const paciente = prompt('Nombre del paciente para la consulta inmediata:');
-  if (!paciente) return;
+async function consultaInmediata(){
+  const paciente=prompt('Nombre del paciente:');
+  if(!paciente)return;
   await cargarMedicos();
-  const medico = medicosData.length > 0 ? medicosData[0].nombre : 'Dr. Barboza, Raúl';
-  addLog('blue', 'Consulta inmediata — creando sala...', '');
-
-  try {
-    const res = await fetch('/api/crear-sala',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paciente,medico,tipo:'Consulta inmediata'})});
-    const data = await res.json();
-    if (!data.ok) { alert('Error: '+data.error); return; }
-
-    const hoy = new Date().toISOString().split('T')[0];
-    const hora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    const turno = {id: Date.now().toString(), paciente, fecha:hoy, hora, medico, tipo:'Consulta inmediata', empresa:'—', estado:'pendiente', linkPaciente:data.url, linkMedico:data.url_medico, sala:data.sala};
+  const medicosSel=medicosData.map(m=>m.nombre);
+  try{
+    const res=await fetch('/api/crear-sala',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paciente,medicos:medicosSel,tipo:'Consulta inmediata'})});
+    const data=await res.json();
+    if(!data.ok){alert('Error: '+data.error);return;}
+    const hoy=new Date().toISOString().split('T')[0];
+    const hora=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const turno={id:Date.now().toString(),paciente,fecha:hoy,hora,medicos:medicosSel,tipo:'Consulta inmediata',empresa:'—',estado:'pendiente',linkPaciente:data.url,linksMedicos:data.links_medicos,sala:data.sala};
     turnos.push(turno);
     renderAgenda();
-    addLog('green', 'Sala creada — turno agregado a la agenda', paciente);
-    addLog('blue', 'Link del paciente listo', data.url);
-
-    document.getElementById('link-paciente-url').textContent = data.url;
-    document.getElementById('link-paciente-box').style.display = 'block';
-
-    if (confirm('¿Iniciás la consulta ahora?')) iniciarTurno(turno.id);
-
-  } catch(e) { alert('Error: '+e.message); }
+    document.getElementById('links-body').innerHTML=buildLinksHtml(turno);
+    document.getElementById('links-box').style.display='block';
+    addLog('green','Consulta inmediata creada',paciente);
+    if(confirm('¿Iniciás la consulta ahora?'))iniciarTurno(turno.id);
+  }catch(e){alert('Error: '+e.message);}
 }
 
-// INICIAR TURNO
-function iniciarTurno(id) {
-  const turno = turnos.find(t => t.id === id);
-  if (!turno) return;
-
-  turno.estado = 'en-curso';
-  consultaActual = turno;
+function iniciarTurno(id){
+  const t=turnos.find(x=>x.id===id);
+  if(!t)return;
+  t.estado='en-curso';
+  consultaActual=t;
   renderAgenda();
-
   document.getElementById('video-container').classList.add('active');
-  document.getElementById('daily-frame').src = turno.linkMedico;
-  document.getElementById('video-label').textContent = turno.paciente + ' — ' + turno.tipo;
-  document.getElementById('video-sala').textContent = turno.sala;
-  document.getElementById('link-paciente-url').textContent = turno.linkPaciente;
-  document.getElementById('link-paciente-box').style.display = 'block';
-
+  document.getElementById('daily-frame').src=t.linksMedicos[0]?.link||t.linkPaciente;
+  document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
+  document.getElementById('video-sala').textContent=t.sala;
+  document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  document.getElementById('links-box').style.display='block';
   startTimer();
-  addLog('green', 'Consulta iniciada', turno.paciente + ' — ' + turno.hora);
+  addLog('green','Consulta iniciada',t.paciente+' '+t.hora);
   document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
 }
 
-// FINALIZAR
-function finalizarConsulta() {
-  if (!confirm('¿Finalizar la consulta?')) return;
-  const dur = stopTimer();
+function finalizarConsulta(){
+  if(!confirm('¿Finalizar la consulta?'))return;
+  const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
-  document.getElementById('daily-frame').src = '';
-  if (consultaActual) {
-    consultaActual.estado = 'completado';
-    consultaActual.duracion = dur;
-    renderAgenda();
-  }
-  addLog('green', 'Consulta finalizada', 'Duración: '+dur);
-  addLog('blue', 'Grabación guardada en Daily.co', consultaActual?.sala||'');
-  document.getElementById('form-dictamen').style.display = 'block';
-  document.getElementById('dict-paciente').textContent = consultaActual?.paciente||'—';
-  document.getElementById('dict-duracion').textContent = dur;
-  dictamenCount++;
-  document.getElementById('dict-numero').textContent = 'N° '+String(dictamenCount).padStart(4,'0');
-  addLog('amber', 'Completá el dictamen médico', '');
+  document.getElementById('daily-frame').src='';
+  if(consultaActual){consultaActual.estado='completado';renderAgenda();}
+  addLog('green','Consulta finalizada','Duración: '+dur);
+  addLog('blue','Grabación guardada en Daily.co',consultaActual?.sala||'');
+  document.getElementById('form-dictamen').style.display='block';
+  document.getElementById('dict-paciente').textContent=consultaActual?.paciente||'—';
+  document.getElementById('dict-duracion').textContent=dur;
+  dictCount++;
+  document.getElementById('dict-numero').textContent='N° '+String(dictCount).padStart(4,'0');
+  addLog('amber','Completá el dictamen médico','');
 }
 
-function guardarDictamen() {
-  const diag = document.getElementById('dict-diag').value;
-  if (!diag) { alert('Seleccioná un diagnóstico'); return; }
-  const aptitud = {'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'}[document.getElementById('dict-aptitud').value];
-  const reposo = document.getElementById('dict-reposo').value;
-  const num = document.getElementById('dict-numero').textContent;
-  document.getElementById('cert-ok').style.display = 'block';
-  document.getElementById('cert-info').textContent = `${num} · ${consultaActual?.paciente} · ${diag} · ${aptitud} · ${reposo} días`;
-  addLog('green', 'Certificado emitido', num+' · '+diag);
+function guardarDictamen(){
+  const diag=document.getElementById('dict-diag').value;
+  if(!diag){alert('Seleccioná un diagnóstico');return;}
+  const aptitud={'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'}[document.getElementById('dict-aptitud').value];
+  const reposo=document.getElementById('dict-reposo').value;
+  const num=document.getElementById('dict-numero').textContent;
+  document.getElementById('cert-ok').style.display='block';
+  document.getElementById('cert-info').textContent=`${num} · ${consultaActual?.paciente} · ${diag} · ${aptitud} · ${reposo} días`;
+  addLog('green','Certificado emitido',num+' · '+diag);
 }
 
-// TIMER
-let timerInterval=null, timerStart=null;
+let timerInterval=null,timerStart=null;
 function startTimer(){timerStart=Date.now();timerInterval=setInterval(()=>{const s=Math.floor((Date.now()-timerStart)/1000);document.getElementById('video-timer').textContent=String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');},1000);}
 function stopTimer(){clearInterval(timerInterval);const s=Math.floor((Date.now()-timerStart)/1000);return Math.floor(s/60)+'m '+s%60+'s';}
 
-// LOG
 const logEvents=[];
-function addLog(tipo,desc,sub){logEvents.unshift({tipo,desc,sub,hora:new Date().toLocaleTimeString('es-AR')});document.getElementById('log-count').textContent=logEvents.length+' eventos';document.getElementById('log-timeline').innerHTML=logEvents.map(e=>`<div class="tl-item"><div class="tl-dot ${e.tipo}"></div><div class="tl-time">${e.hora}</div><div><div class="tl-desc">${e.desc}</div>${e.sub?`<div class="tl-sub">${e.sub}</div>`:''}</div></div>`).join('');}
+function addLog(tipo,desc,sub){logEvents.unshift({tipo,desc,sub,hora:new Date().toLocaleTimeString('es-AR')});document.getElementById('log-count').textContent=logEvents.length;document.getElementById('log-timeline').innerHTML=logEvents.map(e=>`<div class="tl-item"><div class="tl-dot ${e.tipo}"></div><div class="tl-time">${e.hora}</div><div><div class="tl-desc">${e.desc}</div>${e.sub?`<div class="tl-sub">${e.sub}</div>`:''}</div></div>`).join('');}
 
-// COPIAR / COMPARTIR
-async function copiarTexto(txt){await navigator.clipboard.writeText(txt);alert('Link copiado');}
-async function copiarLink(){await copiarTexto(document.getElementById('link-paciente-url').textContent);}
-async function copiarLinkTurno(){await copiarTexto(document.getElementById('turno-link-url').textContent);}
+async function copiar(txt){await navigator.clipboard.writeText(txt);alert('Link copiado ✓');}
 
-function getMensaje(link, paciente) {
-  return `Hola ${paciente}, te enviamos el link para tu consulta médica con MEDGRUP:\n\n${link}\n\nHacé click al horario indicado. No necesitás instalar ninguna aplicación.\n\nSaludes,\nMEDGRUP Medicina Laboral`;
-}
-function compartirWA(){const link=document.getElementById('link-paciente-url').textContent;const pac=consultaActual?.paciente||'';window.open('https://wa.me/?text='+encodeURIComponent(getMensaje(link,pac)));}
-function compartirGmail(){const link=document.getElementById('link-paciente-url').textContent;const pac=consultaActual?.paciente||'';window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(getMensaje(link,pac)));}
-function compartirWATurno(){const link=document.getElementById('turno-link-url').textContent;window.open('https://wa.me/?text='+encodeURIComponent(getMensaje(link,'paciente')));}
-function compartirGmailTurno(){const link=document.getElementById('turno-link-url').textContent;window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(getMensaje(link,'paciente')));}
-
-// MODAL MÉDICO
-function abrirModalMedico(){ showSection('medicos', document.querySelectorAll('.nav-item')[1]); }
-
-// INIT
 cargarMedicos();
 renderAgenda();
 </script>
