@@ -393,6 +393,29 @@ async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch(
 
 let turnos=[],consultaActual=null,dictCount=0;
 
+async function cargarTurnos(){
+  try{
+    const res=await fetch('/api/turnos');
+    const data=await res.json();
+    turnos=data.map(t=>({
+      id:t.id,
+      paciente:t.paciente,
+      fecha:t.fecha.split('T')[0],
+      hora:t.hora,
+      tipo:t.tipo,
+      empresa:t.empresa,
+      estado:t.estado,
+      sala:t.sala,
+      linkPaciente:t.link_paciente,
+      linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),
+      medicos:t.medicos||[]
+    }));
+    renderAgenda();
+  }catch(e){
+    console.error('Error cargando turnos:',e);
+  }
+}
+
 function renderAgenda(){
   const hoy=new Date().toISOString().split('T')[0];
   const ordenados=[...turnos].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora));
@@ -493,12 +516,12 @@ async function guardarTurno(){
     if(!data.ok){alert('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
 
     const turno={id:Date.now().toString(),paciente,fecha,hora,medicos:medicosSel,tipo,empresa,estado:'pendiente',linkPaciente:data.url,linksMedicos:data.links_medicos,sala:data.sala};
-    turnos.push(turno);
-    renderAgenda();
+    await cargarTurnos();
 
     const fechaLabel=new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('res-resumen').textContent=`${paciente} — ${fechaLabel} ${hora} hs`;
-    document.getElementById('links-modal').innerHTML=buildLinksHtml(turno);
+    const turnoGuardado=turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
+    document.getElementById('links-modal').innerHTML=turnoGuardado?buildLinksHtml(turnoGuardado):'';
     document.getElementById('turno-resultado').style.display='block';
 
     addLog('green','Turno programado',`${paciente} — ${fechaLabel} ${hora}`);
@@ -523,12 +546,14 @@ async function consultaInmediata(){
     const hoy=new Date().toISOString().split('T')[0];
     const hora=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
     const turno={id:Date.now().toString(),paciente,fecha:hoy,hora,medicos:medicosSel,tipo:'Consulta inmediata',empresa:'—',estado:'pendiente',linkPaciente:data.url,linksMedicos:data.links_medicos,sala:data.sala};
-    turnos.push(turno);
-    renderAgenda();
-    document.getElementById('links-body').innerHTML=buildLinksHtml(turno);
-    document.getElementById('links-box').style.display='block';
+    await cargarTurnos();
+    const turnoGuardado=turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
+    if(turnoGuardado){
+      document.getElementById('links-body').innerHTML=buildLinksHtml(turnoGuardado);
+      document.getElementById('links-box').style.display='block';
+    }
     addLog('green','Consulta inmediata creada',paciente);
-    if(confirm('¿Iniciás la consulta ahora?'))iniciarTurno(turno.id);
+    if(confirm('¿Iniciás la consulta ahora?')&&turnoGuardado)iniciarTurno(turnoGuardado.id);
   }catch(e){alert('Error: '+e.message);}
 }
 
@@ -554,7 +579,11 @@ function finalizarConsulta(){
   const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
   document.getElementById('daily-frame').src='';
-  if(consultaActual){consultaActual.estado='completado';renderAgenda();}
+  if(consultaActual){
+    consultaActual.estado='completado';
+    fetch('/api/turnos/'+consultaActual.id+'/estado',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'completado'})});
+    renderAgenda();
+  }
   addLog('green','Consulta finalizada','Duración: '+dur);
   addLog('blue','Grabación guardada en Daily.co',consultaActual?.sala||'');
   document.getElementById('form-dictamen').style.display='block';
@@ -586,7 +615,7 @@ function addLog(tipo,desc,sub){logEvents.unshift({tipo,desc,sub,hora:new Date().
 async function copiar(txt){await navigator.clipboard.writeText(txt);alert('Link copiado ✓');}
 
 cargarMedicos();
-renderAgenda();
+cargarTurnos();
 </script>
 </body>
 </html>
