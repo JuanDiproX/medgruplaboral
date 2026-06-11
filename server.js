@@ -14,15 +14,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// OAuth2 client
 function getOAuthClient() {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 }
 
-// Token en memoria (en producción iría en DB)
 let tokenGuardado = null;
 
-// ===== AUTH =====
 app.get('/auth/google', (req, res) => {
   const oauth2Client = getOAuthClient();
   const url = oauth2Client.generateAuthUrl({
@@ -49,7 +46,6 @@ app.get('/api/auth-status', (req, res) => {
   res.json({ conectado: !!tokenGuardado });
 });
 
-// ===== MÉDICOS =====
 let medicos = [
   { id: 1, nombre: 'Dr. Barboza, Raúl', matricula: 'MP 12.847', especialidad: 'Medicina Laboral', activo: true },
   { id: 2, nombre: 'Dr. Muroni, Esteban', matricula: '', especialidad: 'Medicina Laboral', activo: true },
@@ -72,7 +68,6 @@ app.delete('/api/medicos/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ===== CREAR TURNO CON GOOGLE MEET =====
 app.post('/api/crear-turno', async (req, res) => {
   if (!tokenGuardado) {
     return res.status(401).json({ error: 'No autenticado con Google', needsAuth: true });
@@ -83,20 +78,16 @@ app.post('/api/crear-turno', async (req, res) => {
 
     const oauth2Client = getOAuthClient();
     oauth2Client.setCredentials(tokenGuardado);
-
-    // Refrescar token si expiró
     oauth2Client.on('tokens', (tokens) => {
-      if (tokens.refresh_token) tokenGuardado = { ...tokenGuardado, ...tokens };
-      else tokenGuardado = { ...tokenGuardado, access_token: tokens.access_token };
+      tokenGuardado = { ...tokenGuardado, ...tokens };
     });
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    // Construir fecha/hora
     const [anio, mes, dia] = fecha.split('-');
     const [horaNum, minNum] = hora.split(':');
     const startDateTime = new Date(parseInt(anio), parseInt(mes)-1, parseInt(dia), parseInt(horaNum), parseInt(minNum));
-    const endDateTime = new Date(startDateTime.getTime() + 60*60*1000); // 1 hora
+    const endDateTime = new Date(startDateTime.getTime() + 60*60*1000);
 
     const event = {
       summary: `Junta médica MEDGRUP — ${paciente}`,
@@ -109,8 +100,16 @@ app.post('/api/crear-turno', async (req, res) => {
           conferenceSolutionKey: { type: 'hangoutsMeet' }
         }
       },
-      // Todos son organizadores/invitados
-      attendees: [],
+      // Sala de espera deshabilitada — cualquiera con el link entra directo
+      guestsCanModify: false,
+      guestsCanInviteOthers: false,
+      guestsCanSeeOtherGuests: true,
+      // Configuración para entrada libre sin sala de espera
+      extendedProperties: {
+        shared: {
+          'meetSettings': JSON.stringify({ knockingEnabled: false })
+        }
+      }
     };
 
     const response = await calendar.events.insert({
@@ -121,7 +120,8 @@ app.post('/api/crear-turno', async (req, res) => {
     });
 
     const eventoCreado = response.data;
-    const meetLink = eventoCreado.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || eventoCreado.hangoutLink;
+    const meetLink = eventoCreado.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri
+      || eventoCreado.hangoutLink;
 
     res.json({
       ok: true,
@@ -138,14 +138,13 @@ app.post('/api/crear-turno', async (req, res) => {
     console.error('Error Google Calendar:', err.message);
     if (err.code === 401) {
       tokenGuardado = null;
-      return res.status(401).json({ error: 'Token expirado, re-autenticá', needsAuth: true });
+      return res.status(401).json({ error: 'Token expirado', needsAuth: true });
     }
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true, auth: !!tokenGuardado }));
-
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));
