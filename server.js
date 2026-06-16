@@ -94,7 +94,7 @@ async function initDB() {
       INSERT INTO usuarios (nombre, email, password_hash, rol)
       VALUES 
         ('Administrador', 'adm.medgrup@gmail.com', $1, 'admin'),
-        ('Dr. Barboza, Raúl', 'barboza@medgrup.com', $2, 'medico'),
+        ('Dr. Barboza, Raúl', 'medgrup@live.com.ar', $2, 'medico'),
         ('Dr. Muroni, Esteban', 'muroni@medgrup.com', $3, 'medico')
       ON CONFLICT (email) DO NOTHING
     `, [adminHash, barbozaHash, muroniHash]);
