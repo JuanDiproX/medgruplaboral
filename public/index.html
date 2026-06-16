@@ -263,35 +263,30 @@ tr:hover td{background:var(--surface2);}
 .modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.5px;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);}
 
-/* ─── TYPOGRAPHY IMPROVEMENTS ─── */
-.page-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--text);}
-.page-sub{font-size:13.5px;color:var(--text2);margin-top:4px;font-weight:400;}
-.date-chip{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 13px;font-weight:500;}
-.card-title{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;letter-spacing:-0.2px;}
-.metric-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;margin-bottom:8px;font-weight:500;}
-.metric-val{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;letter-spacing:-2px;line-height:1;}
-.metric-hint{font-size:12px;color:var(--text2);margin-top:6px;font-weight:400;}
-.turno-hora{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-0.5px;}
-.turno-fecha{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;font-weight:500;}
-.turno-paciente{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.3px;}
-.turno-meta{font-size:12px;color:var(--text2);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.nav-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);font-family:'DM Mono',monospace;padding:0.6rem 0.5rem 0.3rem;font-weight:600;}
-.nav-item{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;color:var(--text2);font-size:13.5px;border-radius:var(--r-sm);transition:all 0.12s;margin-bottom:1px;border:1px solid transparent;font-weight:400;letter-spacing:-0.1px;}
-.nav-item.active{background:var(--accent2);color:var(--accent);font-weight:600;border-color:var(--accent3);}
-.user-nombre{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.user-email{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
-.btn{font-size:13.5px;font-weight:500;letter-spacing:-0.1px;}
-.form-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text2);font-weight:600;}
-.divider{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);font-family:'DM Mono',monospace;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);font-weight:600;}
-.modal-title{font-family:'Syne',sans-serif;font-size:21px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.5px;}
-.tl-desc{font-size:13px;color:var(--text);font-weight:500;}
-.tl-sub{font-size:11.5px;color:var(--text3);margin-top:2px;}
-.tl-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);width:50px;flex-shrink:0;margin-top:2px;font-weight:500;}
-.badge{font-size:11.5px;font-weight:600;padding:3px 9px;letter-spacing:0.1px;}
-select,input[type=text],input[type=date],input[type=password],textarea{font-size:14px;padding:10px 12px;font-weight:400;}
-table{font-size:13.5px;}
-th{font-size:10.5px;letter-spacing:0.8px;font-weight:600;padding:0 1.25rem 10px;}
-td{padding:13px 1.25rem;}
+/* ─── TYPOGRAPHY FIX ─── */
+.page-title{font-size:22px;font-weight:700;letter-spacing:-0.4px;}
+.page-sub{font-size:13px;color:var(--text3);margin-top:3px;}
+.card-title{font-size:13px;font-weight:600;letter-spacing:-0.1px;}
+.metric-lbl{font-size:10px;letter-spacing:0.7px;margin-bottom:6px;}
+.metric-val{font-size:28px;letter-spacing:-1px;}
+.metric-val.sm{font-size:15px;margin-top:4px;letter-spacing:0;}
+.metric-hint{font-size:11px;color:var(--text3);margin-top:5px;}
+.turno-time{flex-shrink:0;width:80px;}
+.turno-hora{font-family:"DM Mono",monospace;font-size:15px;font-weight:500;color:var(--accent);line-height:1;letter-spacing:0;}
+.turno-fecha{font-size:10px;color:var(--text3);font-family:"DM Mono",monospace;margin-top:3px;}
+.turno-paciente{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-0.1px;}
+.turno-meta{font-size:11.5px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.nav-lbl{font-size:10px;letter-spacing:1px;padding:0.5rem 0.5rem 0.3rem;}
+.nav-item{font-size:13px;}
+.user-nombre{font-size:12.5px;font-weight:600;}
+.user-email{font-size:10.5px;}
+.btn{font-size:13px;}
+.form-lbl{font-size:10px;letter-spacing:0.7px;}
+.modal-title{font-size:18px;font-weight:700;letter-spacing:-0.3px;}
+.tl-desc{font-size:13px;font-weight:500;}
+.tl-sub{font-size:11px;}
+.badge{font-size:11px;padding:2px 8px;}
+.empresa-tag{font-size:10px;padding:2px 6px;}
 .loading{display:none;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:0.5rem 0;}
 .spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
 
