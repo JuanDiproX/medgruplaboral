@@ -149,16 +149,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
 .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:1.5rem;}
 
-/* ─── METRICS ─── */
-.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;box-shadow:var(--shadow-sm);transition:transform 0.15s;}
-.metric:hover{transform:translateY(-1px);}
-.metric-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;margin-bottom:8px;font-weight:500;}
-.metric-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
-.metric-val.blue{color:var(--accent);}
-.metric-val.green{color:var(--green);}
-.metric-val.amber{color:var(--amber);}
-.metric-val.sm{font-size:18px;margin-top:4px;}
-.metric-hint{font-size:11px;color:var(--text3);margin-top:6px;}
+/* ─── METRIC CARDS ─── */
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:1rem;transition:transform 0.15s,box-shadow 0.15s;}
+.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+.metric-card-icon{width:48px;height:48px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.metric-card-body{flex:1;min-width:0;}
+.metric-card-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text3);font-weight:500;margin-bottom:4px;}
+.metric-card-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.5px;line-height:1;color:var(--accent);}
+.metric-card-hint{font-size:11px;color:var(--text3);margin-top:4px;}
 
 /* ─── BADGES ─── */
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;letter-spacing:0.1px;}
@@ -439,9 +437,43 @@ tr:hover td{background:var(--surface2);}
     </div>
 
     <div class="three-col">
-      <div class="metric"><div class="metric-lbl">Turnos totales</div><div class="metric-val blue" id="cnt-total">0</div><div class="metric-hint">programados</div></div>
-      <div class="metric"><div class="metric-lbl">Próximo</div><div class="metric-val blue sm" id="cnt-proximo">—</div><div class="metric-hint" id="cnt-proximo-sub">sin turnos</div></div>
-      <div class="metric"><div class="metric-lbl">Hoy</div><div class="metric-val green" id="cnt-hoy">0</div><div class="metric-hint">turnos para hoy</div></div>
+
+      <!-- Turnos totales -->
+      <div class="metric-card">
+        <div class="metric-card-icon" style="background:linear-gradient(135deg,#e8f0fa,#d0e2f7);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1a4f8a" stroke-width="1.8" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <div class="metric-card-body">
+          <div class="metric-card-lbl">Turnos totales</div>
+          <div class="metric-card-val" id="cnt-total">0</div>
+          <div class="metric-card-hint">programados</div>
+        </div>
+      </div>
+
+      <!-- Próximo -->
+      <div class="metric-card">
+        <div class="metric-card-icon" style="background:linear-gradient(135deg,#fdf5e8,#fde8c0);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8f5000" stroke-width="1.8" style="width:20px;height:20px;"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <div class="metric-card-body">
+          <div class="metric-card-lbl">Próximo turno</div>
+          <div class="metric-card-val" id="cnt-proximo" style="font-size:16px;color:var(--amber);">—</div>
+          <div class="metric-card-hint" id="cnt-proximo-sub">sin turnos programados</div>
+        </div>
+      </div>
+
+      <!-- Hoy -->
+      <div class="metric-card">
+        <div class="metric-card-icon" style="background:linear-gradient(135deg,#eaf5f0,#c8eadb);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1e6640" stroke-width="1.8" style="width:20px;height:20px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+        </div>
+        <div class="metric-card-body">
+          <div class="metric-card-lbl">Hoy</div>
+          <div class="metric-card-val" id="cnt-hoy" style="color:var(--green);">0</div>
+          <div class="metric-card-hint">turnos para hoy</div>
+        </div>
+      </div>
+
     </div>
 
     <div class="two-col">
