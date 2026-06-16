@@ -337,10 +337,18 @@ tr:hover td{background:var(--azul-light);}
 <div class="login-page" id="login-page">
   <div class="login-left">
     <div class="login-logo-wrap">
-      <img src="/logo.png" alt="MEDGRUP" class="login-logo-img" onerror="this.style.display='none';document.getElementById('login-logo-fallback').style.display='block'"/>
-      <div id="login-logo-fallback" style="display:none;text-align:center;">
-        <div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:white;letter-spacing:-1px;">MEDGRUP</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.6);letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Servicio Médico</div>
+      <div style="text-align:center;margin-bottom:0.5rem;">
+        <div style="display:inline-flex;align-items:center;gap:14px;background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:16px;padding:14px 24px;">
+          <svg viewBox="0 0 60 60" style="width:48px;height:48px;flex-shrink:0;">
+            <polygon points="30,5 55,50 5,50" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.5"/>
+            <polygon points="20,18 38,18 45,50 13,50" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+            <polygon points="10,28 25,28 30,50 5,50" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+          </svg>
+          <div style="text-align:left;">
+            <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;line-height:1;">MEDGRUP</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',monospace;">Servicio Médico</div>
+          </div>
+        </div>
       </div>
     </div>
     <p class="login-tagline">Plataforma integral de gestión médico-laboral para empresas de Tierra del Fuego y todo el país.</p>
@@ -396,10 +404,17 @@ tr:hover td{background:var(--azul-light);}
 <aside class="sidebar">
   <div class="sidebar-top">
     <div class="logo">
-      <img src="/logo.png" alt="MEDGRUP" class="logo-img" onerror="this.style.display='none';document.getElementById('logo-fallback').style.display='flex'"/>
-      <div id="logo-fallback" class="logo-fallback" style="display:none;">
-        <div class="logo-sq"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
-        <div><div class="logo-name">MEDGRUP</div><div class="logo-sub">Servicio Médico</div></div>
+      <div style="display:flex;align-items:center;gap:9px;">
+        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--azul),var(--celeste));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(58,110,168,0.3);">
+          <svg viewBox="0 0 30 30" style="width:20px;height:20px;">
+            <polygon points="15,2 28,26 2,26" fill="rgba(255,255,255,0.3)" stroke="white" stroke-width="1.5"/>
+            <polygon points="10,10 20,10 23,26 7,26" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;line-height:1.1;">MEDGRUP</div>
+          <div style="font-size:9px;color:var(--rosa);font-family:'DM Mono',monospace;letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;font-weight:500;">Servicio Médico</div>
+        </div>
       </div>
     </div>
 
@@ -716,6 +731,9 @@ async function doLogout(){
   document.getElementById('login-page').style.display='flex';
   document.getElementById('login-email').value='';
   document.getElementById('login-password').value='';
+  const btn=document.getElementById('login-btn');
+  btn.disabled=false;btn.textContent='Ingresar a la plataforma →';
+  document.getElementById('login-error').style.display='none';
 }
 
 function mostrarApp(){
