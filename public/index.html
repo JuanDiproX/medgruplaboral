@@ -210,6 +210,9 @@ tr:hover td{background:var(--bg);}
     <div class="nav-item" onclick="showSection('medicos',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos
     </div>
+    <div class="nav-item" onclick="showSection('perfil',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi perfil
+    </div>
     <div class="nav-item dim">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>Exámenes
     </div>
@@ -320,7 +323,63 @@ tr:hover td{background:var(--bg);}
     </div>
   </div>
 
-  <div id="sec-medicos" style="display:none;">
+  <div id="sec-perfil" style="display:none;">
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Cambiar contraseña</div></div>
+          <div class="card-body">
+            <div style="background:var(--accent2);border:1px solid rgba(26,79,138,0.12);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:1rem;font-size:13px;color:var(--accent);">
+              Cambiá tu contraseña temporal por una segura que solo vos conozcas.
+            </div>
+            <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Contraseña actual</label><input type="password" id="pwd-actual" placeholder="Tu contraseña actual"/></div>
+              <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="pwd-nueva" placeholder="Mínimo 6 caracteres"/></div>
+              <div class="form-group full"><label class="form-lbl">Confirmar nueva contraseña</label><input type="password" id="pwd-confirmar" placeholder="Repetí la nueva contraseña"/></div>
+            </div>
+            <button class="btn-full" onclick="cambiarPassword()">Cambiar contraseña</button>
+            <div id="pwd-ok" style="display:none;margin-top:10px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--green);">✓ Contraseña cambiada correctamente</div>
+            <div id="pwd-err" style="display:none;margin-top:10px;background:var(--red-bg);border:1px solid rgba(184,50,50,0.2);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--red);"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Mi cuenta</div></div>
+          <div class="card-body">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;">
+              <div style="width:52px;height:52px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent);flex-shrink:0;" id="perfil-avatar">—</div>
+              <div>
+                <div style="font-size:16px;font-weight:500;" id="perfil-nombre">—</div>
+                <div style="font-size:13px;color:var(--text3);margin-top:2px;" id="perfil-email">—</div>
+                <div style="margin-top:6px;" id="perfil-rol-badge"></div>
+              </div>
+            </div>
+            <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px;font-size:13px;line-height:1.8;color:var(--text2);">
+              <div><strong style="color:var(--text);">Acceso:</strong> Agenda, médicos y videoconsultas</div>
+              <div><strong style="color:var(--text);">Cliente activo:</strong> LOGANT S.A.</div>
+              <div><strong style="color:var(--text);">Plataforma:</strong> MEDGRUP Medicina Laboral</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Recordatorio del 19/6</div><span class="badge b-amber">Jue 19 · 16:00</span></div>
+          <div class="card-body">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.65;">
+              El sistema envía un recordatorio automático a los médicos <strong style="color:var(--text);">30 minutos antes</strong> de la consulta con Jorge Álvarez.
+            </div>
+            <div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--green);margin-bottom:10px;">
+              ✓ Turno guardado en base de datos — links activos
+            </div>
+            <button class="btn-full" style="margin-top:0;" onclick="enviarRecordatorioManual()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.05 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.22 16z"/></svg>
+              Enviar recordatorio ahora por WA
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
     <div class="two-col">
       <div>
         <div class="card">
@@ -457,14 +516,15 @@ async function checkSession(){
 
 // ===== NAV =====
 function showSection(id,el){
-  ['agenda','medicos'].forEach(s=>document.getElementById('sec-'+s).style.display='none');
+  ['agenda','medicos','perfil'].forEach(s=>document.getElementById('sec-'+s).style.display='none');
   document.getElementById('sec-'+id).style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos')cargarMedicos();
+  if(id==='perfil')setupPerfil();
 }
 
 // ===== MÉDICOS =====
@@ -690,6 +750,53 @@ const logEvents=[];
 function addLog(tipo,desc,sub){logEvents.unshift({tipo,desc,sub,hora:new Date().toLocaleTimeString('es-AR')});document.getElementById('log-count').textContent=logEvents.length;document.getElementById('log-timeline').innerHTML=logEvents.map(e=>`<div class="tl-item"><div class="tl-dot ${e.tipo}"></div><div class="tl-time">${e.hora}</div><div><div class="tl-desc">${e.desc}</div>${e.sub?`<div class="tl-sub">${e.sub}</div>`:''}</div></div>`).join('');}
 
 async function copiar(txt){await navigator.clipboard.writeText(txt);alert('Link copiado ✓');}
+
+function setupPerfil(){
+  if(!usuarioActual)return;
+  const iniciales=usuarioActual.nombre.split(' ').map(p=>p[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('perfil-avatar').textContent=iniciales;
+  document.getElementById('perfil-nombre').textContent=usuarioActual.nombre;
+  document.getElementById('perfil-email').textContent=usuarioActual.email;
+  document.getElementById('perfil-rol-badge').innerHTML=`<span class="badge ${usuarioActual.rol==='admin'?'b-red':'b-blue'}">${usuarioActual.rol==='admin'?'Administrador':'Médico'}</span>`;
+}
+
+async function cambiarPassword(){
+  const actual=document.getElementById('pwd-actual').value;
+  const nueva=document.getElementById('pwd-nueva').value;
+  const confirmar=document.getElementById('pwd-confirmar').value;
+  document.getElementById('pwd-ok').style.display='none';
+  document.getElementById('pwd-err').style.display='none';
+  if(!actual||!nueva||!confirmar){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Completá todos los campos';return;}
+  if(nueva!==confirmar){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Las contraseñas nuevas no coinciden';return;}
+  if(nueva.length<6){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='La contraseña debe tener al menos 6 caracteres';return;}
+  try{
+    const res=await fetch('/api/cambiar-password',{method:'POST',headers:apiHeaders(),body:JSON.stringify({passwordActual:actual,passwordNueva:nueva})});
+    const data=await res.json();
+    if(!data.ok){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent=data.error||'Error al cambiar contraseña';return;}
+    document.getElementById('pwd-ok').style.display='block';
+    document.getElementById('pwd-actual').value='';
+    document.getElementById('pwd-nueva').value='';
+    document.getElementById('pwd-confirmar').value='';
+  }catch(e){
+    document.getElementById('pwd-err').style.display='block';
+    document.getElementById('pwd-err').textContent='Error de conexión';
+  }
+}
+
+function enviarRecordatorioManual(){
+  const linkBarboza='https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner';
+  const linkMuroni='https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner';
+  const msgBarboza=`Recordatorio MEDGRUP 🏥\n\nDr. Barboza, en 30 minutos tiene la junta médica con Jorge Álvarez.\n\n📅 Viernes 19/06 a las 16:00 hs\n🎥 Su link de acceso: ${linkBarboza}\n\nSaludes,\nMEDGRUP Medicina Laboral`;
+  const msgMuroni=`Recordatorio MEDGRUP 🏥\n\nDr. Muroni, en 30 minutos tiene la junta médica con Jorge Álvarez.\n\n📅 Viernes 19/06 a las 16:00 hs\n🎥 Su link de acceso: ${linkMuroni}\n\nSaludes,\nMEDGRUP Medicina Laboral`;
+  if(confirm('¿Enviar recordatorio al Dr. Barboza por WhatsApp?')){
+    window.open('https://wa.me/?text='+encodeURIComponent(msgBarboza),'_blank');
+  }
+  setTimeout(()=>{
+    if(confirm('¿Enviar recordatorio al Dr. Muroni por WhatsApp?')){
+      window.open('https://wa.me/?text='+encodeURIComponent(msgMuroni),'_blank');
+    }
+  },500);
+}
 
 // INIT
 checkSession();

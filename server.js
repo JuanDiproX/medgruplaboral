@@ -94,7 +94,7 @@ async function initDB() {
       INSERT INTO usuarios (nombre, email, password_hash, rol)
       VALUES 
         ('Administrador', 'adm.medgrup@gmail.com', $1, 'admin'),
-        ('Dr. Barboza, Raúl', 'medgrup@live.com.ar', $2, 'medico'),
+        ('Dr. Barboza, Raúl', 'barboza@medgrup.com', $2, 'medico'),
         ('Dr. Muroni, Esteban', 'muroni@medgrup.com', $3, 'medico')
       ON CONFLICT (email) DO NOTHING
     `, [adminHash, barbozaHash, muroniHash]);
@@ -265,6 +265,30 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
     }
 
     res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: sala.url + '?t=owner', links_medicos: linksMedicos, turno_id: turnoId, paciente });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+
+// ===== CAMBIAR CONTRASEÑA =====
+app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
+  const { passwordActual, passwordNueva } = req.body;
+  if (!passwordActual || !passwordNueva) return res.status(400).json({ error: 'Faltan datos' });
+  if (passwordNueva.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  try {
+    const hashActual = hashPassword(passwordActual);
+    const usuario = await pool.query(
+      'SELECT * FROM usuarios WHERE id = $1 AND password_hash = $2',
+      [req.usuario.id, hashActual]
+    );
+    if (!usuario.rows.length) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    const hashNueva = hashPassword(passwordNueva);
+    await pool.query('UPDATE usuarios SET password_hash = $1 WHERE id = $2', [hashNueva, req.usuario.id]);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
