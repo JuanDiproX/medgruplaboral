@@ -352,10 +352,8 @@ app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   }
 });
 
-// ===== GENERAR PDF DEL DICTAMEN =====
+// ===== GENERAR PDF DEL DICTAMEN (público por URL única) =====
 app.get('/api/dictamenes/:id/pdf', async (req, res) => {
-  const token = req.headers['x-session-token'] || req.query.token;
-  if (!token || !sessions[token]) return res.status(401).send('No autorizado');
   try {
     const result = await pool.query('SELECT * FROM dictamenes WHERE id = $1', [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ error: 'Dictamen no encontrado' });
