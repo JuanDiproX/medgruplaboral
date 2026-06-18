@@ -46,13 +46,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .login-page{display:flex;min-height:100vh;}
 .login-left{
   flex:1;
-  background:linear-gradient(160deg, #2a5080 0%, #3a6ea8 50%, #5b8db8 100%);
+  background:linear-gradient(160deg, #1e3d6e 0%, #2a5080 40%, #3a6ea8 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:3rem;position:relative;overflow:hidden;
 }
 .login-left::before{
   content:'';position:absolute;inset:0;
-  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+/* Círculos decorativos de fondo */
+.login-left::after{
+  content:'';position:absolute;
+  width:500px;height:500px;border-radius:50%;
+  background:rgba(255,255,255,0.03);
+  bottom:-150px;right:-150px;
+}
+.login-logo-wrap{
+  position:relative;text-align:center;
+  margin-bottom:2.5rem;
+  background:rgba(255,255,255,0.08);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:24px;
+  padding:2rem 3rem;
+  width:100%;max-width:420px;
+}
+.login-logo-img{
+  width:280px;max-width:100%;
+  filter:drop-shadow(0 4px 20px rgba(0,0,0,0.3));
 }
 .login-logo-wrap{text-align:center;margin-bottom:3rem;position:relative;}
 .login-logo-img{width:200px;filter:brightness(0) invert(1);opacity:0.95;}
@@ -337,20 +358,9 @@ tr:hover td{background:var(--azul-light);}
 <div class="login-page" id="login-page">
   <div class="login-left">
     <div class="login-logo-wrap">
-      <div style="text-align:center;margin-bottom:0.5rem;">
-        <div style="display:inline-flex;align-items:center;gap:14px;background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:16px;padding:14px 24px;">
-          <svg viewBox="0 0 60 60" style="width:48px;height:48px;flex-shrink:0;">
-            <polygon points="30,5 55,50 5,50" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.5"/>
-            <polygon points="20,18 38,18 45,50 13,50" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
-            <polygon points="10,28 25,28 30,50 5,50" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
-          </svg>
-          <div style="text-align:left;">
-            <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;line-height:1;">MEDGRUP</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',monospace;">Servicio Médico</div>
-          </div>
-        </div>
-      </div>
+      <img src="/logo.png" alt="MEDGRUP Servicio Médico" class="login-logo-img"/>
     </div>
+    <p class="login-tagline">Plataforma integral de gestión médico-laboral para empresas de Tierra del Fuego y todo el país.</p>
     <p class="login-tagline">Plataforma integral de gestión médico-laboral para empresas de Tierra del Fuego y todo el país.</p>
     <div class="login-features">
       <div class="login-feat">
@@ -404,18 +414,7 @@ tr:hover td{background:var(--azul-light);}
 <aside class="sidebar">
   <div class="sidebar-top">
     <div class="logo">
-      <div style="display:flex;align-items:center;gap:9px;">
-        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--azul),var(--celeste));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(58,110,168,0.3);">
-          <svg viewBox="0 0 30 30" style="width:20px;height:20px;">
-            <polygon points="15,2 28,26 2,26" fill="rgba(255,255,255,0.3)" stroke="white" stroke-width="1.5"/>
-            <polygon points="10,10 20,10 23,26 7,26" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
-          </svg>
-        </div>
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px;line-height:1.1;">MEDGRUP</div>
-          <div style="font-size:9px;color:var(--rosa);font-family:'DM Mono',monospace;letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;font-weight:500;">Servicio Médico</div>
-        </div>
-      </div>
+      <img src="/logo.png" alt="MEDGRUP" style="height:38px;width:auto;object-fit:contain;"/>
     </div>
 
     <div class="nav-section">
