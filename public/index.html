@@ -949,10 +949,10 @@ async function guardarDictamen(){
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
       <div style="margin-bottom:10px;">${num} · ${consultaActual?.paciente} · ${diag} · ${{'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'}[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
-      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;" onclick="window.open('/api/dictamenes/${data.dictamen.id}/pdf?token=${sessionToken}','_blank')">
+      <a href="/api/dictamenes/${data.dictamen.id}/pdf?token=${sessionToken}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
-        Descargar / Imprimir certificado PDF
-      </button>
+        Abrir certificado PDF
+      </a>
     `;
     addLog('rosa','Certificado emitido',num+' · '+diag);
   }catch(e){alert('Error: '+e.message);}
