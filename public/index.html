@@ -885,7 +885,16 @@ function abrirWA(key){window.open('https://wa.me/?text='+encodeURIComponent(mens
 function abrirGmail(key){window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(mensajesLinks[key]||''),'_blank');}
 
 
-function verLinks(id){const t=turnos.find(x=>x.id===id);if(!t)return;document.getElementById('links-body').innerHTML=buildLinksHtml(t);document.getElementById('links-box').style.display='block';document.getElementById('links-box').scrollIntoView({behavior:'smooth'});}
+function verLinks(id){
+  const t=turnos.find(x=>x.id===id);if(!t)return;
+  const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+  (t.linksMedicos||[]).forEach((lm,i)=>{mensajesLinks[`med_${t.id}_${i}`]=makeMsg(lm.link,lm.nombre);});
+  mensajesLinks[`pac_${t.id}`]=makeMsg(t.linkPaciente,t.paciente);
+  document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  document.getElementById('links-box').style.display='block';
+  document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
+}
 
 function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';cargarMedicos();}
 function cerrarModal(){document.getElementById('modal-turno').classList.remove('open');}
@@ -930,13 +939,17 @@ function iniciarTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
   t.estado='en-curso';renderAgenda();
   fetch('/api/turnos/'+id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'en-curso'})});
-  // Ocultar dictamen anterior
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('cert-ok').style.display='none';
   document.getElementById('video-container').classList.add('active');
   document.getElementById('daily-frame').src=(t.linksMedicos&&t.linksMedicos[0])?t.linksMedicos[0].link:t.linkPaciente;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
+  // Pre-cargar mensajes
+  const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+  (t.linksMedicos||[]).forEach((lm,i)=>{mensajesLinks[`med_${t.id}_${i}`]=makeMsg(lm.link,lm.nombre);});
+  mensajesLinks[`pac_${t.id}`]=makeMsg(t.linkPaciente,t.paciente);
   document.getElementById('links-body').innerHTML=buildLinksHtml(t);
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
