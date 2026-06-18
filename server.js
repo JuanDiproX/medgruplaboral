@@ -297,9 +297,6 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
 
 // ===== CAMBIAR CONTRASEÑA =====
 app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
