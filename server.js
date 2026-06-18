@@ -66,7 +66,7 @@ async function initDB() {
         id VARCHAR(50) PRIMARY KEY,
         paciente VARCHAR(200) NOT NULL,
         fecha DATE NOT NULL,
-        hora VARCHAR(10) NOT NULL,
+        hora VARCHAR(20) NOT NULL,
         tipo VARCHAR(100),
         empresa VARCHAR(200),
         estado VARCHAR(50) DEFAULT 'pendiente',
@@ -152,8 +152,12 @@ async function initDB() {
     }
 
     // Fix columnas existentes
-    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN hora_inicio TYPE VARCHAR(50)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN hora_inicio TYPE VARCHAR(100)`).catch(()=>{});
     await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN duracion TYPE VARCHAR(100)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN diagnostico TYPE VARCHAR(100)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN diagnostico_desc TYPE VARCHAR(500)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN derivacion TYPE VARCHAR(200)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS turnos ALTER COLUMN hora TYPE VARCHAR(20)`).catch(()=>{});
 
     console.log('✓ Base de datos lista');
   } catch (err) {
