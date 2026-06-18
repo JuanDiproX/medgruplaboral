@@ -86,7 +86,7 @@ async function initDB() {
         medico VARCHAR(200),
         empresa VARCHAR(200),
         fecha_consulta DATE,
-        hora_inicio VARCHAR(10),
+        hora_inicio VARCHAR(50),
         duracion VARCHAR(50),
         diagnostico VARCHAR(50),
         diagnostico_desc VARCHAR(200),
@@ -150,6 +150,10 @@ async function initDB() {
         ON CONFLICT DO NOTHING
       `);
     }
+
+    // Fix columnas existentes
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN hora_inicio TYPE VARCHAR(50)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN duracion TYPE VARCHAR(100)`).catch(()=>{});
 
     console.log('✓ Base de datos lista');
   } catch (err) {
