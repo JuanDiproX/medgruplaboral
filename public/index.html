@@ -847,18 +847,43 @@ function renderAgenda(){
   }).join('');
 }
 
+// Mensajes globales para WA/Gmail
+const mensajesLinks = {};
+
 function buildLinksHtml(t){
   const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  const msg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+  const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+
   let html='';
-  (t.linksMedicos||[]).forEach(lm=>{
-    const m=msg(lm.link,lm.nombre);
-    html+=`<div class="participante-link"><div class="participante-nombre">${lm.nombre} <span class="participante-rol rol-medico">Médico</span></div><div class="link-row"><div class="link-url">${lm.link}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${lm.link}')">Copiar</button></div><div class="share-btns"><button class="btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${JSON.stringify(m)}))"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button><button class="btn-gmail" onclick="window.open('mailto:?subject=Consulta MEDGRUP&body='+encodeURIComponent(${JSON.stringify(m)}))"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail</button></div></div>`;
+  (t.linksMedicos||[]).forEach((lm,i)=>{
+    const key=`med_${t.id}_${i}`;
+    mensajesLinks[key]=makeMsg(lm.link,lm.nombre);
+    html+=`<div class="participante-link">
+      <div class="participante-nombre">${lm.nombre} <span class="participante-rol rol-medico">Médico</span></div>
+      <div class="link-row"><div class="link-url">${lm.link}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${lm.link}')">Copiar</button></div>
+      <div class="share-btns">
+        <button class="btn-wa" onclick="abrirWA('${key}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button>
+        <button class="btn-gmail" onclick="abrirGmail('${key}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail</button>
+      </div>
+    </div>`;
   });
-  const mp=msg(t.linkPaciente,t.paciente);
-  html+=`<div class="participante-link"><div class="participante-nombre">${t.paciente} <span class="participante-rol rol-paciente">Paciente</span></div><div class="link-row"><div class="link-url">${t.linkPaciente}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${t.linkPaciente}')">Copiar</button></div><div class="share-btns"><button class="btn-wa" onclick="window.open('https://wa.me/?text='+encodeURIComponent(${JSON.stringify(mp)}))"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button><button class="btn-gmail" onclick="window.open('mailto:?subject=Consulta MEDGRUP&body='+encodeURIComponent(${JSON.stringify(mp)}))"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail</button></div></div>`;
+
+  const keyP=`pac_${t.id}`;
+  mensajesLinks[keyP]=makeMsg(t.linkPaciente,t.paciente);
+  html+=`<div class="participante-link">
+    <div class="participante-nombre">${t.paciente} <span class="participante-rol rol-paciente">Paciente</span></div>
+    <div class="link-row"><div class="link-url">${t.linkPaciente}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${t.linkPaciente}')">Copiar</button></div>
+    <div class="share-btns">
+      <button class="btn-wa" onclick="abrirWA('${keyP}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button>
+      <button class="btn-gmail" onclick="abrirGmail('${keyP}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail</button>
+    </div>
+  </div>`;
   return html;
 }
+
+function abrirWA(key){window.open('https://wa.me/?text='+encodeURIComponent(mensajesLinks[key]||''),'_blank');}
+function abrirGmail(key){window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(mensajesLinks[key]||''),'_blank');}
+
 
 function verLinks(id){const t=turnos.find(x=>x.id===id);if(!t)return;document.getElementById('links-body').innerHTML=buildLinksHtml(t);document.getElementById('links-box').style.display='block';document.getElementById('links-box').scrollIntoView({behavior:'smooth'});}
 
@@ -972,7 +997,7 @@ async function guardarDictamen(){
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
       <div style="margin-bottom:10px;">${num} · ${consultaActual?.paciente} · ${diag} · ${{'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'}[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
-      <a href="/api/dictamenes/${data.dictamen.id}/pdf?token=${sessionToken}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+      <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
         Abrir certificado PDF
       </a>
