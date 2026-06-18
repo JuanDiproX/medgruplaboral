@@ -745,6 +745,9 @@ function mostrarApp(){
   document.getElementById('sidebar-email').textContent=usuarioActual.email;
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('t-fecha').value=new Date().toISOString().split('T')[0];
+  // Ocultar dictamen al cargar
+  document.getElementById('form-dictamen').style.display='none';
+  document.getElementById('cert-ok').style.display='none';
   cargarMedicos();cargarTurnos();
 }
 
@@ -885,6 +888,9 @@ function iniciarTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
   t.estado='en-curso';renderAgenda();
   fetch('/api/turnos/'+id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'en-curso'})});
+  // Ocultar dictamen anterior
+  document.getElementById('form-dictamen').style.display='none';
+  document.getElementById('cert-ok').style.display='none';
   document.getElementById('video-container').classList.add('active');
   document.getElementById('daily-frame').src=(t.linksMedicos&&t.linksMedicos[0])?t.linksMedicos[0].link:t.linkPaciente;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
