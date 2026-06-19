@@ -201,9 +201,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);min-height:100vh;-webkit
 
 /* ── PAGE HEADER ── */
 .page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;}
-.page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.6px;color:var(--text);display:flex;align-items:center;gap:10px;}
-.page-title::before{content:'';width:5px;height:26px;border-radius:3px;background:var(--grad-azul);}
-.page-sub{font-size:12.5px;color:var(--text3);margin-top:4px;margin-left:15px;}
+.page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.4px;color:var(--text);display:flex;align-items:center;gap:10px;}
+.page-title::before{content:'';width:4px;height:22px;border-radius:3px;background:var(--grad-azul);}
+.page-sub{font-size:12px;color:var(--text3);margin-top:4px;margin-left:14px;}
 .hdr-right{display:flex;align-items:center;gap:10px;}
 .date-chip{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 13px;box-shadow:var(--shadow-sm);}
 
@@ -249,14 +249,14 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);min-height:100vh;-webkit
 .metric-card.mc-green::before{background:linear-gradient(90deg,#1e6640,#3a9460);}
 .metric-card.mc-green::after{background:#1e6640;}
 .metric-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
-.metric-icon{width:52px;height:52px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;box-shadow:0 4px 12px rgba(42,80,128,0.12);}
+.metric-icon{width:44px;height:44px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;box-shadow:0 3px 10px rgba(42,80,128,0.15);}
 .mc-blue .metric-icon{background:var(--grad-azul);}
 .mc-rosa .metric-icon{background:var(--grad-rosa);}
 .mc-green .metric-icon{background:linear-gradient(135deg,#1e6640,#3a9460);}
-.metric-icon svg{width:22px;height:22px;fill:none;stroke-width:2;stroke:white;}
+.metric-icon svg{width:19px;height:19px;fill:none;stroke-width:2;stroke:white;}
 .metric-body{flex:1;min-width:0;position:relative;z-index:1;}
 .metric-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;font-weight:600;}
-.metric-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1.1;}
+.metric-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;line-height:1.1;}
 .mc-blue .metric-val{color:var(--azul);}
 .mc-rosa .metric-val{color:var(--rosa);}
 .mc-green .metric-val{color:#1e6640;}
@@ -525,7 +525,7 @@ tr:hover td{background:var(--azul-light);}
         <div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
         <div class="metric-body">
           <div class="metric-lbl">Próximo turno</div>
-          <div class="metric-val" id="cnt-proximo" style="font-size:16px;margin-top:2px;">—</div>
+          <div class="metric-val" id="cnt-proximo" style="font-size:18px;margin-top:2px;">—</div>
           <div class="metric-hint" id="cnt-proximo-sub">sin turnos</div>
         </div>
       </div>
@@ -550,26 +550,72 @@ tr:hover td{background:var(--azul-light);}
         </div>
         <div id="form-dictamen" style="display:none;">
           <div class="card">
-            <div class="card-hdr"><div class="card-title">Dictamen médico</div><span class="badge b-blue" id="dict-numero">N° —</span></div>
+            <div class="card-hdr">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                Dictamen médico
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <span class="badge b-blue" id="dict-numero">N° —</span>
+                <span class="badge b-amber" id="dict-edit-badge" style="display:none;">Editando</span>
+              </div>
+            </div>
             <div class="card-body">
-              <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--azul);">
-                <strong id="dict-paciente">—</strong> &nbsp;·&nbsp; <span id="dict-duracion">—</span> &nbsp;·&nbsp; Grabación guardada en Daily.co
+              <div style="background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:4px;">
+                <div style="font-size:14px;font-weight:600;color:var(--azul-dark);" id="dict-paciente">—</div>
+                <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;">
+                  <span id="dict-duracion">—</span> &nbsp;·&nbsp; <span id="dict-empresa">—</span> &nbsp;·&nbsp; Grabación en Daily.co
+                </div>
               </div>
+
               <div class="form-grid">
-                <div class="form-group"><label class="form-lbl">Diagnóstico CIE-10</label>
-                  <select id="dict-diag"><option value="">Seleccionar...</option><option value="Z00.0">Z00.0 — Control de salud</option><option value="M54.5">M54.5 — Lumbalgia</option><option value="F32.0">F32.0 — Ep. depresivo</option><option value="J06.9">J06.9 — Infección resp.</option><option value="Z73.0">Z73.0 — Burnout</option></select>
+                <div class="form-group full">
+                  <label class="form-lbl">Datos filiatorios del paciente</label>
+                  <textarea id="dict-datos" placeholder="DNI, edad, domicilio, obra social, teléfono, ocupación..." style="min-height:80px;"></textarea>
                 </div>
-                <div class="form-group"><label class="form-lbl">Aptitud laboral</label>
-                  <select id="dict-aptitud"><option value="apto">Apto</option><option value="restricc">Apto con restricciones</option><option value="no-apto">No apto</option></select>
+                <div class="form-group">
+                  <label class="form-lbl">Aptitud laboral</label>
+                  <select id="dict-aptitud">
+                    <option value="apto">Apto</option>
+                    <option value="restricc">Apto con restricciones</option>
+                    <option value="no-apto">No apto</option>
+                  </select>
                 </div>
-                <div class="form-group"><label class="form-lbl">Días de reposo</label><input type="text" id="dict-reposo" value="0"/></div>
-                <div class="form-group"><label class="form-lbl">Derivación</label><select><option value="">Sin derivación</option><option>Clínica médica</option><option>Psiquiatría</option><option>Traumatología</option></select></div>
-                <div class="form-group full"><label class="form-lbl">Indicaciones</label><textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento..."></textarea></div>
+                <div class="form-group">
+                  <label class="form-lbl">Días de reposo</label>
+                  <input type="text" id="dict-reposo" value="0"/>
+                </div>
+                <div class="form-group full">
+                  <label class="form-lbl">Derivación</label>
+                  <select id="dict-derivacion">
+                    <option value="Sin derivación">Sin derivación</option>
+                    <option>Clínica médica</option>
+                    <option>Psiquiatría</option>
+                    <option>Traumatología</option>
+                    <option>Cardiología</option>
+                    <option>Neurología</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label class="form-lbl">Indicaciones médicas</label>
+                  <textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento, observaciones..." style="min-height:90px;"></textarea>
+                </div>
               </div>
-              <button class="btn btn-primary btn-full" onclick="guardarDictamen()">Guardar y emitir certificado</button>
-              <div id="cert-ok" style="display:none;margin-top:12px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:1rem;">
-                <div style="font-size:14px;font-weight:600;color:var(--rosa-dark);">✓ Certificado emitido</div>
-                <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:4px;"></div>
+
+              <button class="btn btn-primary btn-full" id="btn-guardar-dict" onclick="guardarDictamen()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                Guardar y emitir certificado
+              </button>
+
+              <div id="cert-ok" style="display:none;margin-top:14px;background:linear-gradient(135deg,#eaf5f0,#d4eddc);border:1px solid rgba(30,102,64,0.2);border-radius:var(--r);padding:1rem 1.2rem;">
+                <div style="font-size:14px;font-weight:700;color:#1e6640;display:flex;align-items:center;gap:6px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><polyline points="20,6 9,17 4,12"/></svg>
+                  Certificado emitido
+                </div>
+                <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:6px;"></div>
+                <div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">
+                  ⓘ Editable hasta 5 horas después de la emisión
+                </div>
               </div>
             </div>
           </div>
@@ -689,7 +735,7 @@ tr:hover td{background:var(--azul-light);}
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Empresa</label>
-        <select id="t-empresa"><option value="LOGANT S.A.">LOGANT S.A.</option><option value="Huinoil S.A.">Huinoil S.A.</option><option value="CEMEP">CEMEP</option><option value="Grupo L">Grupo L</option><option value="Otra">Otra empresa</option></select>
+        <select id="t-empresa"><option value="LOGANT S.A.">LOGANT S.A.</option><option value="Gloker Trucks S.A.">Gloker Trucks S.A.</option><option value="Huinoil S.A.">Huinoil S.A.</option><option value="CEMEP">CEMEP</option><option value="Grupo L">Grupo L</option><option value="Otra">Otra empresa</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
@@ -843,7 +889,8 @@ function renderAgenda(){
     const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
     const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':'<span class="badge b-gray">Pendiente</span>';
     const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
-    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bi}</div></div>`;
+    const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
+    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bd}${bi}</div></div>`;
   }).join('');
 }
 
@@ -957,65 +1004,141 @@ function iniciarTurno(id){
   document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
 }
 
+let dictamenActualId=null;
+let dictamenActualCreado=null;
+
 function finalizarConsulta(){
   if(!confirm('¿Finalizar la consulta?'))return;
   const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
   document.getElementById('daily-frame').src='';
   if(consultaActual){consultaActual.estado='completado';fetch('/api/turnos/'+consultaActual.id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'completado'})});renderAgenda();}
+  // Ocultar links y video, mostrar solo dictamen + log
+  document.getElementById('links-box').style.display='none';
   addLog('blue','Consulta finalizada','Duración: '+dur);
   addLog('green','Grabación guardada en Daily.co',consultaActual?.sala||'');
+  // Mostrar dictamen limpio
   document.getElementById('form-dictamen').style.display='block';
   document.getElementById('dict-paciente').textContent=consultaActual?.paciente||'—';
-  document.getElementById('dict-duracion').textContent=dur;
-  dictCount++;document.getElementById('dict-numero').textContent='N° '+String(dictCount).padStart(4,'0');
+  document.getElementById('dict-duracion').textContent=dur||'—';
+  document.getElementById('dict-empresa').textContent=consultaActual?.empresa||'—';
+  document.getElementById('cert-ok').style.display='none';
+  document.getElementById('dict-edit-badge').style.display='none';
+  // Limpiar campos
+  document.getElementById('dict-datos').value='';
+  document.getElementById('dict-aptitud').value='apto';
+  document.getElementById('dict-reposo').value='0';
+  document.getElementById('dict-derivacion').value='Sin derivación';
+  document.getElementById('dict-indicaciones').value='';
+  dictamenActualId=null;
+  dictCount++;
+  document.getElementById('dict-numero').textContent='N° '+String(dictCount).padStart(4,'0');
   addLog('amber','Completá el dictamen médico','');
+  document.getElementById('form-dictamen').scrollIntoView({behavior:'smooth'});
+}
+
+async function editarDictamen(turnoId, dictId){
+  // Cargar dictamen existente y permitir edición
+  try{
+    const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
+    const data=await res.json();
+    if(!data.ok||!data.dictamen){alert('No hay dictamen para este turno todavía');return;}
+    const d=data.dictamen;
+    const horasPasadas=(Date.now()-new Date(d.creado_en).getTime())/(1000*60*60);
+    if(horasPasadas>5){alert('Pasaron más de 5 horas desde la emisión. Ya no se puede editar.');return;}
+
+    // Buscar turno
+    const t=turnos.find(x=>x.id===turnoId);
+    document.getElementById('form-dictamen').style.display='block';
+    document.getElementById('dict-paciente').textContent=d.paciente||'—';
+    document.getElementById('dict-duracion').textContent=d.duracion||'—';
+    document.getElementById('dict-empresa').textContent=d.empresa||'—';
+    document.getElementById('dict-numero').textContent=d.numero;
+    document.getElementById('dict-edit-badge').style.display='inline-flex';
+    document.getElementById('dict-datos').value=d.diagnostico_desc||'';
+    document.getElementById('dict-aptitud').value=d.aptitud||'apto';
+    document.getElementById('dict-reposo').value=d.dias_reposo||0;
+    document.getElementById('dict-derivacion').value=d.derivacion||'Sin derivación';
+    document.getElementById('dict-indicaciones').value=d.indicaciones||'';
+    dictamenActualId=d.id;
+    dictamenActualCreado=d.creado_en;
+    document.getElementById('cert-ok').style.display='block';
+    document.getElementById('cert-info').innerHTML=`
+      <div style="margin-bottom:10px;">${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
+      <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
+        Abrir certificado PDF
+      </a>
+    `;
+    document.getElementById('btn-guardar-dict').innerHTML=`
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Actualizar dictamen
+    `;
+    document.getElementById('form-dictamen').scrollIntoView({behavior:'smooth'});
+  }catch(e){alert('Error: '+e.message);}
 }
 
 async function guardarDictamen(){
-  const diag=document.getElementById('dict-diag').value;
-  if(!diag){alert('Seleccioná un diagnóstico');return;}
-
-  const diagMap={
-    'Z00.0':'Control de salud general','M54.5':'Lumbalgia / Dorsalgia',
-    'F32.0':'Episodio depresivo','J06.9':'Infección respiratoria aguda','Z73.0':'Síndrome de burnout'
-  };
+  const datos=document.getElementById('dict-datos').value.trim();
+  if(!datos){alert('Completá los datos filiatorios del paciente');return;}
   const aptitud=document.getElementById('dict-aptitud').value;
   const reposo=parseInt(document.getElementById('dict-reposo').value)||0;
+  const derivacion=document.getElementById('dict-derivacion').value;
   const indicaciones=document.getElementById('dict-indicaciones').value;
 
   try{
-    const res=await fetch('/api/dictamenes',{
+    let res, data;
+    if(dictamenActualId){
+      // Modo edición
+      res=await fetch('/api/dictamenes/'+dictamenActualId,{
+        method:'PATCH',headers:apiHeaders(),
+        body:JSON.stringify({aptitud,dias_reposo:reposo,derivacion,indicaciones,datos_filiatorios:datos})
+      });
+      data=await res.json();
+      if(!data.ok){alert(data.error||'Error al actualizar');return;}
+      addLog('blue','Dictamen actualizado','Cambios guardados');
+      alert('✓ Dictamen actualizado correctamente');
+      return;
+    }
+
+    // Crear nuevo
+    res=await fetch('/api/dictamenes',{
       method:'POST',headers:apiHeaders(),
       body:JSON.stringify({
         turno_id: consultaActual?.id||null,
         paciente: consultaActual?.paciente||document.getElementById('dict-paciente').textContent,
         medico: usuarioActual?.nombre||'Dr. Barboza, Raúl',
-        empresa: consultaActual?.empresa||'LOGANT S.A.',
+        empresa: consultaActual?.empresa||'—',
         fecha_consulta: consultaActual?.fecha||new Date().toISOString().split('T')[0],
         hora_inicio: consultaActual?.hora||'—',
         duracion: document.getElementById('dict-duracion').textContent,
-        diagnostico: diag,
-        diagnostico_desc: diagMap[diag]||diag,
+        diagnostico: '',
+        diagnostico_desc: datos,
         aptitud, dias_reposo: reposo,
-        derivacion: document.getElementById('dict-indicaciones')?.previousElementSibling?.previousElementSibling?.value||'Sin derivación',
-        indicaciones,
+        derivacion, indicaciones,
         sala: consultaActual?.sala||''
       })
     });
-    const data=await res.json();
+    data=await res.json();
     if(!data.ok){alert('Error al guardar el dictamen');return;}
 
+    dictamenActualId=data.dictamen.id;
     const num=data.numero;
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
-      <div style="margin-bottom:10px;">${num} · ${consultaActual?.paciente} · ${diag} · ${{'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'}[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
+      <div style="margin-bottom:10px;">${num} · ${consultaActual?.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
       <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
         Abrir certificado PDF
       </a>
     `;
-    addLog('rosa','Certificado emitido',num+' · '+diag);
+    document.getElementById('btn-guardar-dict').innerHTML=`
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Actualizar dictamen
+    `;
+    document.getElementById('dict-edit-badge').style.display='inline-flex';
+    addLog('rosa','Certificado emitido',num);
+    cargarTurnos();
   }catch(e){alert('Error: '+e.message);}
 }
 

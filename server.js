@@ -352,6 +352,41 @@ app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   }
 });
 
+// Obtener dictamen por turno_id
+app.get('/api/dictamenes/turno/:turnoId', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM dictamenes WHERE turno_id = $1 ORDER BY creado_en DESC LIMIT 1', [req.params.turnoId]);
+    if (!result.rows.length) return res.json({ ok: false, dictamen: null });
+    res.json({ ok: true, dictamen: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Actualizar dictamen (solo dentro de 5 horas de creado)
+app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
+  try {
+    const check = await pool.query('SELECT creado_en FROM dictamenes WHERE id = $1', [req.params.id]);
+    if (!check.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    const horasPasadas = (Date.now() - new Date(check.rows[0].creado_en).getTime()) / (1000*60*60);
+    if (horasPasadas > 5) return res.status(403).json({ error: 'No se puede editar: pasaron más de 5 horas desde la emisión' });
+
+    const { aptitud, dias_reposo, derivacion, indicaciones, dni, edad, domicilio, telefono, obra_social, datos_filiatorios } = req.body;
+    await pool.query(`
+      UPDATE dictamenes SET
+        aptitud = COALESCE($1, aptitud),
+        dias_reposo = COALESCE($2, dias_reposo),
+        derivacion = COALESCE($3, derivacion),
+        indicaciones = COALESCE($4, indicaciones),
+        diagnostico_desc = COALESCE($5, diagnostico_desc)
+      WHERE id = $6
+    `, [aptitud, dias_reposo, derivacion, indicaciones, datos_filiatorios, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== GENERAR PDF DEL DICTAMEN (público por URL única) =====
 app.get('/api/dictamenes/:id/pdf', async (req, res) => {
   try {
@@ -459,11 +494,14 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     </div>
   </div>
 
+  ${d.diagnostico_desc ? `<div class="section">
+    <div class="section-title">Datos filiatorios del paciente</div>
+    <div class="indicaciones-box">${d.diagnostico_desc}</div>
+  </div>` : ''}
+
   <div class="section">
-    <div class="section-title">Diagnóstico y aptitud</div>
+    <div class="section-title">Aptitud laboral y reposo</div>
     <div class="grid-2" style="margin-bottom:14px;">
-      <div class="field"><div class="field-label">Diagnóstico CIE-10</div><div class="field-value">${d.diagnostico||'—'}</div></div>
-      <div class="field"><div class="field-label">Descripción</div><div class="field-value">${d.diagnostico_desc||'—'}</div></div>
       <div class="field"><div class="field-label">Días de reposo</div><div class="field-value">${d.dias_reposo > 0 ? d.dias_reposo+' días' : 'Sin reposo indicado'}</div></div>
       <div class="field"><div class="field-label">Derivación</div><div class="field-value">${d.derivacion||'Sin derivación'}</div></div>
     </div>
