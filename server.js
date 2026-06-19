@@ -133,9 +133,14 @@ async function initDB() {
       SELECT 'Dr. Barboza, Raúl', 'MP 12.847', 'Medicina Laboral'
       WHERE NOT EXISTS (SELECT 1 FROM medicos WHERE nombre = 'Dr. Barboza, Raúl');
       INSERT INTO medicos (nombre, matricula, especialidad)
-      SELECT 'Dr. Muroni, Esteban', '', 'Medicina Laboral'
+      SELECT 'Dr. Muroni, Esteban', 'MP 5558', 'Medicina Laboral'
       WHERE NOT EXISTS (SELECT 1 FROM medicos WHERE nombre = 'Dr. Muroni, Esteban');
     `);
+    // Fix matrícula de Muroni si ya existía sin datos
+    await client.query(`
+      UPDATE medicos SET matricula = 'MP 5558', especialidad = 'Medicina Laboral'
+      WHERE nombre = 'Dr. Muroni, Esteban' AND (matricula IS NULL OR matricula = '');
+    `).catch(()=>{});
 
     // Turno 19/6
     const turnoExiste = await client.query(`SELECT id FROM turnos WHERE id = 'turno-19jun-2026'`);
@@ -511,8 +516,7 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
   body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:42px 46px;font-size:12.5px;line-height:1.65;}
   .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:22px;}
   .logo-area{display:flex;align-items:center;gap:11px;}
-  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
-  .logo-icon svg{width:25px;height:25px;fill:white;}
+  .logo-img{height:42px;width:auto;object-fit:contain;}
   .logo-text-name{font-size:18px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
   .logo-text-sub{font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
   .doc-meta{text-align:right;}
@@ -549,7 +553,7 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
 <body>
   <div class="header">
     <div class="logo-area">
-      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
+      <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
       <div>
         <div class="logo-text-name">MEDGRUP</div>
         <div class="logo-text-sub">Servicio Médico Laboral Integral</div>
@@ -659,8 +663,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
   body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
   .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
   .logo-area{display:flex;align-items:center;gap:11px;}
-  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
-  .logo-icon svg{width:25px;height:25px;fill:white;}
+  .logo-img{height:42px;width:auto;object-fit:contain;}
   .logo-text-name{font-size:18px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
   .logo-text-sub{font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
   .doc-meta{text-align:right;font-size:10.5px;color:#5a5750;}
@@ -691,7 +694,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 <body>
   <div class="header">
     <div class="logo-area">
-      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
+      <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
       <div>
         <div class="logo-text-name">MEDGRUP</div>
         <div class="logo-text-sub">Salud Ocupacional, Seguridad e Higiene del Trabajo</div>
@@ -733,9 +736,65 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
   }
 });
 
+// ===== WEBHOOK DAILY.CO: detecta automáticamente cuándo entra cada participante =====
+app.post('/api/webhooks/daily', async (req, res) => {
+  try {
+    const body = req.body;
+    const type = body.type;
+    const payload = body.payload || {};
+    const sala = payload.room || payload.room_name || '';
+    const nombre = payload.user_name || payload.userName || 'Participante';
+    const esOwner = payload.owner === true;
+
+    if (type === 'participant.joined' && sala) {
+      const t = await pool.query('SELECT id FROM turnos WHERE sala = $1 LIMIT 1', [sala]);
+      if (t.rows.length) {
+        const turnoId = t.rows[0].id;
+        const tipo = esOwner ? 'union_medico' : 'union_paciente';
+        await pool.query('INSERT INTO eventos_turno (turno_id, tipo, participante) VALUES ($1,$2,$3)', [turnoId, tipo, nombre]);
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Webhook Daily error:', err.message);
+    res.json({ ok: true }); // siempre 200 para que Daily no reintente en loop
+  }
+});
+
+// Registrar el webhook en Daily.co automáticamente al arrancar (idempotente)
+async function registrarWebhookDaily() {
+  if (!DAILY_API_KEY) return;
+  try {
+    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'https://medgruplaboral-production.up.railway.app';
+    const webhookUrl = `${baseUrl}/api/webhooks/daily`;
+
+    const existing = await fetch('https://api.daily.co/v1/webhooks', {
+      headers: { 'Authorization': `Bearer ${DAILY_API_KEY}` }
+    }).then(r => r.json()).catch(() => ({ data: [] }));
+
+    const yaExiste = (existing.data || []).some(w => w.url === webhookUrl);
+    if (yaExiste) { console.log('✓ Webhook Daily ya registrado'); return; }
+
+    await fetch('https://api.daily.co/v1/webhooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
+      body: JSON.stringify({
+        url: webhookUrl,
+        eventTypes: ['participant.joined']
+      })
+    });
+    console.log('✓ Webhook Daily registrado:', webhookUrl);
+  } catch (err) {
+    console.log('⚠ No se pudo registrar el webhook Daily automáticamente:', err.message);
+  }
+}
+
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 initDB().then(() => {
   app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));
+  registrarWebhookDaily();
 });
