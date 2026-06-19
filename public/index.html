@@ -1025,7 +1025,9 @@ function renderAgenda(){
     const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
     const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
     const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
-    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bd}${bi}${bj}</div></div>`;
+    const ba=t.estado==='completado'?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
+    const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
+    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bi}${bj}</div></div>`;
   }).join('');
 }
 
@@ -1115,6 +1117,19 @@ async function consultaInmediata(){
     addLog('rosa','Consulta inmediata creada',paciente);
     if(confirm('¿Iniciás la consulta ahora?')&&tg)iniciarTurno(tg.id);
   }catch(e){alert('Error: '+e.message);}
+}
+
+async function verInformePDF(turnoId){
+  try{
+    const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
+    const data=await res.json();
+    const dictamenes=data.dictamenes||[];
+    if(!dictamenes.length){alert('Todavía no hay ningún dictamen cargado para este turno.');return;}
+    // Priorizar el del médico logueado si existe, sino el más reciente
+    const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
+    const elegido=propio||dictamenes[0];
+    window.open('/api/dictamenes/'+elegido.id+'/pdf','_blank');
+  }catch(e){alert('Error al buscar el informe: '+e.message);}
 }
 
 function unirseTurno(id){
