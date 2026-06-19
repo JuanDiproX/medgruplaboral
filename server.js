@@ -352,10 +352,24 @@ app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   }
 });
 
-// Obtener dictamen por turno_id
+// Obtener TODOS los dictámenes de un turno (uno por médico)
 app.get('/api/dictamenes/turno/:turnoId', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM dictamenes WHERE turno_id = $1 ORDER BY creado_en DESC LIMIT 1', [req.params.turnoId]);
+    const result = await pool.query('SELECT * FROM dictamenes WHERE turno_id = $1 ORDER BY creado_en DESC', [req.params.turnoId]);
+    res.json({ ok: true, dictamenes: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Obtener el dictamen de UN médico específico para un turno
+app.get('/api/dictamenes/turno/:turnoId/medico', authMiddleware, async (req, res) => {
+  try {
+    const medico = req.query.medico || '';
+    const result = await pool.query(
+      'SELECT * FROM dictamenes WHERE turno_id = $1 AND medico = $2 ORDER BY creado_en DESC LIMIT 1',
+      [req.params.turnoId, medico]
+    );
     if (!result.rows.length) return res.json({ ok: false, dictamen: null });
     res.json({ ok: true, dictamen: result.rows[0] });
   } catch (err) {

@@ -505,10 +505,58 @@ tr:hover td{background:var(--azul-light);}
       <iframe id="daily-frame" allow="camera; microphone; fullscreen; display-capture" style="width:100%;height:480px;border:none;"></iframe>
       <div class="video-bottombar">
         <div class="video-timer" id="video-timer">00:00:00</div>
-        <button class="btn btn-danger" onclick="finalizarConsulta()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-          Finalizar consulta
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Notas
+          </button>
+          <button class="btn btn-danger" onclick="finalizarConsulta()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Finalizar consulta
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel flotante de notas durante la llamada -->
+    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:340px;max-height:70vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
+      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:default;">
+        <div style="color:white;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Notas rápidas
+        </div>
+        <button onclick="toggleNotasPanel()" style="background:none;border:none;color:white;cursor:pointer;font-size:18px;line-height:1;opacity:0.8;">×</button>
+      </div>
+      <div style="padding:14px 16px;overflow-y:auto;">
+        <div style="font-size:10.5px;color:var(--text3);margin-bottom:10px;font-family:'DM Mono',monospace;">
+          Se autoguardan mientras hablás. Se cargan solas en el dictamen al finalizar.
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="form-lbl">Datos filiatorios</label>
+          <textarea id="notas-datos" placeholder="DNI, edad, domicilio, obra social..." style="min-height:65px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="form-lbl">Indicaciones / observaciones</label>
+          <textarea id="notas-indicaciones" placeholder="Lo que vayas viendo en la consulta..." style="min-height:75px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+        </div>
+        <div class="form-grid" style="margin-bottom:4px;">
+          <div class="form-group">
+            <label class="form-lbl">Aptitud</label>
+            <select id="notas-aptitud" style="font-size:12.5px;" onchange="guardarNotaBorrador()">
+              <option value="apto">Apto</option>
+              <option value="restricc">Con restricciones</option>
+              <option value="no-apto">No apto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-lbl">Reposo (días)</label>
+            <input type="text" id="notas-reposo" value="0" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;display:flex;align-items:center;gap:5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;color:#1e6640;"><polyline points="20,6 9,17 4,12"/></svg>
+          <span id="notas-guardado-status">Guardado</span>
+        </div>
       </div>
     </div>
 
@@ -549,6 +597,16 @@ tr:hover td{background:var(--azul-light);}
           <div id="agenda-lista"><div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">Cargando...</div></div>
         </div>
         <div id="form-dictamen" style="display:none;">
+          <!-- Lista de dictámenes ya cargados por cada médico -->
+          <div class="card" id="dictamenes-existentes" style="display:none;">
+            <div class="card-hdr">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Dictámenes de la consulta
+              </div>
+            </div>
+            <div class="card-body" id="dictamenes-lista-body" style="padding-top:0.9rem;"></div>
+          </div>
           <!-- Card 1: Datos filiatorios -->
           <div class="card">
             <div class="card-hdr">
@@ -905,8 +963,9 @@ function renderAgenda(){
     const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
     const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':'<span class="badge b-gray">Pendiente</span>';
     const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
+    const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
     const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
-    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bd}${bi}</div></div>`;
+    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bd}${bi}${bj}</div></div>`;
   }).join('');
 }
 
@@ -998,12 +1057,85 @@ async function consultaInmediata(){
   }catch(e){alert('Error: '+e.message);}
 }
 
+function unirseTurno(id){
+  const t=turnos.find(x=>x.id===id);if(!t)return;
+  // Buscar el link correspondiente al médico logueado
+  let link=null;
+  if(t.linksMedicos&&t.linksMedicos.length){
+    const nombreActual=(usuarioActual?.nombre||'').toLowerCase();
+    const match=t.linksMedicos.find(lm=>nombreActual.includes(lm.nombre.toLowerCase().split(',')[0].trim())||lm.nombre.toLowerCase().includes(nombreActual.split(' ')[0]));
+    link=match?match.link:t.linksMedicos[0].link;
+  }
+  if(!link)link=t.linkPaciente;
+  window.open(link,'_blank');
+  addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
+}
+
+// ===== NOTAS RÁPIDAS DURANTE LA LLAMADA (borrador ninja) =====
+function notaKey(){
+  if(!consultaActual||!usuarioActual)return null;
+  return `medgrup_nota_${consultaActual.id}_${usuarioActual.nombre}`;
+}
+
+function toggleNotasPanel(){
+  const panel=document.getElementById('notas-panel');
+  const visible=panel.style.display==='flex';
+  if(visible){
+    panel.style.display='none';
+  }else{
+    cargarNotaBorrador();
+    panel.style.display='flex';
+  }
+}
+
+function guardarNotaBorrador(){
+  const key=notaKey();
+  if(!key)return;
+  const borrador={
+    datos:document.getElementById('notas-datos').value,
+    indicaciones:document.getElementById('notas-indicaciones').value,
+    aptitud:document.getElementById('notas-aptitud').value,
+    reposo:document.getElementById('notas-reposo').value
+  };
+  try{
+    localStorage.setItem(key,JSON.stringify(borrador));
+    const st=document.getElementById('notas-guardado-status');
+    st.textContent='Guardado';
+    st.parentElement.style.color='#1e6640';
+  }catch(e){}
+}
+
+function cargarNotaBorrador(){
+  const key=notaKey();
+  if(!key)return;
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw)return;
+    const b=JSON.parse(raw);
+    document.getElementById('notas-datos').value=b.datos||'';
+    document.getElementById('notas-indicaciones').value=b.indicaciones||'';
+    document.getElementById('notas-aptitud').value=b.aptitud||'apto';
+    document.getElementById('notas-reposo').value=b.reposo||'0';
+  }catch(e){}
+}
+
+function obtenerYBorrarNotaBorrador(turnoId,medicoNombre){
+  const key=`medgrup_nota_${turnoId}_${medicoNombre}`;
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw)return null;
+    localStorage.removeItem(key);
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+
 function iniciarTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
   t.estado='en-curso';renderAgenda();
   fetch('/api/turnos/'+id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'en-curso'})});
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('cert-ok').style.display='none';
+  document.getElementById('notas-panel').style.display='none';
   document.getElementById('video-container').classList.add('active');
   document.getElementById('daily-frame').src=(t.linksMedicos&&t.linksMedicos[0])?t.linksMedicos[0].link:t.linkPaciente;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
@@ -1022,12 +1154,14 @@ function iniciarTurno(id){
 
 let dictamenActualId=null;
 let dictamenActualCreado=null;
+let turnoDictamenActual=null;
 
-function finalizarConsulta(){
+async function finalizarConsulta(){
   if(!confirm('¿Finalizar la consulta?'))return;
   const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
   document.getElementById('daily-frame').src='';
+  document.getElementById('notas-panel').style.display='none';
   if(consultaActual){consultaActual.estado='completado';fetch('/api/turnos/'+consultaActual.id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'completado'})});renderAgenda();}
   // Ocultar todo lo demás, solo dejar dictamen + log
   document.getElementById('links-box').style.display='none';
@@ -1035,76 +1169,132 @@ function finalizarConsulta(){
   document.getElementById('turnos-card').style.display='none';
   addLog('blue','Consulta finalizada','Duración: '+dur);
   addLog('green','Grabación guardada en Daily.co',consultaActual?.sala||'');
-  // Mostrar dictamen limpio
+
+  await abrirDictamenParaTurno(consultaActual, dur);
+  addLog('amber','Completá tu dictamen médico','');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Carga la sección dictamen para un turno: muestra dictámenes ya cargados por otros médicos,
+// y prepara el formulario en modo nuevo o edición según si el médico actual ya cargó el suyo.
+async function abrirDictamenParaTurno(t, dur){
+  turnoDictamenActual=t;
   document.getElementById('form-dictamen').style.display='block';
-  document.getElementById('dict-paciente').textContent=consultaActual?.paciente||'—';
-  document.getElementById('dict-duracion').textContent=dur||'—';
-  document.getElementById('dict-empresa').textContent=consultaActual?.empresa||'—';
-  document.getElementById('cert-ok').style.display='none';
-  document.getElementById('dict-edit-badge').style.display='none';
-  // Limpiar campos
-  document.getElementById('dict-datos').value='';
-  document.getElementById('dict-aptitud').value='apto';
-  document.getElementById('dict-reposo').value='0';
-  document.getElementById('dict-derivacion').value='Sin derivación';
-  document.getElementById('dict-indicaciones').value='';
-  dictamenActualId=null;
-  dictCount++;
-  document.getElementById('dict-numero').textContent='N° '+String(dictCount).padStart(4,'0');
-  addLog('amber','Completá el dictamen médico','');
+  document.getElementById('dict-paciente').textContent=t?.paciente||'—';
+  document.getElementById('dict-duracion').textContent=dur||t?.duracion||'—';
+  document.getElementById('dict-empresa').textContent=t?.empresa||'—';
+
+  // Traer todos los dictámenes del turno
+  let dictamenes=[];
+  try{
+    const res=await fetch('/api/dictamenes/turno/'+t.id,{headers:apiHeaders()});
+    const data=await res.json();
+    dictamenes=data.dictamenes||[];
+  }catch(e){}
+
+  renderDictamenesExistentes(dictamenes);
+
+  // ¿El médico actual ya cargó su dictamen para este turno?
+  const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
+  if(propio){
+    cargarDictamenEnFormulario(propio);
+  }else{
+    // Modo nuevo: intentar recuperar el borrador de notas tomado durante la llamada
+    const borrador=obtenerYBorrarNotaBorrador(t.id, usuarioActual?.nombre);
+    document.getElementById('dict-numero').textContent='Nuevo';
+    document.getElementById('dict-edit-badge').style.display='none';
+    document.getElementById('dict-datos').value=borrador?.datos||'';
+    document.getElementById('dict-aptitud').value=borrador?.aptitud||'apto';
+    document.getElementById('dict-reposo').value=borrador?.reposo||'0';
+    document.getElementById('dict-derivacion').value='Sin derivación';
+    document.getElementById('dict-indicaciones').value=borrador?.indicaciones||'';
+    document.getElementById('cert-ok').style.display='none';
+    document.getElementById('btn-guardar-dict').innerHTML=`
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+      Guardar y emitir mi certificado
+    `;
+    dictamenActualId=null;
+    if(borrador){
+      addLog('green','Notas de la llamada recuperadas','Se cargaron automáticamente en el dictamen');
+    }
+  }
+}
+
+function renderDictamenesExistentes(dictamenes){
+  const box=document.getElementById('dictamenes-existentes');
+  const body=document.getElementById('dictamenes-lista-body');
+  if(!dictamenes.length){box.style.display='none';return;}
+  box.style.display='block';
+  body.innerHTML=dictamenes.map(d=>{
+    const horasPasadas=(Date.now()-new Date(d.creado_en).getTime())/(1000*60*60);
+    const editable=horasPasadas<=5;
+    const aptLabel={'apto':'Apto','restricc':'Apto c/restricciones','no-apto':'No apto'}[d.aptitud]||d.aptitud;
+    const esMio=d.medico===usuarioActual?.nombre;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
+      <div style="min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${d.medico} ${esMio?'<span class="badge b-blue" style="margin-left:4px;">vos</span>':''}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${d.numero} · ${aptLabel} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'sin reposo'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;text-decoration:none;">PDF</a>
+        ${esMio&&editable?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;" onclick='cargarDictamenEnFormulario(${JSON.stringify(d).replace(/'/g,"&apos;")})'>Editar</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cargarDictamenEnFormulario(d){
+  document.getElementById('dict-numero').textContent=d.numero;
+  document.getElementById('dict-edit-badge').style.display='inline-flex';
+  document.getElementById('dict-datos').value=d.diagnostico_desc||'';
+  document.getElementById('dict-aptitud').value=d.aptitud||'apto';
+  document.getElementById('dict-reposo').value=d.dias_reposo||0;
+  document.getElementById('dict-derivacion').value=d.derivacion||'Sin derivación';
+  document.getElementById('dict-indicaciones').value=d.indicaciones||'';
+  dictamenActualId=d.id;
+  dictamenActualCreado=d.creado_en;
+  document.getElementById('cert-ok').style.display='block';
+  document.getElementById('cert-info').innerHTML=`
+    <div style="margin-bottom:10px;">${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
+    <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
+      Abrir certificado PDF
+    </a>
+  `;
+  document.getElementById('btn-guardar-dict').innerHTML=`
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Actualizar mi dictamen
+  `;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function cerrarDictamen(){
   document.getElementById('form-dictamen').style.display='none';
+  document.getElementById('dictamenes-existentes').style.display='none';
   document.getElementById('metrics-row').style.display='grid';
   document.getElementById('turnos-card').style.display='block';
   dictamenActualId=null;
+  turnoDictamenActual=null;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-async function editarDictamen(turnoId, dictId){
-  // Cargar dictamen existente y permitir edición
+async function editarDictamen(turnoId){
+  // Ocultar otras secciones
+  document.getElementById('metrics-row').style.display='none';
+  document.getElementById('turnos-card').style.display='none';
+  document.getElementById('links-box').style.display='none';
+
+  const t=turnos.find(x=>x.id===turnoId);
+  if(!t){alert('Turno no encontrado');return;}
+
+  let dur='—';
   try{
-    const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
-    const data=await res.json();
-    if(!data.ok||!data.dictamen){alert('No hay dictamen para este turno todavía');return;}
-    const d=data.dictamen;
-    const horasPasadas=(Date.now()-new Date(d.creado_en).getTime())/(1000*60*60);
-    if(horasPasadas>5){alert('Pasaron más de 5 horas desde la emisión. Ya no se puede editar.');return;}
+    const resD=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
+    const dataD=await resD.json();
+    if(dataD.dictamenes&&dataD.dictamenes.length)dur=dataD.dictamenes[0].duracion||'—';
+  }catch(e){}
 
-    // Ocultar otras secciones
-    document.getElementById('metrics-row').style.display='none';
-    document.getElementById('turnos-card').style.display='none';
-    document.getElementById('links-box').style.display='none';
-
-    document.getElementById('form-dictamen').style.display='block';
-    document.getElementById('dict-paciente').textContent=d.paciente||'—';
-    document.getElementById('dict-duracion').textContent=d.duracion||'—';
-    document.getElementById('dict-empresa').textContent=d.empresa||'—';
-    document.getElementById('dict-numero').textContent=d.numero;
-    document.getElementById('dict-edit-badge').style.display='inline-flex';
-    document.getElementById('dict-datos').value=d.diagnostico_desc||'';
-    document.getElementById('dict-aptitud').value=d.aptitud||'apto';
-    document.getElementById('dict-reposo').value=d.dias_reposo||0;
-    document.getElementById('dict-derivacion').value=d.derivacion||'Sin derivación';
-    document.getElementById('dict-indicaciones').value=d.indicaciones||'';
-    dictamenActualId=d.id;
-    dictamenActualCreado=d.creado_en;
-    document.getElementById('cert-ok').style.display='block';
-    document.getElementById('cert-info').innerHTML=`
-      <div style="margin-bottom:10px;">${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
-      <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
-        Abrir certificado PDF
-      </a>
-    `;
-    document.getElementById('btn-guardar-dict').innerHTML=`
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Actualizar dictamen
-    `;
-    window.scrollTo({top:0,behavior:'smooth'});
-  }catch(e){alert('Error: '+e.message);}
+  await abrirDictamenParaTurno(t, dur);
 }
 
 async function guardarDictamen(){
@@ -1126,26 +1316,32 @@ async function guardarDictamen(){
       data=await res.json();
       if(!data.ok){alert(data.error||'Error al actualizar');return;}
       addLog('blue','Dictamen actualizado','Cambios guardados');
+      if(turnoDictamenActual){
+        const resD=await fetch('/api/dictamenes/turno/'+turnoDictamenActual.id,{headers:apiHeaders()});
+        const dataD=await resD.json();
+        renderDictamenesExistentes(dataD.dictamenes||[]);
+      }
       alert('✓ Dictamen actualizado correctamente');
       return;
     }
 
     // Crear nuevo
+    const t=turnoDictamenActual;
     res=await fetch('/api/dictamenes',{
       method:'POST',headers:apiHeaders(),
       body:JSON.stringify({
-        turno_id: consultaActual?.id||null,
-        paciente: consultaActual?.paciente||document.getElementById('dict-paciente').textContent,
-        medico: usuarioActual?.nombre||'Dr. Barboza, Raúl',
-        empresa: consultaActual?.empresa||'—',
-        fecha_consulta: consultaActual?.fecha||new Date().toISOString().split('T')[0],
-        hora_inicio: consultaActual?.hora||'—',
+        turno_id: t?.id||null,
+        paciente: t?.paciente||document.getElementById('dict-paciente').textContent,
+        medico: usuarioActual?.nombre||'—',
+        empresa: t?.empresa||'—',
+        fecha_consulta: t?.fecha||new Date().toISOString().split('T')[0],
+        hora_inicio: t?.hora||'—',
         duracion: document.getElementById('dict-duracion').textContent,
         diagnostico: '',
         diagnostico_desc: datos,
         aptitud, dias_reposo: reposo,
         derivacion, indicaciones,
-        sala: consultaActual?.sala||''
+        sala: t?.sala||''
       })
     });
     data=await res.json();
@@ -1155,7 +1351,7 @@ async function guardarDictamen(){
     const num=data.numero;
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
-      <div style="margin-bottom:10px;">${num} · ${consultaActual?.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
+      <div style="margin-bottom:10px;">${num} · ${t?.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
       <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
         Abrir certificado PDF
@@ -1163,10 +1359,15 @@ async function guardarDictamen(){
     `;
     document.getElementById('btn-guardar-dict').innerHTML=`
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Actualizar dictamen
+      Actualizar mi dictamen
     `;
     document.getElementById('dict-edit-badge').style.display='inline-flex';
     addLog('rosa','Certificado emitido',num);
+    if(t){
+      const resD=await fetch('/api/dictamenes/turno/'+t.id,{headers:apiHeaders()});
+      const dataD=await resD.json();
+      renderDictamenesExistentes(dataD.dictamenes||[]);
+    }
     cargarTurnos();
   }catch(e){alert('Error: '+e.message);}
 }
