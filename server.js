@@ -98,6 +98,7 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS turno_medicos (
         turno_id VARCHAR(50) REFERENCES turnos(id),
         medico_nombre VARCHAR(200),
         PRIMARY KEY (turno_id, medico_nombre)
@@ -158,6 +159,17 @@ async function initDB() {
     await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN diagnostico_desc TYPE VARCHAR(500)`).catch(()=>{});
     await client.query(`ALTER TABLE IF EXISTS dictamenes ALTER COLUMN derivacion TYPE VARCHAR(200)`).catch(()=>{});
     await client.query(`ALTER TABLE IF EXISTS turnos ALTER COLUMN hora TYPE VARCHAR(20)`).catch(()=>{});
+
+    // Nuevas columnas para informe de junta médica
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS paciente_dni VARCHAR(50)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS edad VARCHAR(20)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS obra_social VARCHAR(200)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS profesion VARCHAR(200)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS antecedentes TEXT`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS hallazgos TEXT`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS conclusion TEXT`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS matricula VARCHAR(100)`).catch(()=>{});
+    await client.query(`ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS especialidad VARCHAR(200)`).catch(()=>{});
 
     console.log('✓ Base de datos lista');
   } catch (err) {
@@ -322,7 +334,10 @@ app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
 app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
     const { turno_id, paciente, medico, empresa, fecha_consulta, hora_inicio, duracion,
-            diagnostico, diagnostico_desc, aptitud, dias_reposo, derivacion, indicaciones, sala } = req.body;
+            paciente_dni, edad, obra_social, profesion,
+            antecedentes, hallazgos, conclusion,
+            aptitud, dias_reposo, derivacion, indicaciones, sala,
+            matricula, especialidad } = req.body;
 
     // Generar número correlativo
     const count = await pool.query('SELECT COUNT(*) FROM dictamenes');
@@ -330,11 +345,16 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO dictamenes (numero, turno_id, paciente, medico, empresa, fecha_consulta,
-        hora_inicio, duracion, diagnostico, diagnostico_desc, aptitud, dias_reposo, derivacion, indicaciones, sala)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *
+        hora_inicio, duracion, aptitud, dias_reposo, derivacion, indicaciones, sala,
+        paciente_dni, edad, obra_social, profesion, antecedentes, hallazgos, conclusion,
+        matricula, especialidad)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *
     `, [numero, turno_id, paciente, medico, empresa, fecha_consulta,
-        hora_inicio, duracion, diagnostico, diagnostico_desc, aptitud,
-        dias_reposo||0, derivacion||'Sin derivación', indicaciones||'', sala||'']);
+        hora_inicio, duracion, aptitud,
+        dias_reposo||0, derivacion||'Sin derivación', indicaciones||'', sala||'',
+        paciente_dni||'', edad||'', obra_social||'', profesion||'',
+        antecedentes||'', hallazgos||'', conclusion||'',
+        matricula||'', especialidad||'Medicina Laboral']);
 
     res.json({ ok: true, dictamen: result.rows[0], numero });
   } catch (err) {
@@ -385,171 +405,255 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
     const horasPasadas = (Date.now() - new Date(check.rows[0].creado_en).getTime()) / (1000*60*60);
     if (horasPasadas > 5) return res.status(403).json({ error: 'No se puede editar: pasaron más de 5 horas desde la emisión' });
 
-    const { aptitud, dias_reposo, derivacion, indicaciones, dni, edad, domicilio, telefono, obra_social, datos_filiatorios } = req.body;
+    const { aptitud, dias_reposo, derivacion, indicaciones,
+            paciente_dni, edad, obra_social, profesion,
+            antecedentes, hallazgos, conclusion } = req.body;
     await pool.query(`
       UPDATE dictamenes SET
         aptitud = COALESCE($1, aptitud),
         dias_reposo = COALESCE($2, dias_reposo),
         derivacion = COALESCE($3, derivacion),
         indicaciones = COALESCE($4, indicaciones),
-        diagnostico_desc = COALESCE($5, diagnostico_desc)
-      WHERE id = $6
-    `, [aptitud, dias_reposo, derivacion, indicaciones, datos_filiatorios, req.params.id]);
+        paciente_dni = COALESCE($5, paciente_dni),
+        edad = COALESCE($6, edad),
+        obra_social = COALESCE($7, obra_social),
+        profesion = COALESCE($8, profesion),
+        antecedentes = COALESCE($9, antecedentes),
+        hallazgos = COALESCE($10, hallazgos),
+        conclusion = COALESCE($11, conclusion)
+      WHERE id = $12
+    `, [aptitud, dias_reposo, derivacion, indicaciones,
+        paciente_dni, edad, obra_social, profesion,
+        antecedentes, hallazgos, conclusion, req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ===== GENERAR PDF DEL DICTAMEN (público por URL única) =====
+// ===== GENERAR PDF: INFORME DE JUNTA MÉDICA LABORAL (público por URL única) =====
 app.get('/api/dictamenes/:id/pdf', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM dictamenes WHERE id = $1', [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ error: 'Dictamen no encontrado' });
     const d = result.rows[0];
 
-    const fecha = new Date(d.fecha_consulta).toLocaleDateString('es-AR', {
-      weekday:'long', year:'numeric', month:'long', day:'numeric'
-    });
-    const emitido = new Date(d.creado_en).toLocaleDateString('es-AR', {
-      year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'
-    });
+    // Traer todos los dictámenes del mismo turno (otros médicos de la junta)
+    let otros = [];
+    if (d.turno_id) {
+      const r2 = await pool.query('SELECT * FROM dictamenes WHERE turno_id = $1 AND id != $2 ORDER BY creado_en ASC', [d.turno_id, d.id]);
+      otros = r2.rows;
+    }
+    const todos = [d, ...otros];
 
-    const aptitudMap = { apto:'APTO', restricc:'APTO CON RESTRICCIONES', 'no-apto':'NO APTO' };
+    const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', {
+      year:'numeric', month:'long', day:'numeric'
+    });
+    const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', {
+      day:'2-digit', month:'2-digit', year:'numeric'
+    }) : '—';
+
+    const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const aptitudLabel = aptitudMap[d.aptitud] || d.aptitud;
-    const aptitudColor = d.aptitud === 'apto' ? '#1e6640' : d.aptitud === 'restricc' ? '#8f5000' : '#b02a2a';
+
+    const integrantesHtml = todos.map(m => `
+      <li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>
+    `).join('');
+
+    const firmasHtml = todos.map(m => `
+      <div style="text-align:center;flex:1;min-width:180px;">
+        <div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>
+        <div style="font-size:12px;font-weight:600;color:#1a1916;">${m.medico}</div>
+        <div style="font-size:10px;color:#5a5750;">${m.especialidad||'Medicina Laboral'}</div>
+        <div style="font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;">${m.matricula?'MN/MP '+m.matricula:''}</div>
+      </div>
+    `).join('');
 
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>Dictamen ${d.numero}</title>
+<title>Informe Junta Médica ${d.numero}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:40px;font-size:13px;line-height:1.6;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #3a6ea8;margin-bottom:24px;}
-  .logo-area{display:flex;align-items:center;gap:12px;}
-  .logo-icon{width:48px;height:48px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:12px;display:flex;align-items:center;justify-content:center;}
-  .logo-icon svg{width:28px;height:28px;fill:white;}
-  .logo-text-name{font-size:22px;font-weight:700;color:#3a6ea8;letter-spacing:-0.5px;line-height:1;}
-  .logo-text-sub{font-size:10px;color:#c0365a;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
+  body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:42px 46px;font-size:12.5px;line-height:1.65;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:22px;}
+  .logo-area{display:flex;align-items:center;gap:11px;}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
+  .logo-icon svg{width:25px;height:25px;fill:white;}
+  .logo-text-name{font-size:18px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
+  .logo-text-sub{font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
   .doc-meta{text-align:right;}
-  .doc-numero{font-family:'DM Mono',sans-serif;font-size:16px;font-weight:500;color:#3a6ea8;}
-  .doc-tipo{font-size:11px;color:#9a9790;margin-top:2px;text-transform:uppercase;letter-spacing:0.8px;}
-  .doc-fecha{font-size:11px;color:#5a5750;margin-top:6px;}
+  .doc-numero{font-family:'DM Mono',sans-serif;font-size:13px;font-weight:500;color:#3a6ea8;}
+  .doc-fecha{font-size:10.5px;color:#5a5750;margin-top:4px;}
 
-  .section{margin-bottom:20px;}
-  .section-title{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#9a9790;font-family:'DM Mono',sans-serif;font-weight:500;padding-bottom:6px;border-bottom:1px solid #e8e4de;margin-bottom:12px;}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
-  .field{display:flex;flex-direction:column;gap:2px;}
-  .field-label{font-size:10px;color:#9a9790;font-family:'DM Mono',sans-serif;text-transform:uppercase;letter-spacing:0.5px;}
-  .field-value{font-size:13px;color:#1a1916;font-weight:500;}
+  h1{font-size:17px;font-weight:700;letter-spacing:-0.3px;margin-bottom:4px;}
+  .subt{font-size:11px;color:#5a5750;margin-bottom:18px;text-transform:uppercase;letter-spacing:0.5px;}
+  h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 8px;letter-spacing:-0.1px;}
+  p{margin-bottom:8px;text-align:justify;}
+  ul{margin:6px 0 6px 18px;}
 
-  .aptitud-box{
-    border-radius:8px;padding:14px 18px;
+  .datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:13px 16px;margin:10px 0 16px;}
+  .datos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;}
+  .dato-item{font-size:12px;}
+  .dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}
+  .dato-value{font-weight:600;color:#1a1916;}
+
+  .conclusion-box{
+    border-radius:9px;padding:14px 18px;margin-top:8px;
     background:${d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0'};
-    border:1.5px solid ${aptitudColor};
-    display:flex;align-items:center;gap:12px;
+    border:1.5px solid ${d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a'};
   }
-  .aptitud-label{font-size:18px;font-weight:700;color:${aptitudColor};letter-spacing:-0.3px;}
-  .aptitud-sub{font-size:11px;color:#5a5750;margin-top:2px;}
+  .conclusion-label{font-size:15px;font-weight:700;color:${d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a'};}
+  .conclusion-sub{font-size:10.5px;color:#5a5750;margin-top:3px;}
 
-  .indicaciones-box{background:#f4f2ef;border-radius:8px;padding:14px;border:1px solid #e8e4de;font-size:13px;color:#1a1916;line-height:1.7;white-space:pre-wrap;}
+  .firmas-row{display:flex;gap:24px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid #e8e4de;}
+  .footer-hash{margin-top:24px;text-align:right;font-size:8.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
+  .watermark{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;letter-spacing:0.5px;}
 
-  .footer{margin-top:32px;padding-top:20px;border-top:1px solid #e8e4de;display:flex;justify-content:space-between;align-items:flex-end;}
-  .firma-area{text-align:center;}
-  .firma-line{width:160px;border-bottom:1.5px solid #1a1916;margin-bottom:6px;}
-  .firma-nombre{font-size:12px;font-weight:600;color:#1a1916;}
-  .firma-sub{font-size:10px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-  .hash-area{text-align:right;max-width:280px;}
-  .hash-label{font-size:9px;color:#9a9790;font-family:'DM Mono',sans-serif;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
-  .hash-val{font-family:'DM Mono',sans-serif;font-size:9px;color:#c0365a;word-break:break-all;}
-  .watermark{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:10px;color:#c8c4be;font-family:'DM Mono',sans-serif;letter-spacing:0.5px;}
-
-  @media print{body{padding:20px;}.watermark{position:fixed;}}
+  @media print{body{padding:24px 30px;}}
 </style>
 </head>
 <body>
   <div class="header">
     <div class="logo-area">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg>
-      </div>
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
       <div>
         <div class="logo-text-name">MEDGRUP</div>
-        <div class="logo-text-sub">Servicio Médico Laboral</div>
+        <div class="logo-text-sub">Servicio Médico Laboral Integral</div>
       </div>
     </div>
     <div class="doc-meta">
       <div class="doc-numero">${d.numero}</div>
-      <div class="doc-tipo">Dictamen Médico · Telemedicina</div>
-      <div class="doc-fecha">Emitido: ${emitido}</div>
+      <div class="doc-fecha">Tierra del Fuego, ${fechaEmision}</div>
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Datos de la consulta</div>
-    <div class="grid-3">
-      <div class="field"><div class="field-label">Fecha</div><div class="field-value">${fecha}</div></div>
-      <div class="field"><div class="field-label">Hora de inicio</div><div class="field-value">${d.hora_inicio||'—'}</div></div>
-      <div class="field"><div class="field-label">Duración</div><div class="field-value">${d.duracion||'—'}</div></div>
+  <h1>Informe de Junta Médica Laboral</h1>
+  <div class="subt">A la Dirección de Recursos Humanos / Asesoría Legal — Empresa: ${d.empresa||'—'}</div>
+
+  <h2>I. Objeto del informe</h2>
+  <p>El presente dictamen tiene por objeto documentar los hallazgos y conclusiones de la Junta Médica realizada al/a la evaluado/a <strong>${d.paciente}</strong>, a fin de determinar su aptitud laboral, llevada a cabo en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
+
+  <h2>II. Integración de la junta médica</h2>
+  <ul>${integrantesHtml}</ul>
+
+  <h2>Datos identificatorios del evaluado</h2>
+  <div class="datos-box">
+    <div class="datos-grid">
+      <div class="dato-item"><div class="dato-label">Nombre y apellido</div><div class="dato-value">${d.paciente}</div></div>
+      <div class="dato-item"><div class="dato-label">DNI</div><div class="dato-value">${d.paciente_dni||'—'}</div></div>
+      <div class="dato-item"><div class="dato-label">Edad</div><div class="dato-value">${d.edad?d.edad+' años':'—'}</div></div>
+      <div class="dato-item"><div class="dato-label">Obra social</div><div class="dato-value">${d.obra_social||'—'}</div></div>
+      <div class="dato-item"><div class="dato-label">Profesión / Ocupación</div><div class="dato-value">${d.profesion||'—'}</div></div>
+      <div class="dato-item"><div class="dato-label">Fecha de evaluación</div><div class="dato-value">${fechaConsulta}</div></div>
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Paciente y médico</div>
-    <div class="grid-2">
-      <div class="field"><div class="field-label">Paciente</div><div class="field-value">${d.paciente}</div></div>
-      <div class="field"><div class="field-label">Empresa</div><div class="field-value">${d.empresa||'—'}</div></div>
-      <div class="field"><div class="field-label">Médico responsable</div><div class="field-value">${d.medico}</div></div>
-      <div class="field"><div class="field-label">Modalidad</div><div class="field-value">Telemedicina · Daily.co</div></div>
-    </div>
+  ${d.antecedentes ? `<h2>III. Antecedentes y cronología de los hechos</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>` : ''}
+
+  ${d.hallazgos ? `<h2>IV. Hallazgos del examen</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>` : ''}
+
+  <h2>V. Conclusión médico-legal</h2>
+  ${d.conclusion ? `<p style="white-space:pre-wrap;">${d.conclusion}</p>` : ''}
+  <div class="conclusion-box">
+    <div class="conclusion-label">${aptitudLabel}</div>
+    <div class="conclusion-sub">${d.dias_reposo>0 ? d.dias_reposo+' día(s) de reposo indicado' : 'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación' ? ' · Derivación: '+d.derivacion : ''}</div>
   </div>
 
-  ${d.diagnostico_desc ? `<div class="section">
-    <div class="section-title">Datos filiatorios del paciente</div>
-    <div class="indicaciones-box">${d.diagnostico_desc}</div>
-  </div>` : ''}
+  ${d.indicaciones ? `<h2>Indicaciones y tratamiento</h2><p style="white-space:pre-wrap;">${d.indicaciones}</p>` : ''}
 
-  <div class="section">
-    <div class="section-title">Aptitud laboral y reposo</div>
-    <div class="grid-2" style="margin-bottom:14px;">
-      <div class="field"><div class="field-label">Días de reposo</div><div class="field-value">${d.dias_reposo > 0 ? d.dias_reposo+' días' : 'Sin reposo indicado'}</div></div>
-      <div class="field"><div class="field-label">Derivación</div><div class="field-value">${d.derivacion||'Sin derivación'}</div></div>
-    </div>
-    <div class="aptitud-box">
-      <div>
-        <div class="aptitud-label">${aptitudLabel}</div>
-        <div class="aptitud-sub">Resultado de aptitud laboral</div>
-      </div>
-    </div>
+  <div class="firmas-row">
+    ${firmasHtml}
   </div>
 
-  ${d.indicaciones ? `<div class="section">
-    <div class="section-title">Indicaciones y tratamiento</div>
-    <div class="indicaciones-box">${d.indicaciones}</div>
-  </div>` : ''}
-
-  <div class="footer">
-    <div class="firma-area">
-      <div class="firma-line"></div>
-      <div class="firma-nombre">${d.medico}</div>
-      <div class="firma-sub">MEDGRUP · Medicina Laboral</div>
-    </div>
-    <div class="hash-area">
-      <div class="hash-label">Código de verificación</div>
-      <div class="hash-val">${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,32)}</div>
-    </div>
-  </div>
-
+  <div class="footer-hash">Código de verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
   <div class="watermark">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero}</div>
 
   <script>window.onload=function(){window.print();}</script>
 </body>
 </html>`;
 
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== ACTA DE ASISTENCIA (constancia simple con firmas) =====
+app.get('/api/turnos/:id/acta', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    const t = result.rows[0];
+    const medicos = t.links_medicos ? (Array.isArray(t.links_medicos)?t.links_medicos:JSON.parse(t.links_medicos)).map(m=>m.nombre) : [];
+
+    const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' });
+
+    const firmasMedicos = medicos.map(nombre => `
+      <div style="margin-top:34px;">
+        <div style="width:260px;border-bottom:1px solid #1a1916;margin-bottom:6px;"></div>
+        <div style="font-size:12px;">${nombre}</div>
+      </div>
+    `).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Acta de Asistencia - ${t.paciente}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:50px 56px;font-size:13.5px;line-height:1.8;}
+  .header{display:flex;align-items:center;gap:12px;padding-bottom:18px;border-bottom:2px solid #3a6ea8;margin-bottom:8px;}
+  .logo-icon{width:46px;height:46px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
+  .logo-icon svg{width:26px;height:26px;fill:white;}
+  .logo-text-name{font-size:19px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
+  .logo-text-sub{font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
+  .fecha-doc{margin:22px 0 26px;font-size:13px;}
+  h1{font-size:18px;font-weight:700;margin-bottom:18px;letter-spacing:-0.3px;}
+  p{text-align:justify;margin-bottom:8px;}
+  .firma-paciente{margin-top:50px;text-align:center;}
+  .firma-line{width:260px;border-bottom:1px solid #1a1916;margin:0 auto 6px;}
+  .firmas-medicos{margin-top:30px;}
+  .watermark{margin-top:50px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+  @media print{body{padding:30px 36px;}}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
+    <div>
+      <div class="logo-text-name">MEDGRUP</div>
+      <div class="logo-text-sub">Salud Ocupacional, Seguridad e Higiene del Trabajo</div>
+    </div>
+  </div>
+
+  <div class="fecha-doc">Tierra del Fuego, ${fecha}</div>
+
+  <h1>Junta Médica laboral</h1>
+
+  <p>Se deja constancia de que en el día de la fecha se lleva a cabo una junta médica, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>.</p>
+
+  <p>La mencionada junta se realiza con la presencia de los profesionales que firman al pie, en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
+
+  <div class="firma-paciente">
+    <div style="font-size:13px;margin-bottom:30px;">${t.paciente}</div>
+    <div class="firma-line"></div>
+  </div>
+
+  <div class="firmas-medicos">
+    ${firmasMedicos}
+  </div>
+
+  <div class="watermark">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
+
+  <script>window.onload=function(){window.print();}</script>
+</body>
+</html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {

@@ -607,34 +607,51 @@ tr:hover td{background:var(--azul-light);}
             </div>
             <div class="card-body" id="dictamenes-lista-body" style="padding-top:0.9rem;"></div>
           </div>
-          <!-- Card 1: Datos filiatorios -->
+          <!-- Card 1: Datos identificatorios del evaluado -->
           <div class="card">
             <div class="card-hdr">
               <div class="card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Datos filiatorios del paciente
+                Datos identificatorios del evaluado
               </div>
             </div>
             <div class="card-body">
               <div style="background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:4px;">
-                <div style="font-size:14px;font-weight:600;color:var(--azul-dark);" id="dict-paciente">—</div>
                 <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;">
                   <span id="dict-empresa">—</span> &nbsp;·&nbsp; Consulta de <span id="dict-duracion">—</span>
                 </div>
               </div>
-              <div class="form-group">
-                <label class="form-lbl">Datos completos del paciente</label>
-                <textarea id="dict-datos" placeholder="DNI, edad, domicilio, obra social, teléfono, ocupación..." style="min-height:110px;"></textarea>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label class="form-lbl">Nombre y apellido</label>
+                  <input type="text" id="dict-paciente-input" placeholder="Apellido, Nombre"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">DNI</label>
+                  <input type="text" id="dict-dni" placeholder="00.000.000"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Edad</label>
+                  <input type="text" id="dict-edad" placeholder="años"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Obra social</label>
+                  <input type="text" id="dict-obrasocial" placeholder="Si corresponde"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-lbl">Profesión / Ocupación</label>
+                  <input type="text" id="dict-profesion" placeholder="Cargo / tarea"/>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Card 2: Dictamen médico -->
+          <!-- Card 2: Informe médico -->
           <div class="card">
             <div class="card-hdr">
               <div class="card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                Dictamen médico
+                Informe médico-legal
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 <span class="badge b-blue" id="dict-numero">N° —</span>
@@ -643,6 +660,18 @@ tr:hover td{background:var(--azul-light);}
             </div>
             <div class="card-body">
               <div class="form-grid">
+                <div class="form-group full">
+                  <label class="form-lbl">Antecedentes y motivo de la consulta</label>
+                  <textarea id="dict-antecedentes" placeholder="Cronología, licencias previas, contexto..." style="min-height:75px;"></textarea>
+                </div>
+                <div class="form-group full">
+                  <label class="form-lbl">Hallazgos del examen</label>
+                  <textarea id="dict-hallazgos" placeholder="Estado mental, semiología, examen físico..." style="min-height:75px;"></textarea>
+                </div>
+                <div class="form-group full">
+                  <label class="form-lbl">Conclusión médico-legal</label>
+                  <textarea id="dict-conclusion" placeholder="Fundamento de la decisión..." style="min-height:75px;"></textarea>
+                </div>
                 <div class="form-group">
                   <label class="form-lbl">Aptitud laboral</label>
                   <select id="dict-aptitud">
@@ -667,8 +696,8 @@ tr:hover td{background:var(--azul-light);}
                   </select>
                 </div>
                 <div class="form-group full">
-                  <label class="form-lbl">Indicaciones médicas</label>
-                  <textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento, observaciones..." style="min-height:90px;"></textarea>
+                  <label class="form-lbl">Indicaciones y tratamiento</label>
+                  <textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento, observaciones..." style="min-height:70px;"></textarea>
                 </div>
               </div>
 
@@ -683,6 +712,7 @@ tr:hover td{background:var(--azul-light);}
                   Certificado emitido
                 </div>
                 <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:6px;"></div>
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;" id="cert-pdf-links"></div>
                 <div style="font-size:10.5px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">
                   ⓘ Editable hasta 5 horas después de la emisión
                 </div>
@@ -1180,7 +1210,7 @@ async function finalizarConsulta(){
 async function abrirDictamenParaTurno(t, dur){
   turnoDictamenActual=t;
   document.getElementById('form-dictamen').style.display='block';
-  document.getElementById('dict-paciente').textContent=t?.paciente||'—';
+  document.getElementById('dict-paciente-input').value=t?.paciente||'';
   document.getElementById('dict-duracion').textContent=dur||t?.duracion||'—';
   document.getElementById('dict-empresa').textContent=t?.empresa||'—';
 
@@ -1203,7 +1233,13 @@ async function abrirDictamenParaTurno(t, dur){
     const borrador=obtenerYBorrarNotaBorrador(t.id, usuarioActual?.nombre);
     document.getElementById('dict-numero').textContent='Nuevo';
     document.getElementById('dict-edit-badge').style.display='none';
-    document.getElementById('dict-datos').value=borrador?.datos||'';
+    document.getElementById('dict-dni').value='';
+    document.getElementById('dict-edad').value='';
+    document.getElementById('dict-obrasocial').value='';
+    document.getElementById('dict-profesion').value='';
+    document.getElementById('dict-antecedentes').value='';
+    document.getElementById('dict-hallazgos').value='';
+    document.getElementById('dict-conclusion').value='';
     document.getElementById('dict-aptitud').value=borrador?.aptitud||'apto';
     document.getElementById('dict-reposo').value=borrador?.reposo||'0';
     document.getElementById('dict-derivacion').value='Sin derivación';
@@ -1246,7 +1282,14 @@ function renderDictamenesExistentes(dictamenes){
 function cargarDictamenEnFormulario(d){
   document.getElementById('dict-numero').textContent=d.numero;
   document.getElementById('dict-edit-badge').style.display='inline-flex';
-  document.getElementById('dict-datos').value=d.diagnostico_desc||'';
+  document.getElementById('dict-paciente-input').value=d.paciente||'';
+  document.getElementById('dict-dni').value=d.paciente_dni||'';
+  document.getElementById('dict-edad').value=d.edad||'';
+  document.getElementById('dict-obrasocial').value=d.obra_social||'';
+  document.getElementById('dict-profesion').value=d.profesion||'';
+  document.getElementById('dict-antecedentes').value=d.antecedentes||'';
+  document.getElementById('dict-hallazgos').value=d.hallazgos||'';
+  document.getElementById('dict-conclusion').value=d.conclusion||'';
   document.getElementById('dict-aptitud').value=d.aptitud||'apto';
   document.getElementById('dict-reposo').value=d.dias_reposo||0;
   document.getElementById('dict-derivacion').value=d.derivacion||'Sin derivación';
@@ -1255,11 +1298,17 @@ function cargarDictamenEnFormulario(d){
   dictamenActualCreado=d.creado_en;
   document.getElementById('cert-ok').style.display='block';
   document.getElementById('cert-info').innerHTML=`
-    <div style="margin-bottom:10px;">${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
-    <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
-      Abrir certificado PDF
+    <div>${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
+  `;
+  document.getElementById('cert-pdf-links').innerHTML=`
+    <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      Informe de Junta Médica
     </a>
+    ${turnoDictamenActual?`<a href="/api/turnos/${turnoDictamenActual.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Acta de Asistencia
+    </a>`:''}
   `;
   document.getElementById('btn-guardar-dict').innerHTML=`
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1298,8 +1347,15 @@ async function editarDictamen(turnoId){
 }
 
 async function guardarDictamen(){
-  const datos=document.getElementById('dict-datos').value.trim();
-  if(!datos){alert('Completá los datos filiatorios del paciente');return;}
+  const pacienteNombre=document.getElementById('dict-paciente-input').value.trim();
+  if(!pacienteNombre){alert('Completá el nombre y apellido del paciente');return;}
+  const dni=document.getElementById('dict-dni').value.trim();
+  const edad=document.getElementById('dict-edad').value.trim();
+  const obraSocial=document.getElementById('dict-obrasocial').value.trim();
+  const profesion=document.getElementById('dict-profesion').value.trim();
+  const antecedentes=document.getElementById('dict-antecedentes').value.trim();
+  const hallazgos=document.getElementById('dict-hallazgos').value.trim();
+  const conclusion=document.getElementById('dict-conclusion').value.trim();
   const aptitud=document.getElementById('dict-aptitud').value;
   const reposo=parseInt(document.getElementById('dict-reposo').value)||0;
   const derivacion=document.getElementById('dict-derivacion').value;
@@ -1311,7 +1367,11 @@ async function guardarDictamen(){
       // Modo edición
       res=await fetch('/api/dictamenes/'+dictamenActualId,{
         method:'PATCH',headers:apiHeaders(),
-        body:JSON.stringify({aptitud,dias_reposo:reposo,derivacion,indicaciones,datos_filiatorios:datos})
+        body:JSON.stringify({
+          aptitud,dias_reposo:reposo,derivacion,indicaciones,
+          paciente_dni:dni,edad,obra_social:obraSocial,profesion,
+          antecedentes,hallazgos,conclusion
+        })
       });
       data=await res.json();
       if(!data.ok){alert(data.error||'Error al actualizar');return;}
@@ -1327,21 +1387,24 @@ async function guardarDictamen(){
 
     // Crear nuevo
     const t=turnoDictamenActual;
+    const medicoActual=medicosData.find(m=>m.nombre===usuarioActual?.nombre);
     res=await fetch('/api/dictamenes',{
       method:'POST',headers:apiHeaders(),
       body:JSON.stringify({
         turno_id: t?.id||null,
-        paciente: t?.paciente||document.getElementById('dict-paciente').textContent,
+        paciente: pacienteNombre,
         medico: usuarioActual?.nombre||'—',
         empresa: t?.empresa||'—',
         fecha_consulta: t?.fecha||new Date().toISOString().split('T')[0],
         hora_inicio: t?.hora||'—',
         duracion: document.getElementById('dict-duracion').textContent,
-        diagnostico: '',
-        diagnostico_desc: datos,
+        paciente_dni: dni, edad, obra_social: obraSocial, profesion,
+        antecedentes, hallazgos, conclusion,
         aptitud, dias_reposo: reposo,
         derivacion, indicaciones,
-        sala: t?.sala||''
+        sala: t?.sala||'',
+        matricula: medicoActual?.matricula||'',
+        especialidad: medicoActual?.especialidad||'Medicina Laboral'
       })
     });
     data=await res.json();
@@ -1351,11 +1414,17 @@ async function guardarDictamen(){
     const num=data.numero;
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
-      <div style="margin-bottom:10px;">${num} · ${t?.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
-      <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:7px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>
-        Abrir certificado PDF
+      <div>${num} · ${pacienteNombre} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
+    `;
+    document.getElementById('cert-pdf-links').innerHTML=`
+      <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        Informe de Junta Médica
       </a>
+      ${t?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        Acta de Asistencia
+      </a>`:''}
     `;
     document.getElementById('btn-guardar-dict').innerHTML=`
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
