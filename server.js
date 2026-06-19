@@ -592,10 +592,13 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 
     const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' });
 
-    const firmasMedicos = medicos.map(nombre => `
-      <div style="margin-top:34px;">
-        <div style="width:260px;border-bottom:1px solid #1a1916;margin-bottom:6px;"></div>
-        <div style="font-size:12px;">${nombre}</div>
+    const firmantes = [{nombre: t.paciente, rol: 'Paciente / Evaluado/a'}, ...medicos.map(nombre=>({nombre, rol:'Médico interviniente'}))];
+    const firmasHtml = firmantes.map(f => `
+      <div class="firma-bloque">
+        <div class="firma-espacio"></div>
+        <div class="firma-line"></div>
+        <div class="firma-nombre">${f.nombre}</div>
+        <div class="firma-rol">${f.rol}</div>
       </div>
     `).join('');
 
@@ -616,10 +619,15 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
   .fecha-doc{margin:22px 0 26px;font-size:13px;}
   h1{font-size:18px;font-weight:700;margin-bottom:18px;letter-spacing:-0.3px;}
   p{text-align:justify;margin-bottom:8px;}
-  .firma-paciente{margin-top:50px;text-align:center;}
-  .firma-line{width:260px;border-bottom:1px solid #1a1916;margin:0 auto 6px;}
-  .firmas-medicos{margin-top:30px;}
-  .watermark{margin-top:50px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+
+  .firmas-col{display:flex;flex-direction:column;align-items:flex-start;max-width:320px;margin:50px auto 0;}
+  .firma-bloque{width:100%;margin-bottom:38px;}
+  .firma-espacio{height:46px;}
+  .firma-line{width:100%;border-bottom:1.3px solid #1a1916;margin-bottom:7px;}
+  .firma-nombre{font-size:12.5px;font-weight:600;color:#1a1916;}
+  .firma-rol{font-size:10px;color:#9a9790;font-family:'DM Mono',sans-serif;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;}
+
+  .watermark{margin-top:40px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
   @media print{body{padding:30px 36px;}}
 </style>
 </head>
@@ -640,13 +648,8 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 
   <p>La mencionada junta se realiza con la presencia de los profesionales que firman al pie, en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
 
-  <div class="firma-paciente">
-    <div style="font-size:13px;margin-bottom:30px;">${t.paciente}</div>
-    <div class="firma-line"></div>
-  </div>
-
-  <div class="firmas-medicos">
-    ${firmasMedicos}
+  <div class="firmas-col">
+    ${firmasHtml}
   </div>
 
   <div class="watermark">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>

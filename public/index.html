@@ -519,8 +519,8 @@ tr:hover td{background:var(--azul-light);}
     </div>
 
     <!-- Panel flotante de notas durante la llamada -->
-    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:340px;max-height:70vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
-      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:default;">
+    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:360px;max-height:80vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
+      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:default;flex-shrink:0;">
         <div style="color:white;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Notas rápidas
@@ -528,16 +528,46 @@ tr:hover td{background:var(--azul-light);}
         <button onclick="toggleNotasPanel()" style="background:none;border:none;color:white;cursor:pointer;font-size:18px;line-height:1;opacity:0.8;">×</button>
       </div>
       <div style="padding:14px 16px;overflow-y:auto;">
-        <div style="font-size:10.5px;color:var(--text3);margin-bottom:10px;font-family:'DM Mono',monospace;">
-          Se autoguardan mientras hablás. Se cargan solas en el dictamen al finalizar.
+        <div style="font-size:10.5px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace;">
+          Se autoguardan mientras hablás. Se cargan solas en el informe al finalizar.
+        </div>
+
+        <div class="divider" style="margin-top:0;">Datos del paciente</div>
+        <div class="form-grid" style="margin-bottom:6px;">
+          <div class="form-group">
+            <label class="form-lbl">DNI</label>
+            <input type="text" id="notas-dni" placeholder="00.000.000" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          </div>
+          <div class="form-group">
+            <label class="form-lbl">Edad</label>
+            <input type="text" id="notas-edad" placeholder="años" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          </div>
+          <div class="form-group">
+            <label class="form-lbl">Obra social</label>
+            <input type="text" id="notas-obrasocial" placeholder="Si corresponde" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          </div>
+          <div class="form-group">
+            <label class="form-lbl">Profesión</label>
+            <input type="text" id="notas-profesion" placeholder="Ocupación" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          </div>
+        </div>
+
+        <div class="divider">Informe médico</div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label class="form-lbl">Antecedentes</label>
+          <textarea id="notas-antecedentes" placeholder="Motivo, cronología..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label class="form-lbl">Hallazgos del examen</label>
+          <textarea id="notas-hallazgos" placeholder="Lo que vayas viendo..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label class="form-lbl">Conclusión</label>
+          <textarea id="notas-conclusion" placeholder="Fundamento de la decisión..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
         <div class="form-group" style="margin-bottom:10px;">
-          <label class="form-lbl">Datos filiatorios</label>
-          <textarea id="notas-datos" placeholder="DNI, edad, domicilio, obra social..." style="min-height:65px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:10px;">
-          <label class="form-lbl">Indicaciones / observaciones</label>
-          <textarea id="notas-indicaciones" placeholder="Lo que vayas viendo en la consulta..." style="min-height:75px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+          <label class="form-lbl">Indicaciones</label>
+          <textarea id="notas-indicaciones" placeholder="Tratamiento, seguimiento..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
         <div class="form-grid" style="margin-bottom:4px;">
           <div class="form-group">
@@ -1122,7 +1152,13 @@ function guardarNotaBorrador(){
   const key=notaKey();
   if(!key)return;
   const borrador={
-    datos:document.getElementById('notas-datos').value,
+    dni:document.getElementById('notas-dni').value,
+    edad:document.getElementById('notas-edad').value,
+    obraSocial:document.getElementById('notas-obrasocial').value,
+    profesion:document.getElementById('notas-profesion').value,
+    antecedentes:document.getElementById('notas-antecedentes').value,
+    hallazgos:document.getElementById('notas-hallazgos').value,
+    conclusion:document.getElementById('notas-conclusion').value,
     indicaciones:document.getElementById('notas-indicaciones').value,
     aptitud:document.getElementById('notas-aptitud').value,
     reposo:document.getElementById('notas-reposo').value
@@ -1142,7 +1178,13 @@ function cargarNotaBorrador(){
     const raw=localStorage.getItem(key);
     if(!raw)return;
     const b=JSON.parse(raw);
-    document.getElementById('notas-datos').value=b.datos||'';
+    document.getElementById('notas-dni').value=b.dni||'';
+    document.getElementById('notas-edad').value=b.edad||'';
+    document.getElementById('notas-obrasocial').value=b.obraSocial||'';
+    document.getElementById('notas-profesion').value=b.profesion||'';
+    document.getElementById('notas-antecedentes').value=b.antecedentes||'';
+    document.getElementById('notas-hallazgos').value=b.hallazgos||'';
+    document.getElementById('notas-conclusion').value=b.conclusion||'';
     document.getElementById('notas-indicaciones').value=b.indicaciones||'';
     document.getElementById('notas-aptitud').value=b.aptitud||'apto';
     document.getElementById('notas-reposo').value=b.reposo||'0';
@@ -1233,13 +1275,13 @@ async function abrirDictamenParaTurno(t, dur){
     const borrador=obtenerYBorrarNotaBorrador(t.id, usuarioActual?.nombre);
     document.getElementById('dict-numero').textContent='Nuevo';
     document.getElementById('dict-edit-badge').style.display='none';
-    document.getElementById('dict-dni').value='';
-    document.getElementById('dict-edad').value='';
-    document.getElementById('dict-obrasocial').value='';
-    document.getElementById('dict-profesion').value='';
-    document.getElementById('dict-antecedentes').value='';
-    document.getElementById('dict-hallazgos').value='';
-    document.getElementById('dict-conclusion').value='';
+    document.getElementById('dict-dni').value=borrador?.dni||'';
+    document.getElementById('dict-edad').value=borrador?.edad||'';
+    document.getElementById('dict-obrasocial').value=borrador?.obraSocial||'';
+    document.getElementById('dict-profesion').value=borrador?.profesion||'';
+    document.getElementById('dict-antecedentes').value=borrador?.antecedentes||'';
+    document.getElementById('dict-hallazgos').value=borrador?.hallazgos||'';
+    document.getElementById('dict-conclusion').value=borrador?.conclusion||'';
     document.getElementById('dict-aptitud').value=borrador?.aptitud||'apto';
     document.getElementById('dict-reposo').value=borrador?.reposo||'0';
     document.getElementById('dict-derivacion').value='Sin derivación';
