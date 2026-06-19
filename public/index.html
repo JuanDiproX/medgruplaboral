@@ -506,6 +506,10 @@ tr:hover td{background:var(--azul-light);}
       <div class="video-bottombar">
         <div class="video-timer" id="video-timer">00:00:00</div>
         <div style="display:flex;gap:8px;">
+          <button class="btn" id="btn-paciente-llego" onclick="marcarPacienteLlego()" style="display:none;background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Paciente llegó
+          </button>
           <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Notas
@@ -1144,6 +1148,11 @@ function unirseTurno(id){
   if(!link)link=t.linkPaciente;
   window.open(link,'_blank');
   addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
+  registrarEventoTurno(id,'union_medico',usuarioActual?.nombre||'');
+}
+
+function registrarEventoTurno(turnoId,tipo,participante){
+  fetch('/api/turnos/'+turnoId+'/eventos',{method:'POST',headers:apiHeaders(),body:JSON.stringify({tipo,participante})}).catch(()=>{});
 }
 
 // ===== NOTAS RÁPIDAS DURANTE LA LLAMADA (borrador ninja) =====
@@ -1236,7 +1245,20 @@ function iniciarTurno(id){
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
   addLog('blue','Consulta iniciada',t.paciente+' · '+t.hora);
+  registrarEventoTurno(t.id,'inicio_medico',usuarioActual?.nombre||'');
+  document.getElementById('btn-paciente-llego').style.display='inline-flex';
+  document.getElementById('btn-paciente-llego').dataset.marcado='0';
   document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
+}
+
+function marcarPacienteLlego(){
+  if(!consultaActual)return;
+  registrarEventoTurno(consultaActual.id,'union_paciente',consultaActual.paciente||'');
+  addLog('green','Paciente se incorporó a la consulta',consultaActual.paciente||'');
+  const btn=document.getElementById('btn-paciente-llego');
+  btn.dataset.marcado='1';
+  btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;pointer-events:none;"><polyline points="20,6 9,17 4,12"/></svg>Paciente registrado`;
+  btn.disabled=true;
 }
 
 let dictamenActualId=null;
@@ -1249,13 +1271,18 @@ async function finalizarConsulta(){
   document.getElementById('video-container').classList.remove('active');
   document.getElementById('daily-frame').src='';
   document.getElementById('notas-panel').style.display='none';
-  if(consultaActual){consultaActual.estado='completado';fetch('/api/turnos/'+consultaActual.id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'completado'})});renderAgenda();}
+  document.getElementById('btn-paciente-llego').style.display='none';
+  if(consultaActual){
+    consultaActual.estado='completado';
+    fetch('/api/turnos/'+consultaActual.id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'completado'})});
+    registrarEventoTurno(consultaActual.id,'fin_consulta',usuarioActual?.nombre||'');
+    renderAgenda();
+  }
   // Ocultar todo lo demás, solo dejar dictamen + log
   document.getElementById('links-box').style.display='none';
   document.getElementById('metrics-row').style.display='none';
   document.getElementById('turnos-card').style.display='none';
   addLog('blue','Consulta finalizada','Duración: '+dur);
-  addLog('green','Grabación guardada en Daily.co',consultaActual?.sala||'');
 
   await abrirDictamenParaTurno(consultaActual, dur);
   addLog('amber','Completá tu dictamen médico','');

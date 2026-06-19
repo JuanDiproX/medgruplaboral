@@ -103,6 +103,14 @@ async function initDB() {
         medico_nombre VARCHAR(200),
         PRIMARY KEY (turno_id, medico_nombre)
       );
+
+      CREATE TABLE IF NOT EXISTS eventos_turno (
+        id SERIAL PRIMARY KEY,
+        turno_id VARCHAR(50) REFERENCES turnos(id),
+        tipo VARCHAR(50) NOT NULL,
+        participante VARCHAR(200),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
     `);
 
     // Usuarios iniciales
@@ -363,6 +371,29 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
 });
 
 // ===== OBTENER DICTÁMENES =====
+// ===== EVENTOS DE ASISTENCIA DEL TURNO (para el Acta) =====
+app.post('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
+  try {
+    const { tipo, participante } = req.body;
+    const result = await pool.query(
+      'INSERT INTO eventos_turno (turno_id, tipo, participante) VALUES ($1,$2,$3) RETURNING *',
+      [req.params.id, tipo, participante || '']
+    );
+    res.json({ ok: true, evento: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM eventos_turno WHERE turno_id = $1 ORDER BY creado_en ASC', [req.params.id]);
+    res.json({ ok: true, eventos: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM dictamenes ORDER BY creado_en DESC LIMIT 50');
@@ -582,25 +613,40 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
   }
 });
 
-// ===== ACTA DE ASISTENCIA (constancia simple con firmas) =====
+// ===== ACTA DE ASISTENCIA (constancia con cronología de eventos reales) =====
 app.get('/api/turnos/:id/acta', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM turnos WHERE id = $1', [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
     const t = result.rows[0];
-    const medicos = t.links_medicos ? (Array.isArray(t.links_medicos)?t.links_medicos:JSON.parse(t.links_medicos)).map(m=>m.nombre) : [];
+
+    const eventosRes = await pool.query('SELECT * FROM eventos_turno WHERE turno_id = $1 ORDER BY creado_en ASC', [req.params.id]);
+    const eventos = eventosRes.rows;
 
     const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' });
+    const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' });
 
-    const firmantes = [{nombre: t.paciente, rol: 'Paciente / Evaluado/a'}, ...medicos.map(nombre=>({nombre, rol:'Médico interviniente'}))];
-    const firmasHtml = firmantes.map(f => `
-      <div class="firma-bloque">
-        <div class="firma-espacio"></div>
-        <div class="firma-line"></div>
-        <div class="firma-nombre">${f.nombre}</div>
-        <div class="firma-rol">${f.rol}</div>
-      </div>
-    `).join('');
+    const tipoLabel = {
+      'inicio_medico': 'Inicio de videoconsulta',
+      'union_medico': 'Médico se incorporó a la consulta',
+      'union_paciente': 'Paciente se incorporó a la consulta',
+      'fin_consulta': 'Finalización de la consulta'
+    };
+    const tipoIcon = {
+      'inicio_medico': '▶',
+      'union_medico': '＋',
+      'union_paciente': '＋',
+      'fin_consulta': '■'
+    };
+
+    const eventosHtml = eventos.length ? eventos.map(e => {
+      const hora = new Date(e.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      return `<div class="ev-row">
+        <div class="ev-hora">${hora}</div>
+        <div class="ev-icon">${tipoIcon[e.tipo]||'•'}</div>
+        <div class="ev-desc"><strong>${tipoLabel[e.tipo]||e.tipo}</strong>${e.participante?' — '+e.participante:''}</div>
+      </div>`;
+    }).join('') : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">Sin eventos de asistencia registrados.</div>`;
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -610,46 +656,69 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:50px 56px;font-size:13.5px;line-height:1.8;}
-  .header{display:flex;align-items:center;gap:12px;padding-bottom:18px;border-bottom:2px solid #3a6ea8;margin-bottom:8px;}
-  .logo-icon{width:46px;height:46px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
-  .logo-icon svg{width:26px;height:26px;fill:white;}
-  .logo-text-name{font-size:19px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
+  body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
+  .logo-area{display:flex;align-items:center;gap:11px;}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);border-radius:11px;display:flex;align-items:center;justify-content:center;}
+  .logo-icon svg{width:25px;height:25px;fill:white;}
+  .logo-text-name{font-size:18px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;line-height:1;}
   .logo-text-sub{font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px;font-family:'DM Mono',sans-serif;font-weight:500;}
-  .fecha-doc{margin:22px 0 26px;font-size:13px;}
-  h1{font-size:18px;font-weight:700;margin-bottom:18px;letter-spacing:-0.3px;}
-  p{text-align:justify;margin-bottom:8px;}
+  .doc-meta{text-align:right;font-size:10.5px;color:#5a5750;}
 
-  .firmas-col{display:flex;flex-direction:column;align-items:flex-start;max-width:320px;margin:50px auto 0;}
-  .firma-bloque{width:100%;margin-bottom:38px;}
-  .firma-espacio{height:46px;}
-  .firma-line{width:100%;border-bottom:1.3px solid #1a1916;margin-bottom:7px;}
-  .firma-nombre{font-size:12.5px;font-weight:600;color:#1a1916;}
-  .firma-rol{font-size:10px;color:#9a9790;font-family:'DM Mono',sans-serif;text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;}
+  h1{font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-0.3px;}
+  .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}
+  p{text-align:justify;margin-bottom:10px;}
 
-  .watermark{margin-top:40px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
-  @media print{body{padding:30px 36px;}}
+  .datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;}
+  .dato-item{font-size:12px;}
+  .dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}
+  .dato-value{font-weight:600;color:#1a1916;}
+
+  h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
+
+  .ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}
+  .ev-row:last-child{border-bottom:none;}
+  .ev-hora{font-family:'DM Mono',sans-serif;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
+  .ev-icon{width:22px;height:22px;border-radius:50%;background:#e8f0f8;color:#3a6ea8;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+  .ev-desc{font-size:12.5px;color:#1a1916;}
+  .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
+
+  .verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;}
+  .watermark{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+  @media print{body{padding:26px 32px;}}
 </style>
 </head>
 <body>
   <div class="header">
-    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
-    <div>
-      <div class="logo-text-name">MEDGRUP</div>
-      <div class="logo-text-sub">Salud Ocupacional, Seguridad e Higiene del Trabajo</div>
+    <div class="logo-area">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14h-2v-5H9v-2h2V7h2v2h2v2h-2v5z"/></svg></div>
+      <div>
+        <div class="logo-text-name">MEDGRUP</div>
+        <div class="logo-text-sub">Salud Ocupacional, Seguridad e Higiene del Trabajo</div>
+      </div>
     </div>
+    <div class="doc-meta">Tierra del Fuego<br>${fechaEmision}</div>
   </div>
 
-  <div class="fecha-doc">Tierra del Fuego, ${fecha}</div>
+  <h1>Acta de Asistencia — Junta Médica Laboral</h1>
+  <div class="subt">Constancia de asistencia mediante registro de eventos de la videoconsulta</div>
 
-  <h1>Junta Médica laboral</h1>
+  <p>Se deja constancia de que en el día de la fecha se llevó a cabo una junta médica, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>, realizada en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
 
-  <p>Se deja constancia de que en el día de la fecha se lleva a cabo una junta médica, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>.</p>
+  <div class="datos-box">
+    <div class="dato-item"><div class="dato-label">Paciente</div><div class="dato-value">${t.paciente}</div></div>
+    <div class="dato-item"><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
+    <div class="dato-item"><div class="dato-label">Fecha del turno</div><div class="dato-value">${fecha}</div></div>
+    <div class="dato-item"><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}</div></div>
+  </div>
 
-  <p>La mencionada junta se realiza con la presencia de los profesionales que firman al pie, en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
+  <h2>Registro cronológico de asistencia</h2>
+  <div class="eventos-box">
+    ${eventosHtml}
+  </div>
 
-  <div class="firmas-col">
-    ${firmasHtml}
+  <div class="verif">
+    Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP (inicio de sesión, incorporación de participantes y finalización), generado por la plataforma sin intervención manual.
   </div>
 
   <div class="watermark">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
