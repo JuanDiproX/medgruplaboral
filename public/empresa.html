@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MEDGRUP — Portal de Empresa</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;--rosa:#c0365a;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;--celeste:#7aaed4;--celeste-light:#edf5fb;--bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;--border:rgba(58,110,168,0.12);--border2:rgba(58,110,168,0.2);--text:#1a2433;--text2:#5a6575;--text3:#97a3b4;--r:16px;--r-sm:11px;--shadow-sm:0 1px 3px rgba(42,80,128,0.06),0 2px 10px rgba(42,80,128,0.05);--shadow:0 2px 6px rgba(42,80,128,0.08),0 8px 28px rgba(42,80,128,0.08);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%,rgba(122,174,212,0.12),transparent 35%),radial-gradient(circle at 100% 100%,rgba(192,54,90,0.06),transparent 35%),var(--bg);background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+/* LOGIN */
+.login-page{display:flex;min-height:100vh;}
+.login-left{flex:1;background:linear-gradient(160deg,#1e3d6e 0%,#2a5080 40%,#3a6ea8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;position:relative;overflow:hidden;}
+.login-left::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+.login-right{width:440px;flex-shrink:0;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:3rem 2.5rem;box-shadow:-4px 0 20px rgba(0,0,0,0.08);}
+.login-form-wrap{width:100%;max-width:360px;}
+.login-input{font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 13px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:var(--bg);color:var(--text);outline:none;width:100%;transition:all .15s;margin-top:5px;}
+.login-input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(58,110,168,0.1);background:white;}
+.login-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text2);}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px;transition:all .15s;box-shadow:0 4px 14px rgba(58,110,168,.3);}
+.login-btn:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);}
+.login-error{background:var(--rosa-light);border:1.5px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa);margin-top:12px;display:none;}
+
+/* APP */
+.app-page{display:none;}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm);}
+.topbar-logo{display:flex;align-items:center;gap:10px;}
+.topbar-logo img{height:32px;}
+.empresa-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);}
+.empresa-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+.main{max-width:1100px;margin:0 auto;padding:2rem 2.5rem;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1.75rem;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.4rem;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat-blue::before{background:linear-gradient(90deg,#3a6ea8,#7aaed4);}
+.stat-green::before{background:linear-gradient(90deg,#1e6640,#3a9460);}
+.stat-amber::before{background:linear-gradient(90deg,#8f5000,#c47a00);}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:6px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--text);}
+.stat-hint{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* TABLE */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:1.25rem;}
+.card-hdr{padding:1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--surface2),var(--surface));}
+.card-title{font-size:13.5px;font-weight:600;color:var(--text);}
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;}
+.b-blue{background:var(--azul-light);color:var(--azul);}
+.b-green{background:#e0f2e9;color:#1e6640;}
+.b-amber{background:#fdf0d8;color:#8f5000;}
+.b-gray{background:#f1efeb;color:var(--text2);}
+.b-rosa{background:var(--rosa-light);color:var(--rosa);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap;}
+.btn svg{width:13px;height:13px;pointer-events:none;}
+.btn-primary{background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;box-shadow:0 3px 10px rgba(58,110,168,.25);}
+.btn-primary:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);}
+.btn-ghost{background:var(--surface);border-color:var(--border2);color:var(--text2);}
+.btn-ghost:hover{background:var(--azul-light);color:var(--azul);}
+.btn-sm{padding:5px 11px;font-size:11.5px;}
+
+.search-bar{display:flex;align-items:center;gap:10px;padding:12px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface2);}
+.search-input{flex:1;font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:white;color:var(--text);outline:none;}
+.search-input:focus{border-color:var(--azul);}
+select.filter{font-family:'DM Sans',sans-serif;font-size:12.5px;padding:8px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:white;color:var(--text);outline:none;cursor:pointer;}
+select.filter:focus{border-color:var(--azul);}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text3);padding:10px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface2);}
+td{padding:12px 1.4rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--azul-light);}
+
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px;}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:fadeUp .2s ease both;}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:1.25rem;}
+.modal-section{font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);padding:10px 0 6px;border-bottom:1px solid var(--border);margin:14px 0 10px;}
+.dl{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;font-size:13px;}
+.dl-label{color:var(--text3);}
+.dl-value{font-weight:500;color:var(--text);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN EMPRESA -->
+<div class="login-page" id="login-page">
+  <div class="login-left">
+    <div style="position:relative;text-align:center;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:2rem 3rem;max-width:380px;margin-bottom:2rem;">
+      <img src="/logo.png" style="width:220px;max-width:100%;filter:brightness(0) invert(1);opacity:.95;"/>
+    </div>
+    <p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.75;text-align:center;max-width:320px;position:relative;">Portal exclusivo para empresas clientes. Accedé a los informes y actas de asistencia de su personal.</p>
+    <div style="margin-top:2rem;display:flex;flex-direction:column;gap:10px;max-width:280px;position:relative;">
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+        <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
+        Informes médico-legales en PDF
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+        <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+        Actas de asistencia automáticas
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+        <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        Historial de evaluaciones de su personal
+      </div>
+    </div>
+  </div>
+  <div class="login-right">
+    <div class="login-form-wrap">
+      <div style="margin-bottom:1.75rem;">
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;">Portal empresa</div>
+        <div style="font-size:13px;color:var(--text3);">Ingresá con las credenciales que te proporcionó MEDGRUP</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="login-lbl">Email de empresa</label>
+        <input class="login-input" type="text" id="emp-email" placeholder="empresa@dominio.com" onkeydown="if(event.key==='Enter')doLoginEmpresa()"/>
+      </div>
+      <div style="margin-bottom:4px;">
+        <label class="login-lbl">Contraseña</label>
+        <input class="login-input" type="password" id="emp-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLoginEmpresa()"/>
+      </div>
+      <button class="login-btn" onclick="doLoginEmpresa()">Ingresar al portal →</button>
+      <div class="login-error" id="emp-error"></div>
+      <div style="margin-top:1.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;font-size:12px;color:var(--text3);">
+        ¿No tenés acceso? Contactanos en <strong style="color:var(--azul);">administracion@medgrup.com.ar</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PORTAL APP -->
+<div class="app-page" id="app-page">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <img src="/logo.png" alt="MEDGRUP"/>
+      <div>
+        <div class="empresa-name" id="top-empresa-name">—</div>
+        <div class="empresa-sub">Portal de empresa — MEDGRUP</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost" style="font-size:12px;" onclick="doLogoutEmpresa()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Cerrar sesión
+    </button>
+  </div>
+
+  <div class="main">
+    <div style="margin-bottom:1.75rem;">
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;">
+        <span style="width:4px;height:22px;border-radius:3px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);display:inline-block;"></span>
+        Evaluaciones de su personal
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;margin-left:14px;">Informes y actas de asistencia disponibles para descarga</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card stat-blue">
+        <div class="stat-lbl">Total evaluaciones</div>
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-hint">registradas</div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-lbl">Con informe</div>
+        <div class="stat-val" id="stat-con-informe">0</div>
+        <div class="stat-hint">dictámenes emitidos</div>
+      </div>
+      <div class="stat-card stat-amber">
+        <div class="stat-lbl">Pendientes</div>
+        <div class="stat-val" id="stat-pendiente">0</div>
+        <div class="stat-hint">sin completar</div>
+      </div>
+    </div>
+
+    <!-- Tabla de turnos -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Historial de evaluaciones</div>
+        <span class="badge b-blue" id="badge-count">0</span>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="search-input" placeholder="Buscar por empleado..." oninput="filtrarTurnos()"/>
+        <select class="filter" id="filter-estado" onchange="filtrarTurnos()">
+          <option value="">Todos los estados</option>
+          <option value="completado">Completados</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="en-curso">En curso</option>
+        </select>
+      </div>
+      <div id="turnos-tabla"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal-bg" id="modal-detalle">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <div class="modal-title" id="modal-paciente-nombre" style="margin-bottom:0;">—</div>
+      <button onclick="document.getElementById('modal-detalle').classList.remove('open')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:22px;line-height:1;">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let empresaToken = localStorage.getItem('medgrup_empresa_token');
+let empresaActual = null;
+let turnosData = [];
+
+function empresaHeaders() { return { 'Content-Type': 'application/json', 'x-empresa-token': empresaToken||'' }; }
+
+async function doLoginEmpresa() {
+  const email = document.getElementById('emp-email').value.trim();
+  const password = document.getElementById('emp-password').value;
+  const errEl = document.getElementById('emp-error');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Completá email y contraseña'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/empresa/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const data = await res.json();
+    if (!data.ok) { errEl.textContent = data.error || 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
+    empresaToken = data.token;
+    empresaActual = data.empresa;
+    localStorage.setItem('medgrup_empresa_token', empresaToken);
+    mostrarPortal();
+  } catch (e) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+}
+
+function doLogoutEmpresa() {
+  fetch('/api/empresa/logout', { method: 'POST', headers: empresaHeaders() });
+  localStorage.removeItem('medgrup_empresa_token');
+  empresaToken = null; empresaActual = null;
+  document.getElementById('app-page').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+async function mostrarPortal() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-page').style.display = 'block';
+  document.getElementById('top-empresa-name').textContent = empresaActual.nombre;
+  await cargarTurnos();
+}
+
+async function cargarTurnos() {
+  try {
+    const res = await fetch('/api/empresa/mis-turnos', { headers: empresaHeaders() });
+    if (res.status === 401) { doLogoutEmpresa(); return; }
+    const data = await res.json();
+    turnosData = data.turnos || [];
+    actualizarStats();
+    filtrarTurnos();
+  } catch (e) { console.error(e); }
+}
+
+function actualizarStats() {
+  document.getElementById('stat-total').textContent = turnosData.length;
+  const conInforme = turnosData.filter(t => t.dictamenes_data && t.dictamenes_data.length > 0).length;
+  document.getElementById('stat-con-informe').textContent = conInforme;
+  const pendientes = turnosData.filter(t => t.estado === 'pendiente').length;
+  document.getElementById('stat-pendiente').textContent = pendientes;
+}
+
+function filtrarTurnos() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const est = document.getElementById('filter-estado').value;
+  const filtrados = turnosData.filter(t => {
+    const matchQ = !q || t.paciente.toLowerCase().includes(q);
+    const matchEst = !est || t.estado === est;
+    return matchQ && matchEst;
+  });
+  document.getElementById('badge-count').textContent = filtrados.length;
+  renderTabla(filtrados);
+}
+
+function renderTabla(turnos) {
+  if (!turnos.length) {
+    document.getElementById('turnos-tabla').innerHTML = '<div class="empty">No hay evaluaciones que coincidan con el filtro.</div>';
+    return;
+  }
+  const badges = { completado: 'b-green', pendiente: 'b-gray', 'en-curso': 'b-rosa' };
+  const labels = { completado: '✓ Completado', pendiente: 'Pendiente', 'en-curso': '● En curso' };
+  document.getElementById('turnos-tabla').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Empleado</th><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Médico/s</th><th>Documentos</th>
+      </tr></thead>
+      <tbody>${turnos.map(t => {
+        const fecha = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+        const medicos = Array.isArray(t.medicos) ? t.medicos.join(', ') : '—';
+        const tieneInforme = t.dictamenes_data && t.dictamenes_data.length > 0;
+        const primerDict = tieneInforme ? t.dictamenes_data[0] : null;
+        const docsBtns = `
+          ${tieneInforme ? `<a href="/api/dictamenes/${primerDict.id}/pdf" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;margin-right:4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            Informe</a>` : '<span style="font-size:11px;color:var(--text3);">Sin informe</span>'}
+          ${t.estado === 'completado' ? `<a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            Acta</a>` : ''}
+          <button class="btn btn-ghost btn-sm" style="margin-left:4px;" onclick='verDetalle(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Ver</button>
+        `;
+        return `<tr>
+          <td><div style="font-weight:600;">${t.paciente}</div></td>
+          <td><span style="font-family:'DM Mono',monospace;font-size:12px;">${fecha}</span></td>
+          <td>${t.tipo||'—'}</td>
+          <td><span class="badge ${badges[t.estado]||'b-gray'}">${labels[t.estado]||t.estado}</span></td>
+          <td><div style="font-size:12px;color:var(--text2);">${medicos}</div></td>
+          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${docsBtns}</div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function verDetalle(t) {
+  document.getElementById('modal-paciente-nombre').textContent = t.paciente;
+  const fecha = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const medicos = Array.isArray(t.medicos) ? t.medicos : [];
+  const dicts = t.dictamenes_data || [];
+  const aptLabels = { apto:'Apto', restricc:'Apto con restricciones', 'no-apto':'No apto' };
+
+  let informesHtml = dicts.length ? dicts.map(d => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 15px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${d.medico}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${d.numero}</div>
+        </div>
+        <span class="badge ${d.aptitud==='apto'?'b-green':d.aptitud==='restricc'?'b-amber':'b-rosa'}">${aptLabels[d.aptitud]||d.aptitud}</span>
+      </div>
+      ${d.conclusion ? `<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.5;">${d.conclusion.substring(0,200)}${d.conclusion.length>200?'...':''}</div>` : ''}
+      <div style="display:flex;gap:6px;">
+        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          Descargar informe PDF
+        </a>
+      </div>
+    </div>
+  `).join('') : '<div style="font-size:13px;color:var(--text3);padding:10px 0;">El informe aún no fue emitido por el médico.</div>';
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-section">Datos del turno</div>
+    <div class="dl">
+      <span class="dl-label">Fecha</span><span class="dl-value">${fecha}</span>
+      <span class="dl-label">Hora</span><span class="dl-value">${t.hora}</span>
+      <span class="dl-label">Tipo</span><span class="dl-value">${t.tipo||'—'}</span>
+      <span class="dl-label">Estado</span><span class="dl-value">${t.estado}</span>
+    </div>
+    <div class="modal-section">Médicos intervinientes</div>
+    <div>${medicos.map(m=>`<span class="badge b-blue" style="margin:2px;">${m}</span>`).join(' ')}</div>
+    <div class="modal-section">Informes médico-legales</div>
+    ${informesHtml}
+    ${t.estado==='completado'?`
+    <div class="modal-section">Acta de asistencia</div>
+    <div><a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost" style="text-decoration:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Ver acta de asistencia
+    </a></div>`:''}
+  `;
+  document.getElementById('modal-detalle').classList.add('open');
+}
+
+// Auto-check session
+async function checkSession() {
+  if (!empresaToken) return;
+  try {
+    const res = await fetch('/api/empresa/mis-turnos', { headers: empresaHeaders() });
+    if (res.status === 401) { localStorage.removeItem('medgrup_empresa_token'); empresaToken = null; return; }
+    const data = await res.json();
+    // Token válido — buscar datos de empresa del localStorage
+    const savedName = localStorage.getItem('medgrup_empresa_nombre');
+    if (savedName) {
+      empresaActual = { nombre: savedName };
+      mostrarPortal();
+    }
+  } catch (e) {}
+}
+
+// Guardar nombre al loguearse
+const _orig = doLoginEmpresa;
+// Guardar nombre en localStorage al loguearse
+document.getElementById('emp-email').addEventListener('focus', () => {});
+
+// Override para guardar nombre
+async function doLoginEmpresa() {
+  const email = document.getElementById('emp-email').value.trim();
+  const password = document.getElementById('emp-password').value;
+  const errEl = document.getElementById('emp-error');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Completá email y contraseña'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/empresa/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const data = await res.json();
+    if (!data.ok) { errEl.textContent = data.error || 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
+    empresaToken = data.token;
+    empresaActual = data.empresa;
+    localStorage.setItem('medgrup_empresa_token', empresaToken);
+    localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
+    mostrarPortal();
+  } catch (e) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+}
+
+checkSession();
+</script>
+</body>
+</html>

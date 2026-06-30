@@ -443,6 +443,9 @@ tr:hover td{background:var(--azul-light);}
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos
       </div>
+      <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas
+      </div>
       <div class="nav-item" id="nav-perfil" onclick="showSection('perfil',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi perfil
       </div>
@@ -851,6 +854,61 @@ tr:hover td{background:var(--azul-light);}
       </div>
     </div>
   </div>
+  <!-- ── EMPRESAS (solo admin) ── -->
+  <div id="sec-empresas" style="display:none;">
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              Empresas con acceso al portal
+            </div>
+            <a href="/empresa" target="_blank" class="btn btn-ghost" style="padding:5px 11px;font-size:11.5px;text-decoration:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Ver portal empresa
+            </a>
+          </div>
+          <div id="empresas-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Nueva cuenta de empresa</div></div>
+          <div class="card-body">
+            <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:1rem;font-size:13px;color:var(--azul);">
+              La empresa podrá acceder al portal con estas credenciales y ver todos sus turnos e informes automáticamente.
+            </div>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label class="form-lbl">Nombre de la empresa</label>
+                <input type="text" id="emp-nombre" placeholder="Ej: LOGANT S.A." />
+                <div style="font-size:10.5px;color:var(--text3);margin-top:3px;">⚠ Debe coincidir exactamente con el nombre en los turnos</div>
+              </div>
+              <div class="form-group full">
+                <label class="form-lbl">Email de acceso</label>
+                <input type="text" id="emp-email-new" placeholder="rrhh@empresa.com"/>
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Contraseña inicial</label>
+                <input type="text" id="emp-pass-new" placeholder="Mín. 6 caracteres"/>
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Contacto (opcional)</label>
+                <input type="text" id="emp-contacto-new" placeholder="Nombre del responsable"/>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="crearEmpresa()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+              Crear cuenta de empresa
+            </button>
+            <div id="emp-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);"></div>
+            <div id="emp-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
 </div>
 </div>
@@ -942,6 +1000,8 @@ function mostrarApp(){
   document.getElementById('sidebar-email').textContent=usuarioActual.email;
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('t-fecha').value=new Date().toISOString().split('T')[0];
+  // Mostrar nav de empresas solo para admin
+  if(usuarioActual.rol==='admin') document.getElementById('nav-empresas').style.display='flex';
   // Ocultar dictamen al cargar
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('cert-ok').style.display='none';
@@ -959,15 +1019,16 @@ async function checkSession(){
 }
 
 function showSection(id,el){
-  ['agenda','medicos','perfil'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec)sec.style.display='none';});
+  ['agenda','medicos','perfil','empresas'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec)sec.style.display='none';});
   document.getElementById('sec-'+id).style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
+  if(id==='empresas')cargarEmpresas();
 }
 
 let medicosData=[];
@@ -1552,6 +1613,87 @@ function addLog(tipo,desc,sub){
 }
 
 async function copiar(txt){await navigator.clipboard.writeText(txt);alert('Link copiado ✓');}
+
+// ===== GESTIÓN DE EMPRESAS (admin) =====
+let empresasData = [];
+
+async function cargarEmpresas() {
+  try {
+    const res = await fetch('/api/admin/empresas', { headers: apiHeaders() });
+    const data = await res.json();
+    empresasData = data.empresas || [];
+    renderEmpresas();
+  } catch (e) { console.error(e); }
+}
+
+function renderEmpresas() {
+  if (!empresasData.length) {
+    document.getElementById('empresas-lista').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">No hay empresas con acceso aún. Creá la primera desde el formulario.</div>';
+    return;
+  }
+  document.getElementById('empresas-lista').innerHTML = `<table><thead><tr><th>Empresa</th><th>Email de acceso</th><th>Contacto</th><th>Estado</th><th></th></tr></thead><tbody>` +
+    empresasData.map(e => `<tr>
+      <td><div style="font-weight:600;">${e.nombre}</div></td>
+      <td><div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${e.email}</div></td>
+      <td><div style="font-size:12.5px;color:var(--text2);">${e.contacto||'—'}</div></td>
+      <td>${e.activo ? '<span class="badge b-green">● Activa</span>' : '<span class="badge b-gray">Inactiva</span>'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="resetPasswordEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')" title="Cambiar contraseña">Contraseña</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="desactivarEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')">Desactivar</button>
+      </td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+async function crearEmpresa() {
+  const nombre = document.getElementById('emp-nombre').value.trim();
+  const email = document.getElementById('emp-email-new').value.trim();
+  const password = document.getElementById('emp-pass-new').value.trim();
+  const contacto = document.getElementById('emp-contacto-new').value.trim();
+  document.getElementById('emp-ok').style.display = 'none';
+  document.getElementById('emp-err').style.display = 'none';
+  if (!nombre || !email || !password) {
+    document.getElementById('emp-err').textContent = 'Nombre, email y contraseña son obligatorios';
+    document.getElementById('emp-err').style.display = 'block'; return;
+  }
+  if (password.length < 6) {
+    document.getElementById('emp-err').textContent = 'La contraseña debe tener al menos 6 caracteres';
+    document.getElementById('emp-err').style.display = 'block'; return;
+  }
+  try {
+    const res = await fetch('/api/admin/empresas', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ nombre, email, password, contacto }) });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('emp-err').textContent = data.error || 'Error al crear';
+      document.getElementById('emp-err').style.display = 'block'; return;
+    }
+    document.getElementById('emp-ok').innerHTML = `✓ Cuenta creada para <strong>${nombre}</strong>.<br>Email: ${email} &nbsp;·&nbsp; Contraseña inicial: ${password}<br><a href="/empresa" target="_blank" style="color:var(--azul);">Abrir portal de empresa →</a>`;
+    document.getElementById('emp-ok').style.display = 'block';
+    document.getElementById('emp-nombre').value = '';
+    document.getElementById('emp-email-new').value = '';
+    document.getElementById('emp-pass-new').value = '';
+    document.getElementById('emp-contacto-new').value = '';
+    await cargarEmpresas();
+  } catch (e) {
+    document.getElementById('emp-err').textContent = 'Error de conexión';
+    document.getElementById('emp-err').style.display = 'block';
+  }
+}
+
+async function resetPasswordEmpresa(id, nombre) {
+  const nueva = prompt(`Nueva contraseña para ${nombre}:`);
+  if (!nueva || nueva.length < 6) { alert('Contraseña de al menos 6 caracteres'); return; }
+  const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ password: nueva }) });
+  const data = await res.json();
+  if (data.ok) alert(`✓ Contraseña actualizada para ${nombre}\nNueva: ${nueva}`);
+  else alert('Error: ' + (data.error||'—'));
+}
+
+async function desactivarEmpresa(id, nombre) {
+  if (!confirm(`¿Desactivar el acceso de ${nombre}?`)) return;
+  const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ activo: false }) });
+  const data = await res.json();
+  if (data.ok) { await cargarEmpresas(); }
+}
 
 checkSession();
 </script>
