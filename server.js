@@ -194,6 +194,14 @@ app.get('/api/empresa/mis-turnos', empresaAuthMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Lista simple de nombres de empresas activas (para selects, accesible a cualquier usuario logueado)
+app.get('/api/empresas-nombres', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT nombre FROM empresas_clientes WHERE activo=true ORDER BY nombre');
+    res.json({ ok: true, empresas: r.rows.map(x => x.nombre) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== CRUD EMPRESAS (solo admin) =====
 app.get('/api/admin/empresas', adminMiddleware, async (req, res) => {
   try {

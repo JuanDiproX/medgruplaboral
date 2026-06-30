@@ -927,7 +927,7 @@ tr:hover td{background:var(--azul-light);}
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Empresa</label>
-        <select id="t-empresa"><option value="LOGANT S.A.">LOGANT S.A.</option><option value="Gloker Trucks S.A.">Gloker Trucks S.A.</option><option value="Huinoil S.A.">Huinoil S.A.</option><option value="CEMEP">CEMEP</option><option value="Grupo L">Grupo L</option><option value="Otra">Otra empresa</option></select>
+        <select id="t-empresa"><option value="">Cargando empresas...</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
@@ -1005,7 +1005,7 @@ function mostrarApp(){
   // Ocultar dictamen al cargar
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('cert-ok').style.display='none';
-  cargarMedicos();cargarTurnos();
+  cargarMedicos();cargarTurnos();cargarEmpresasSelect();
 }
 
 async function checkSession(){
@@ -1141,7 +1141,27 @@ function verLinks(id){
   document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
 }
 
-function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';cargarMedicos();}
+function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';cargarMedicos();cargarEmpresasSelect();}
+
+// Empresas históricas conocidas (para no perder turnos viejos si la empresa no fue migrada al portal)
+const EMPRESAS_HISTORICAS=['LOGANT S.A.','Gloker Trucks S.A.','Huinoil S.A.','CEMEP','Grupo L'];
+
+async function cargarEmpresasSelect(){
+  const sel=document.getElementById('t-empresa');
+  const valorPrevio=sel.value;
+  try{
+    const res=await fetch('/api/empresas-nombres',{headers:apiHeaders()});
+    const data=await res.json();
+    const delPortal=data.empresas||[];
+    // Combinar: empresas del portal primero, luego históricas que no estén ya repetidas
+    const todas=[...new Set([...delPortal,...EMPRESAS_HISTORICAS])].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML=todas.map(e=>`<option value="${e}">${e}</option>`).join('')+`<option value="Otra">Otra empresa</option>`;
+    if(valorPrevio&&todas.includes(valorPrevio))sel.value=valorPrevio;
+  }catch(e){
+    // Si falla, al menos dejamos las históricas para no bloquear la creación de turnos
+    sel.innerHTML=EMPRESAS_HISTORICAS.map(e=>`<option value="${e}">${e}</option>`).join('')+`<option value="Otra">Otra empresa</option>`;
+  }
+}
 function cerrarModal(){document.getElementById('modal-turno').classList.remove('open');}
 
 async function guardarTurno(){
