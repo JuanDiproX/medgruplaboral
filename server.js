@@ -150,7 +150,7 @@ app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Faltan datos' });
   try {
-    const r = await pool.query('SELECT * FROM usuarios WHERE email=$1 AND password_hash=$2 AND activo=true', [email, hashPassword(password)]);
+    const r = await pool.query('SELECT * FROM usuarios WHERE LOWER(email)=LOWER($1) AND password_hash=$2 AND activo=true', [email.trim(), hashPassword(password.trim())]);
     if (!r.rows.length) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     const u = r.rows[0];
     const token = generateToken();
@@ -166,7 +166,7 @@ app.post('/api/empresa/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Faltan datos' });
   try {
-    const r = await pool.query('SELECT * FROM empresas_clientes WHERE email=$1 AND password_hash=$2 AND activo=true', [email, hashPassword(password)]);
+    const r = await pool.query('SELECT * FROM empresas_clientes WHERE LOWER(email)=LOWER($1) AND password_hash=$2 AND activo=true', [email.trim(), hashPassword(password.trim())]);
     if (!r.rows.length) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     const e = r.rows[0];
     const token = generateToken();
@@ -216,7 +216,7 @@ app.post('/api/admin/empresas', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
       'INSERT INTO empresas_clientes (nombre,email,password_hash,contacto) VALUES ($1,$2,$3,$4) RETURNING id,nombre,email,contacto,creado_en',
-      [nombre, email, hashPassword(password), contacto||'']
+      [nombre.trim(), email.trim().toLowerCase(), hashPassword(password.trim()), contacto||'']
     );
     res.json({ ok: true, empresa: r.rows[0] });
   } catch (err) {
