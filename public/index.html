@@ -379,7 +379,6 @@ tr:hover td{background:var(--azul-light);}
       <img src="/logo.png" alt="MEDGRUP Servicio Médico" class="login-logo-img"/>
     </div>
     <p class="login-tagline">Plataforma integral de gestión médico-laboral para empresas de Tierra del Fuego y todo el país.</p>
-    <p class="login-tagline">Plataforma integral de gestión médico-laboral para empresas de Tierra del Fuego y todo el país.</p>
     <div class="login-features">
       <div class="login-feat">
         <div class="login-feat-icon"><svg viewBox="0 0 24 24"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
@@ -401,26 +400,56 @@ tr:hover td{background:var(--azul-light);}
   </div>
   <div class="login-right">
     <div class="login-form-wrap">
-      <div style="margin-bottom:1.75rem;">
-        <div class="login-form-title">Bienvenido</div>
-        <div class="login-form-sub">Ingresá con tus credenciales para acceder</div>
+
+      <!-- Toggle de tipo de acceso -->
+      <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px;margin-bottom:1.75rem;gap:4px;">
+        <button id="toggle-medgrup" onclick="setLoginMode('medgrup')" style="flex:1;padding:9px;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;box-shadow:0 2px 8px rgba(58,110,168,.25);">
+          MEDGRUP
+        </button>
+        <button id="toggle-empresa" onclick="setLoginMode('empresa')" style="flex:1;padding:9px;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:transparent;color:var(--text3);">
+          Empresa
+        </button>
       </div>
-      <div class="login-form-group">
-        <label class="login-label">Email</label>
-        <input class="login-input" type="text" id="login-email" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+
+      <!-- Login MEDGRUP -->
+      <div id="panel-medgrup">
+        <div style="margin-bottom:1.5rem;">
+          <div class="login-form-title">Bienvenido</div>
+          <div class="login-form-sub">Acceso para médicos y administradores</div>
+        </div>
+        <div class="login-form-group">
+          <label class="login-label">Email</label>
+          <input class="login-input" type="text" id="login-email" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+        <div class="login-form-group">
+          <label class="login-label">Contraseña</label>
+          <input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+        <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar a la plataforma →</button>
+        <div class="login-error" id="login-error"></div>
       </div>
-      <div class="login-form-group">
-        <label class="login-label">Contraseña</label>
-        <input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+
+      <!-- Login Empresa -->
+      <div id="panel-empresa" style="display:none;">
+        <div style="margin-bottom:1.5rem;">
+          <div class="login-form-title">Portal de empresa</div>
+          <div class="login-form-sub">Accedé a los informes y actas de tu personal</div>
+        </div>
+        <div class="login-form-group">
+          <label class="login-label">Email de empresa</label>
+          <input class="login-input" type="text" id="emp-login-email" placeholder="empresa@dominio.com" onkeydown="if(event.key==='Enter')doLoginEmpresaDesdeMain()"/>
+        </div>
+        <div class="login-form-group">
+          <label class="login-label">Contraseña</label>
+          <input class="login-input" type="password" id="emp-login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLoginEmpresaDesdeMain()"/>
+        </div>
+        <button class="login-btn" onclick="doLoginEmpresaDesdeMain()" style="background:linear-gradient(135deg,var(--rosa),var(--rosa-dark));">Ingresar al portal →</button>
+        <div class="login-error" id="emp-login-error"></div>
+        <div style="margin-top:1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;font-size:12px;color:var(--text3);">
+          ¿No tenés acceso? Contactanos en <strong style="color:var(--azul);">administracion@medgrup.com.ar</strong>
+        </div>
       </div>
-      <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar a la plataforma →</button>
-      <div class="login-error" id="login-error"></div>
-      <div class="login-divider">credenciales de acceso</div>
-      <div class="login-hint">
-        <strong>Dr. Barboza:</strong> barboza@medgrup.com / barboza2026<br>
-        <strong>Dr. Muroni:</strong> muroni@medgrup.com / muroni2026<br>
-        <strong>Admin:</strong> adm.medgrup@gmail.com / medgrup2026
-      </div>
+
     </div>
   </div>
 </div>
@@ -959,6 +988,46 @@ function empresaTag(emp){return`<span class="empresa-tag ${EMPRESAS[emp]||'emp-o
 let sessionToken=localStorage.getItem('medgrup_token');
 let usuarioActual=null;
 function apiHeaders(){return{'Content-Type':'application/json','x-session-token':sessionToken||''};}
+
+function setLoginMode(modo){
+  const esMedgrup = modo === 'medgrup';
+  document.getElementById('panel-medgrup').style.display = esMedgrup ? 'block' : 'none';
+  document.getElementById('panel-empresa').style.display = esMedgrup ? 'none' : 'block';
+  const btnMedgrup = document.getElementById('toggle-medgrup');
+  const btnEmpresa = document.getElementById('toggle-empresa');
+  if(esMedgrup){
+    btnMedgrup.style.background = 'linear-gradient(135deg,var(--azul),var(--celeste))';
+    btnMedgrup.style.color = 'white';
+    btnMedgrup.style.boxShadow = '0 2px 8px rgba(58,110,168,.25)';
+    btnEmpresa.style.background = 'transparent';
+    btnEmpresa.style.color = 'var(--text3)';
+    btnEmpresa.style.boxShadow = 'none';
+  } else {
+    btnEmpresa.style.background = 'linear-gradient(135deg,var(--rosa),var(--rosa-dark))';
+    btnEmpresa.style.color = 'white';
+    btnEmpresa.style.boxShadow = '0 2px 8px rgba(192,54,90,.25)';
+    btnMedgrup.style.background = 'transparent';
+    btnMedgrup.style.color = 'var(--text3)';
+    btnMedgrup.style.boxShadow = 'none';
+  }
+}
+
+async function doLoginEmpresaDesdeMain(){
+  const email = document.getElementById('emp-login-email').value.trim();
+  const password = document.getElementById('emp-login-password').value;
+  const errEl = document.getElementById('emp-login-error');
+  errEl.style.display = 'none';
+  if(!email || !password){ errEl.textContent='Completá email y contraseña'; errEl.style.display='block'; return; }
+  try{
+    const res = await fetch('/api/empresa/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent=data.error||'Credenciales incorrectas'; errEl.style.display='block'; return; }
+    // Guardar token y redirigir al portal de empresa
+    localStorage.setItem('medgrup_empresa_token', data.token);
+    localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
+    window.location.href = '/empresa';
+  } catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
 
 async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
