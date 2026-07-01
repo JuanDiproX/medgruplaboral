@@ -3,14 +3,30 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>MEDGRUP — Portal de Empresa</title>
+<title>MEDGRUP — Portal Empresa</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-:root{--azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;--rosa:#c0365a;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;--celeste:#7aaed4;--celeste-light:#edf5fb;--bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;--border:rgba(58,110,168,0.12);--border2:rgba(58,110,168,0.2);--text:#1a2433;--text2:#5a6575;--text3:#97a3b4;--r:16px;--r-sm:11px;--shadow-sm:0 1px 3px rgba(42,80,128,0.06),0 2px 10px rgba(42,80,128,0.05);--shadow:0 2px 6px rgba(42,80,128,0.08),0 8px 28px rgba(42,80,128,0.08);}
+:root{
+  --azul:#3a6ea8; --azul-dark:#2a5080; --azul-deep:#1e3d6e;
+  --azul-light:#e8f0f8; --azul-mid:#c8ddf0;
+  --rosa:#c0365a; --rosa-dark:#9a2847; --rosa-light:#faedf1; --rosa-mid:#f0b8c8;
+  --celeste:#7aaed4; --celeste-light:#edf5fb;
+  --verde:#1e6640; --verde-light:#e0f2e9;
+  --amber:#8f5000; --amber-light:#fdf0d8;
+  --bg:#f4f7fb; --surface:#fff; --surface2:#f8fafc; --surface3:#eef3f9;
+  --border:rgba(58,110,168,0.1); --border2:rgba(58,110,168,0.2);
+  --text:#0f172a; --text2:#475569; --text3:#94a3b8;
+  --r:14px; --r-sm:10px; --r-xs:6px;
+  --shadow-sm:0 1px 2px rgba(15,23,42,0.04),0 1px 3px rgba(15,23,42,0.06);
+  --shadow:0 2px 4px rgba(15,23,42,0.06),0 8px 24px rgba(15,23,42,0.06);
+  --shadow-lg:0 4px 12px rgba(15,23,42,0.08),0 24px 48px rgba(15,23,42,0.12);
+}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%,rgba(122,174,212,0.12),transparent 35%),radial-gradient(circle at 100% 100%,rgba(192,54,90,0.06),transparent 35%),var(--bg);background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
-/* LOGIN */
+/* ═══════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════ */
 .login-page{display:flex;min-height:100vh;}
 .login-left{flex:1;background:linear-gradient(160deg,#1e3d6e 0%,#2a5080 40%,#3a6ea8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;position:relative;overflow:hidden;}
 .login-left::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
@@ -23,70 +39,318 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 .login-btn:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);}
 .login-error{background:var(--rosa-light);border:1.5px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa);margin-top:12px;display:none;}
 
-/* APP */
+/* ═══════════════════════════════════════
+   APP LAYOUT
+═══════════════════════════════════════ */
 .app-page{display:none;}
-.topbar{background:white;border-bottom:1px solid var(--border);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm);}
-.topbar-logo{display:flex;align-items:center;gap:10px;}
+
+/* TOP BAR */
+.topbar{
+  background:white;border-bottom:1px solid var(--border);
+  padding:0 2.5rem;height:68px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm);
+}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.topbar-logo{display:flex;align-items:center;gap:11px;padding-right:16px;border-right:1px solid var(--border);}
 .topbar-logo img{height:32px;}
-.empresa-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);}
-.empresa-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
-.main{max-width:1100px;margin:0 auto;padding:2rem 2.5rem;}
+.topbar-brand{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
+.topbar-tag{font-size:9.5px;color:var(--rosa);font-family:'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;margin-top:2px;font-weight:500;}
+.empresa-info{display:flex;flex-direction:column;}
+.empresa-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;}
+.empresa-name{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px;margin-top:2px;}
+
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.top-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--verde-light);color:var(--verde);
+  padding:6px 11px;border-radius:20px;font-size:11.5px;font-weight:600;
+}
+.top-badge-dot{width:6px;height:6px;background:var(--verde);border-radius:50%;animation:pulse 2s infinite;}
+.btn-logout-top{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 14px;
+  border:1px solid var(--border2);border-radius:var(--r-sm);
+  background:white;color:var(--text2);font-size:12.5px;font-weight:500;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .14s;
+}
+.btn-logout-top:hover{background:var(--rosa-light);color:var(--rosa);border-color:var(--rosa-mid);}
+.btn-logout-top svg{width:13px;height:13px;}
+
+/* MAIN */
+.main{max-width:1240px;margin:0 auto;padding:2rem 2.5rem 3rem;}
+
+/* HEADER */
+.page-header{margin-bottom:1.75rem;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.page-header-left{}
+.page-title{
+  font-family:'Syne',sans-serif;font-size:28px;font-weight:700;
+  letter-spacing:-0.6px;color:var(--text);
+  display:flex;align-items:center;gap:12px;
+}
+.page-title::before{
+  content:'';width:5px;height:28px;border-radius:4px;
+  background:linear-gradient(135deg,var(--azul),var(--celeste));display:inline-block;
+}
+.page-sub{font-size:13.5px;color:var(--text2);margin-top:6px;margin-left:17px;}
+.today-chip{
+  font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);
+  background:white;border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:9px 14px;box-shadow:var(--shadow-sm);
+}
 
 /* STATS */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1.75rem;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.4rem;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
-.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-.stat-blue::before{background:linear-gradient(90deg,#3a6ea8,#7aaed4);}
-.stat-green::before{background:linear-gradient(90deg,#1e6640,#3a9460);}
-.stat-amber::before{background:linear-gradient(90deg,#8f5000,#c47a00);}
-.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:6px;}
-.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--text);}
-.stat-hint{font-size:11px;color:var(--text3);margin-top:4px;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:1.75rem;}
+.stat-card{
+  background:white;border:1px solid var(--border);border-radius:var(--r);
+  padding:1.4rem 1.5rem;box-shadow:var(--shadow-sm);
+  position:relative;overflow:hidden;transition:all .2s;
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.stat-blue::before{background:linear-gradient(90deg,var(--azul),var(--celeste));}
+.stat-green::before{background:linear-gradient(90deg,var(--verde),#3a9460);}
+.stat-amber::before{background:linear-gradient(90deg,var(--amber),#c47a00);}
+
+.stat-icon{
+  width:42px;height:42px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:12px;
+}
+.stat-blue .stat-icon{background:var(--azul-light);color:var(--azul);}
+.stat-green .stat-icon{background:var(--verde-light);color:var(--verde);}
+.stat-amber .stat-icon{background:var(--amber-light);color:var(--amber);}
+.stat-icon svg{width:20px;height:20px;stroke-width:2;}
+
+.stat-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;font-weight:600;}
+.stat-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:700;color:var(--text);letter-spacing:-0.5px;line-height:1.1;}
+.stat-hint{font-size:12px;color:var(--text3);margin-top:4px;}
+
+/* CARD */
+.card{
+  background:white;border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--shadow-sm);overflow:hidden;
+}
+.card-hdr{
+  padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,var(--surface2),white);
+}
+.card-title{
+  font-size:14.5px;font-weight:600;color:var(--text);
+  display:flex;align-items:center;gap:9px;letter-spacing:-0.2px;
+}
+.card-title svg{width:16px;height:16px;color:var(--azul);}
+.card-count{
+  background:var(--azul-light);color:var(--azul);
+  padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;
+  font-family:'DM Mono',monospace;
+}
+
+/* SEARCH BAR */
+.search-bar{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 1.5rem;border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.search-wrap{flex:1;position:relative;}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none;}
+.search-input{
+  width:100%;font-family:'DM Sans',sans-serif;font-size:13.5px;
+  padding:9px 12px 9px 36px;border:1.5px solid var(--border2);border-radius:var(--r-sm);
+  background:white;color:var(--text);outline:none;transition:all .12s;
+}
+.search-input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(58,110,168,0.08);}
+.filter{
+  font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 32px 9px 12px;
+  border:1.5px solid var(--border2);border-radius:var(--r-sm);
+  background:white;color:var(--text);outline:none;cursor:pointer;
+  appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.filter:focus{border-color:var(--azul);}
 
 /* TABLE */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:1.25rem;}
-.card-hdr{padding:1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--surface2),var(--surface));}
-.card-title{font-size:13.5px;font-weight:600;color:var(--text);}
-.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;}
-.b-blue{background:var(--azul-light);color:var(--azul);}
-.b-green{background:#e0f2e9;color:#1e6640;}
-.b-amber{background:#fdf0d8;color:#8f5000;}
-.b-gray{background:#f1efeb;color:var(--text2);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.8px;font-family:'DM Mono',monospace;
+  color:var(--text3);padding:12px 1.5rem;
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  font-weight:600;
+}
+tbody td{
+  padding:14px 1.5rem;border-bottom:1px solid var(--border);
+  color:var(--text);vertical-align:middle;
+}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .12s;}
+tbody tr:hover{background:var(--azul-light);}
+
+.paciente-cell{
+  display:flex;align-items:center;gap:11px;
+}
+.avatar{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));
+  color:var(--azul);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  border:1px solid var(--azul-mid);
+}
+.paciente-nombre{font-weight:600;color:var(--text);letter-spacing:-0.1px;}
+.paciente-sub{font-size:11px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace;}
+
+.fecha-cell{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--text2);}
+.fecha-day{font-weight:600;color:var(--text);text-transform:capitalize;}
+.fecha-time{font-size:11px;color:var(--text3);margin-top:1px;}
+
+.tipo-badge{
+  display:inline-block;font-size:11.5px;padding:3px 10px;border-radius:6px;
+  background:var(--surface3);color:var(--text2);font-weight:500;
+}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;
+  font-family:'DM Sans',sans-serif;letter-spacing:-0.1px;
+}
+.b-verde{background:var(--verde-light);color:var(--verde);}
+.b-verde::before{content:'';width:6px;height:6px;background:var(--verde);border-radius:50%;}
+.b-amber{background:var(--amber-light);color:var(--amber);}
+.b-amber::before{content:'';width:6px;height:6px;background:var(--amber);border-radius:50%;}
 .b-rosa{background:var(--rosa-light);color:var(--rosa);}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap;}
-.btn svg{width:13px;height:13px;pointer-events:none;}
-.btn-primary{background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;box-shadow:0 3px 10px rgba(58,110,168,.25);}
-.btn-primary:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);}
-.btn-ghost{background:var(--surface);border-color:var(--border2);color:var(--text2);}
-.btn-ghost:hover{background:var(--azul-light);color:var(--azul);}
-.btn-sm{padding:5px 11px;font-size:11.5px;}
+.b-rosa::before{content:'';width:6px;height:6px;background:var(--rosa);border-radius:50%;animation:pulse 1.5s infinite;}
+.b-gris{background:var(--surface3);color:var(--text2);}
+.b-gris::before{content:'';width:6px;height:6px;background:var(--text3);border-radius:50%;}
+.b-blue{background:var(--azul-light);color:var(--azul);}
 
-.search-bar{display:flex;align-items:center;gap:10px;padding:12px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface2);}
-.search-input{flex:1;font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:white;color:var(--text);outline:none;}
-.search-input:focus{border-color:var(--azul);}
-select.filter{font-family:'DM Sans',sans-serif;font-size:12.5px;padding:8px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:white;color:var(--text);outline:none;cursor:pointer;}
-select.filter:focus{border-color:var(--azul);}
+.medicos-cell{font-size:12px;color:var(--text2);line-height:1.4;}
+.medico-tag{
+  display:inline-block;background:var(--celeste-light);color:var(--azul-dark);
+  padding:2px 8px;border-radius:5px;font-size:11px;font-weight:500;
+  margin:1px 3px 1px 0;
+}
 
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;color:var(--text3);padding:10px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface2);}
-td{padding:12px 1.4rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:var(--azul-light);}
+.docs-cell{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:6px 11px;border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:600;
+  cursor:pointer;transition:all .14s;border:1px solid transparent;
+  white-space:nowrap;text-decoration:none;
+}
+.btn svg{width:12px;height:12px;pointer-events:none;}
+.btn-primary{background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;box-shadow:0 2px 6px rgba(58,110,168,.2);}
+.btn-primary:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);box-shadow:0 3px 10px rgba(58,110,168,.3);}
+.btn-ghost{background:white;border-color:var(--border2);color:var(--text2);}
+.btn-ghost:hover{background:var(--azul-light);color:var(--azul);border-color:var(--azul-mid);}
+.btn-outline{background:transparent;border-color:var(--border2);color:var(--text3);}
+.btn-outline:hover{border-color:var(--azul);color:var(--azul);background:var(--azul-light);}
+.sin-info{font-size:11px;color:var(--text3);font-style:italic;}
 
-.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px;}
+/* EMPTY */
+.empty{
+  text-align:center;padding:4rem 2rem;color:var(--text3);
+}
+.empty-icon{
+  width:60px;height:60px;border-radius:16px;
+  background:var(--surface3);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 14px;
+}
+.empty-icon svg{width:28px;height:28px;color:var(--text3);}
+.empty-title{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:4px;}
+.empty-sub{font-size:12.5px;}
 
 /* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg{
+  display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);
+  z-index:300;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);padding:20px;
+}
 .modal-bg.open{display:flex;}
-.modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:fadeUp .2s ease both;}
-.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:1.25rem;}
-.modal-section{font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);padding:10px 0 6px;border-bottom:1px solid var(--border);margin:14px 0 10px;}
-.dl{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;font-size:13px;}
-.dl-label{color:var(--text3);}
-.dl-value{font-weight:500;color:var(--text);}
+.modal{
+  background:white;border-radius:16px;
+  width:100%;max-width:680px;max-height:90vh;overflow-y:auto;
+  box-shadow:var(--shadow-lg);animation:modalUp .25s ease both;
+}
+.modal-head{
+  padding:1.4rem 1.6rem 1.1rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:linear-gradient(180deg,var(--surface2),white);
+}
+.modal-head-left{display:flex;align-items:center;gap:12px;}
+.modal-avatar{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));
+  color:var(--azul);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  border:1px solid var(--azul-mid);
+}
+.modal-title{
+  font-family:'Syne',sans-serif;font-size:18px;font-weight:700;
+  letter-spacing:-0.3px;line-height:1.2;
+}
+.modal-subtitle{font-size:11.5px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace;}
+.modal-close{
+  background:var(--surface3);border:none;cursor:pointer;
+  width:32px;height:32px;border-radius:8px;
+  color:var(--text2);font-size:18px;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.modal-close:hover{background:var(--rosa-light);color:var(--rosa);}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:3px;}
+.modal-body{padding:1.4rem 1.6rem;}
+.modal-section{
+  font-size:10px;text-transform:uppercase;letter-spacing:1.2px;
+  font-family:'DM Mono',monospace;color:var(--text3);
+  margin:1.4rem 0 12px;font-weight:600;
+  display:flex;align-items:center;gap:8px;
+}
+.modal-section:first-child{margin-top:0;}
+.modal-section::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.info-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:10px 20px;
+  padding:14px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);
+}
+.info-item{}
+.info-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px;}
+.info-value{font-size:13.5px;font-weight:600;color:var(--text);}
+
+.medicos-list{display:flex;flex-wrap:wrap;gap:6px;}
+
+.informe-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;margin-bottom:10px;
+}
+.informe-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:10px;margin-bottom:10px;
+}
+.informe-medico{font-size:13.5px;font-weight:600;color:var(--text);}
+.informe-numero{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.informe-conc{
+  font-size:12.5px;color:var(--text2);
+  line-height:1.55;margin-bottom:10px;
+  padding:10px 12px;background:white;border-radius:8px;border:1px solid var(--border);
+}
+
+.sin-informe-box{
+  padding:20px;text-align:center;
+  background:var(--amber-light);border:1px dashed var(--amber);
+  border-radius:12px;color:var(--amber);font-size:13px;
+}
+
+@keyframes modalUp{from{opacity:0;transform:translateY(20px) scale(0.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--azul);}
 </style>
 </head>
 <body>
@@ -99,17 +363,17 @@ tr:hover td{background:var(--azul-light);}
     </div>
     <p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.75;text-align:center;max-width:320px;position:relative;">Portal exclusivo para empresas clientes. Accedé a los informes y actas de asistencia de su personal.</p>
     <div style="margin-top:2rem;display:flex;flex-direction:column;gap:10px;max-width:280px;position:relative;">
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.85);">
         <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg></div>
         Informes médico-legales en PDF
       </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.85);">
         <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
         Actas de asistencia automáticas
       </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);">
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.85);">
         <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="width:14px;height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-        Historial de evaluaciones de su personal
+        Historial de evaluaciones
       </div>
     </div>
   </div>
@@ -139,55 +403,71 @@ tr:hover td{background:var(--azul-light);}
 <!-- PORTAL APP -->
 <div class="app-page" id="app-page">
   <div class="topbar">
-    <div class="topbar-logo">
-      <img src="/logo.png" alt="MEDGRUP"/>
-      <div>
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <img src="/logo.png" alt="MEDGRUP"/>
+        <div>
+          <div class="topbar-brand">MEDGRUP</div>
+          <div class="topbar-tag">Portal empresa</div>
+        </div>
+      </div>
+      <div class="empresa-info">
+        <div class="empresa-label">Empresa</div>
         <div class="empresa-name" id="top-empresa-name">—</div>
-        <div class="empresa-sub">Portal de empresa — MEDGRUP</div>
       </div>
     </div>
-    <button class="btn btn-ghost" style="font-size:12px;" onclick="doLogoutEmpresa()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Cerrar sesión
-    </button>
+    <div class="topbar-right">
+      <div class="top-badge"><div class="top-badge-dot"></div>Sesión activa</div>
+      <button class="btn-logout-top" onclick="doLogoutEmpresa()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
   </div>
 
   <div class="main">
-    <div style="margin-bottom:1.75rem;">
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px;">
-        <span style="width:4px;height:22px;border-radius:3px;background:linear-gradient(135deg,#3a6ea8,#7aaed4);display:inline-block;"></span>
-        Evaluaciones de su personal
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">Evaluaciones médicas</div>
+        <div class="page-sub">Historial completo de evaluaciones de su personal con acceso a informes y actas</div>
       </div>
-      <div style="font-size:12px;color:var(--text3);margin-top:4px;margin-left:14px;">Informes y actas de asistencia disponibles para descarga</div>
+      <div class="today-chip" id="today-chip">—</div>
     </div>
 
-    <!-- Stats -->
     <div class="stats-row">
       <div class="stat-card stat-blue">
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
         <div class="stat-lbl">Total evaluaciones</div>
         <div class="stat-val" id="stat-total">0</div>
-        <div class="stat-hint">registradas</div>
+        <div class="stat-hint">registradas en la plataforma</div>
       </div>
       <div class="stat-card stat-green">
-        <div class="stat-lbl">Con informe</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 15l2 2 4-4"/></svg></div>
+        <div class="stat-lbl">Con informe emitido</div>
         <div class="stat-val" id="stat-con-informe">0</div>
-        <div class="stat-hint">dictámenes emitidos</div>
+        <div class="stat-hint">dictámenes disponibles</div>
       </div>
       <div class="stat-card stat-amber">
+        <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
         <div class="stat-lbl">Pendientes</div>
         <div class="stat-val" id="stat-pendiente">0</div>
-        <div class="stat-hint">sin completar</div>
+        <div class="stat-hint">a la espera de realización</div>
       </div>
     </div>
 
-    <!-- Tabla de turnos -->
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">Historial de evaluaciones</div>
-        <span class="badge b-blue" id="badge-count">0</span>
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+          Historial de evaluaciones
+        </div>
+        <span class="card-count" id="badge-count">0</span>
       </div>
       <div class="search-bar">
-        <input class="search-input" type="text" id="search-input" placeholder="Buscar por empleado..." oninput="filtrarTurnos()"/>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="search-input" type="text" id="search-input" placeholder="Buscar por nombre de empleado..." oninput="filtrarTurnos()"/>
+        </div>
         <select class="filter" id="filter-estado" onchange="filtrarTurnos()">
           <option value="">Todos los estados</option>
           <option value="completado">Completados</option>
@@ -203,11 +483,17 @@ tr:hover td{background:var(--azul-light);}
 <!-- MODAL DETALLE -->
 <div class="modal-bg" id="modal-detalle">
   <div class="modal">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-      <div class="modal-title" id="modal-paciente-nombre" style="margin-bottom:0;">—</div>
-      <button onclick="document.getElementById('modal-detalle').classList.remove('open')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:22px;line-height:1;">×</button>
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div class="modal-avatar" id="modal-avatar">—</div>
+        <div>
+          <div class="modal-title" id="modal-paciente-nombre">—</div>
+          <div class="modal-subtitle" id="modal-paciente-sub">—</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-detalle').classList.remove('open')">×</button>
     </div>
-    <div id="modal-body"></div>
+    <div class="modal-body" id="modal-body"></div>
   </div>
 </div>
 
@@ -216,52 +502,89 @@ let empresaToken = localStorage.getItem('medgrup_empresa_token');
 let empresaActual = null;
 let turnosData = [];
 
-function empresaHeaders() { return { 'Content-Type': 'application/json', 'x-empresa-token': empresaToken||'' }; }
+function empresaHeaders(){return{'Content-Type':'application/json','x-empresa-token':empresaToken||''};}
 
-async function doLoginEmpresa() {
+// PARSER DE FECHA ROBUSTO
+// El backend puede devolver "2026-07-03" o "2026-07-03T03:00:00.000Z" — ambos deben funcionar
+function parseFechaTurno(fechaStr){
+  if(!fechaStr) return null;
+  // Extraer solo la parte YYYY-MM-DD y crear la fecha al mediodía en local para evitar problemas de timezone
+  const m = String(fechaStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  const [_, y, mo, d] = m;
+  return new Date(parseInt(y), parseInt(mo)-1, parseInt(d), 12, 0, 0);
+}
+
+function formatFechaCorta(fechaStr){
+  const d = parseFechaTurno(fechaStr);
+  if(!d) return '—';
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function formatFechaLarga(fechaStr){
+  const d = parseFechaTurno(fechaStr);
+  if(!d) return '—';
+  const s = d.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function formatFechaDia(fechaStr){
+  const d = parseFechaTurno(fechaStr);
+  if(!d) return '—';
+  const s = d.toLocaleDateString('es-AR', { weekday:'short', day:'2-digit', month:'short' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function iniciales(nombre){
+  if(!nombre) return '—';
+  return nombre.trim().split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase();
+}
+
+async function doLoginEmpresa(){
   const email = document.getElementById('emp-email').value.trim();
   const password = document.getElementById('emp-password').value;
   const errEl = document.getElementById('emp-error');
   errEl.style.display = 'none';
-  if (!email || !password) { errEl.textContent = 'Completá email y contraseña'; errEl.style.display = 'block'; return; }
-  try {
-    const res = await fetch('/api/empresa/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  if(!email||!password){ errEl.textContent='Completá email y contraseña'; errEl.style.display='block'; return; }
+  try{
+    const res = await fetch('/api/empresa/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
     const data = await res.json();
-    if (!data.ok) { errEl.textContent = data.error || 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
-    empresaToken = data.token;
-    empresaActual = data.empresa;
+    if(!data.ok){ errEl.textContent=data.error||'Credenciales incorrectas'; errEl.style.display='block'; return; }
+    empresaToken = data.token; empresaActual = data.empresa;
     localStorage.setItem('medgrup_empresa_token', empresaToken);
+    localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
     mostrarPortal();
-  } catch (e) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+  } catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
-function doLogoutEmpresa() {
-  fetch('/api/empresa/logout', { method: 'POST', headers: empresaHeaders() });
+function doLogoutEmpresa(){
+  fetch('/api/empresa/logout',{method:'POST',headers:empresaHeaders()});
   localStorage.removeItem('medgrup_empresa_token');
-  empresaToken = null; empresaActual = null;
-  document.getElementById('app-page').style.display = 'none';
-  document.getElementById('login-page').style.display = 'flex';
+  localStorage.removeItem('medgrup_empresa_nombre');
+  empresaToken=null; empresaActual=null;
+  document.getElementById('app-page').style.display='none';
+  document.getElementById('login-page').style.display='flex';
 }
 
-async function mostrarPortal() {
-  document.getElementById('login-page').style.display = 'none';
-  document.getElementById('app-page').style.display = 'block';
+async function mostrarPortal(){
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app-page').style.display='block';
   document.getElementById('top-empresa-name').textContent = empresaActual.nombre;
+  const hoy = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('today-chip').textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
   await cargarTurnos();
 }
 
-async function cargarTurnos() {
-  try {
-    const res = await fetch('/api/empresa/mis-turnos', { headers: empresaHeaders() });
-    if (res.status === 401) { doLogoutEmpresa(); return; }
+async function cargarTurnos(){
+  try{
+    const res = await fetch('/api/empresa/mis-turnos',{headers:empresaHeaders()});
+    if(res.status===401){ doLogoutEmpresa(); return; }
     const data = await res.json();
     turnosData = data.turnos || [];
     actualizarStats();
     filtrarTurnos();
-  } catch (e) { console.error(e); }
+  } catch(e){ console.error(e); }
 }
 
-function actualizarStats() {
+function actualizarStats(){
   document.getElementById('stat-total').textContent = turnosData.length;
   const conInforme = turnosData.filter(t => t.dictamenes_data && t.dictamenes_data.length > 0).length;
   document.getElementById('stat-con-informe').textContent = conInforme;
@@ -269,7 +592,7 @@ function actualizarStats() {
   document.getElementById('stat-pendiente').textContent = pendientes;
 }
 
-function filtrarTurnos() {
+function filtrarTurnos(){
   const q = document.getElementById('search-input').value.toLowerCase();
   const est = document.getElementById('filter-estado').value;
   const filtrados = turnosData.filter(t => {
@@ -281,130 +604,163 @@ function filtrarTurnos() {
   renderTabla(filtrados);
 }
 
-function renderTabla(turnos) {
-  if (!turnos.length) {
-    document.getElementById('turnos-tabla').innerHTML = '<div class="empty">No hay evaluaciones que coincidan con el filtro.</div>';
+function renderTabla(turnos){
+  if(!turnos.length){
+    document.getElementById('turnos-tabla').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <div class="empty-title">Sin evaluaciones para mostrar</div>
+        <div class="empty-sub">No hay resultados que coincidan con el filtro aplicado.</div>
+      </div>`;
     return;
   }
-  const badges = { completado: 'b-green', pendiente: 'b-gray', 'en-curso': 'b-rosa' };
-  const labels = { completado: '✓ Completado', pendiente: 'Pendiente', 'en-curso': '● En curso' };
+  const badgeClass = { completado: 'b-verde', pendiente: 'b-gris', 'en-curso': 'b-rosa' };
+  const badgeLabel = { completado: 'Completado', pendiente: 'Pendiente', 'en-curso': 'En curso' };
+
   document.getElementById('turnos-tabla').innerHTML = `
-    <table>
+    <div class="table-wrap"><table>
       <thead><tr>
-        <th>Empleado</th><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Médico/s</th><th>Documentos</th>
+        <th style="width:28%;">Empleado</th>
+        <th style="width:15%;">Fecha</th>
+        <th style="width:14%;">Tipo</th>
+        <th style="width:13%;">Estado</th>
+        <th style="width:16%;">Profesionales</th>
+        <th style="width:14%;">Documentos</th>
       </tr></thead>
       <tbody>${turnos.map(t => {
-        const fecha = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
-        const medicos = Array.isArray(t.medicos) ? t.medicos.join(', ') : '—';
+        const medicos = Array.isArray(t.medicos) ? t.medicos : [];
         const tieneInforme = t.dictamenes_data && t.dictamenes_data.length > 0;
         const primerDict = tieneInforme ? t.dictamenes_data[0] : null;
-        const docsBtns = `
-          ${tieneInforme ? `<a href="/api/dictamenes/${primerDict.id}/pdf" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;margin-right:4px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-            Informe</a>` : '<span style="font-size:11px;color:var(--text3);">Sin informe</span>'}
-          ${t.estado === 'completado' ? `<a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-            Acta</a>` : ''}
-          <button class="btn btn-ghost btn-sm" style="margin-left:4px;" onclick='verDetalle(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Ver</button>
-        `;
+        const docs = `
+          ${tieneInforme
+            ? `<a href="/api/dictamenes/${primerDict.id}/pdf" target="_blank" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                Informe</a>`
+            : '<span class="sin-info">Sin informe</span>'}
+          ${t.estado === 'completado'
+            ? `<a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                Acta</a>`
+            : ''}
+          <button class="btn btn-outline" onclick='verDetalle(${JSON.stringify(t).replace(/'/g,"&#39;")})' title="Ver detalle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>`;
+        const medicosHtml = medicos.length
+          ? medicos.map(m => `<span class="medico-tag">${m}</span>`).join('')
+          : '<span class="sin-info">—</span>';
         return `<tr>
-          <td><div style="font-weight:600;">${t.paciente}</div></td>
-          <td><span style="font-family:'DM Mono',monospace;font-size:12px;">${fecha}</span></td>
-          <td>${t.tipo||'—'}</td>
-          <td><span class="badge ${badges[t.estado]||'b-gray'}">${labels[t.estado]||t.estado}</span></td>
-          <td><div style="font-size:12px;color:var(--text2);">${medicos}</div></td>
-          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${docsBtns}</div></td>
+          <td>
+            <div class="paciente-cell">
+              <div class="avatar">${iniciales(t.paciente)}</div>
+              <div>
+                <div class="paciente-nombre">${t.paciente}</div>
+                <div class="paciente-sub">${t.hora||'—'} hs</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="fecha-cell">
+              <div class="fecha-day">${formatFechaDia(t.fecha)}</div>
+              <div class="fecha-time">${formatFechaCorta(t.fecha)}</div>
+            </div>
+          </td>
+          <td><span class="tipo-badge">${t.tipo||'—'}</span></td>
+          <td><span class="badge ${badgeClass[t.estado]||'b-gris'}">${badgeLabel[t.estado]||t.estado}</span></td>
+          <td><div class="medicos-cell">${medicosHtml}</div></td>
+          <td><div class="docs-cell">${docs}</div></td>
         </tr>`;
       }).join('')}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
-function verDetalle(t) {
-  document.getElementById('modal-paciente-nombre').textContent = t.paciente;
-  const fecha = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+function verDetalle(t){
   const medicos = Array.isArray(t.medicos) ? t.medicos : [];
   const dicts = t.dictamenes_data || [];
   const aptLabels = { apto:'Apto', restricc:'Apto con restricciones', 'no-apto':'No apto' };
+  const aptBadge = { apto:'b-verde', restricc:'b-amber', 'no-apto':'b-rosa' };
 
-  let informesHtml = dicts.length ? dicts.map(d => `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 15px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div>
-          <div style="font-size:13px;font-weight:600;">${d.medico}</div>
-          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${d.numero}</div>
+  document.getElementById('modal-avatar').textContent = iniciales(t.paciente);
+  document.getElementById('modal-paciente-nombre').textContent = t.paciente;
+  document.getElementById('modal-paciente-sub').textContent = `${t.tipo||'—'} · ${formatFechaCorta(t.fecha)} · ${t.hora||'—'} hs`;
+
+  const badgeClass = { completado: 'b-verde', pendiente: 'b-gris', 'en-curso': 'b-rosa' };
+  const badgeLabel = { completado: 'Completado', pendiente: 'Pendiente', 'en-curso': 'En curso' };
+
+  let informesHtml;
+  if(dicts.length){
+    informesHtml = dicts.map(d => `
+      <div class="informe-card">
+        <div class="informe-head">
+          <div>
+            <div class="informe-medico">${d.medico}</div>
+            <div class="informe-numero">${d.numero}</div>
+          </div>
+          <span class="badge ${aptBadge[d.aptitud]||'b-gris'}">${aptLabels[d.aptitud]||d.aptitud}</span>
         </div>
-        <span class="badge ${d.aptitud==='apto'?'b-green':d.aptitud==='restricc'?'b-amber':'b-rosa'}">${aptLabels[d.aptitud]||d.aptitud}</span>
-      </div>
-      ${d.conclusion ? `<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.5;">${d.conclusion.substring(0,200)}${d.conclusion.length>200?'...':''}</div>` : ''}
-      <div style="display:flex;gap:6px;">
-        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        ${d.conclusion ? `<div class="informe-conc">${d.conclusion.substring(0,240)}${d.conclusion.length>240?'…':''}</div>` : ''}
+        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           Descargar informe PDF
         </a>
       </div>
-    </div>
-  `).join('') : '<div style="font-size:13px;color:var(--text3);padding:10px 0;">El informe aún no fue emitido por el médico.</div>';
+    `).join('');
+  } else {
+    informesHtml = `<div class="sin-informe-box">El informe aún no fue emitido por el profesional. Podrá descargarlo desde aquí una vez finalizada la evaluación.</div>`;
+  }
 
   document.getElementById('modal-body').innerHTML = `
     <div class="modal-section">Datos del turno</div>
-    <div class="dl">
-      <span class="dl-label">Fecha</span><span class="dl-value">${fecha}</span>
-      <span class="dl-label">Hora</span><span class="dl-value">${t.hora}</span>
-      <span class="dl-label">Tipo</span><span class="dl-value">${t.tipo||'—'}</span>
-      <span class="dl-label">Estado</span><span class="dl-value">${t.estado}</span>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">Fecha</div>
+        <div class="info-value">${formatFechaLarga(t.fecha)}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Hora</div>
+        <div class="info-value">${t.hora||'—'} hs</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Tipo de consulta</div>
+        <div class="info-value">${t.tipo||'—'}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Estado</div>
+        <div class="info-value"><span class="badge ${badgeClass[t.estado]||'b-gris'}">${badgeLabel[t.estado]||t.estado}</span></div>
+      </div>
     </div>
-    <div class="modal-section">Médicos intervinientes</div>
-    <div>${medicos.map(m=>`<span class="badge b-blue" style="margin:2px;">${m}</span>`).join(' ')}</div>
+
+    <div class="modal-section">Profesionales intervinientes</div>
+    <div class="medicos-list">
+      ${medicos.length ? medicos.map(m => `<span class="medico-tag" style="padding:5px 10px;font-size:12px;">${m}</span>`).join('') : '<span class="sin-info">—</span>'}
+    </div>
+
     <div class="modal-section">Informes médico-legales</div>
     ${informesHtml}
-    ${t.estado==='completado'?`
-    <div class="modal-section">Acta de asistencia</div>
-    <div><a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost" style="text-decoration:none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-      Ver acta de asistencia
-    </a></div>`:''}
+
+    ${t.estado==='completado' ? `
+      <div class="modal-section">Acta de asistencia</div>
+      <a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost" style="padding:9px 14px;font-size:12.5px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        Ver acta de asistencia
+      </a>
+    ` : ''}
   `;
   document.getElementById('modal-detalle').classList.add('open');
 }
 
-// Auto-check session
-async function checkSession() {
-  if (!empresaToken) return;
-  try {
-    const res = await fetch('/api/empresa/mis-turnos', { headers: empresaHeaders() });
-    if (res.status === 401) { localStorage.removeItem('medgrup_empresa_token'); empresaToken = null; return; }
-    const data = await res.json();
-    // Token válido — buscar datos de empresa del localStorage
+async function checkSession(){
+  if(!empresaToken) return;
+  try{
+    const res = await fetch('/api/empresa/mis-turnos',{headers:empresaHeaders()});
+    if(res.status===401){ localStorage.removeItem('medgrup_empresa_token'); localStorage.removeItem('medgrup_empresa_nombre'); empresaToken=null; return; }
     const savedName = localStorage.getItem('medgrup_empresa_nombre');
-    if (savedName) {
+    if(savedName){
       empresaActual = { nombre: savedName };
       mostrarPortal();
     }
-  } catch (e) {}
-}
-
-// Guardar nombre al loguearse
-const _orig = doLoginEmpresa;
-// Guardar nombre en localStorage al loguearse
-document.getElementById('emp-email').addEventListener('focus', () => {});
-
-// Override para guardar nombre
-async function doLoginEmpresa() {
-  const email = document.getElementById('emp-email').value.trim();
-  const password = document.getElementById('emp-password').value;
-  const errEl = document.getElementById('emp-error');
-  errEl.style.display = 'none';
-  if (!email || !password) { errEl.textContent = 'Completá email y contraseña'; errEl.style.display = 'block'; return; }
-  try {
-    const res = await fetch('/api/empresa/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-    const data = await res.json();
-    if (!data.ok) { errEl.textContent = data.error || 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
-    empresaToken = data.token;
-    empresaActual = data.empresa;
-    localStorage.setItem('medgrup_empresa_token', empresaToken);
-    localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
-    mostrarPortal();
-  } catch (e) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+  } catch(e){}
 }
 
 checkSession();
