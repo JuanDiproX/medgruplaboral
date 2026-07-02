@@ -116,23 +116,6 @@ async function initDB() {
     `);
     await client.query(`UPDATE medicos SET matricula='MP 5558' WHERE nombre='Dr. Muroni, Esteban' AND (matricula IS NULL OR matricula='')`).catch(()=>{});
 
-    const turnoExiste = await client.query(`SELECT id FROM turnos WHERE id='turno-19jun-2026'`);
-    if (!turnoExiste.rows.length) {
-      await client.query(`
-        INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo)
-        VALUES ('turno-19jun-2026','Jorge Álvarez','2026-06-19','16:00','Junta médica','Gloker Trucks S.A.','pendiente',
-          'medgrup-1781195880513','https://medgruplaboral.daily.co/medgrup-1781195880513',
-          'https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner',
-          '[{"nombre":"Dr. Barboza, Raúl","link":"https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner"},{"nombre":"Dr. Muroni, Esteban","link":"https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner"}]',
-          'Junta médica programada') ON CONFLICT (id) DO NOTHING
-      `);
-      await client.query(`
-        INSERT INTO turno_medicos (turno_id, medico_nombre) VALUES
-          ('turno-19jun-2026','Dr. Barboza, Raúl'),('turno-19jun-2026','Dr. Muroni, Esteban')
-        ON CONFLICT DO NOTHING
-      `);
-    }
-
     // Fix columnas
     for (const q of [
       `ALTER TABLE IF EXISTS dictamenes ALTER COLUMN hora_inicio TYPE VARCHAR(100)`,
