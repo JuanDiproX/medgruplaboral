@@ -282,6 +282,63 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);min-height:100vh;-webkit
 .turno-item{padding:1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;transition:all 0.14s;border-left:3px solid transparent;}
 .turno-item:last-child{border-bottom:none;}
 .turno-item:hover{background:var(--azul-light);border-left-color:var(--azul);}
+
+/* Turno próximo (< 24hs) */
+.turno-item.proximo{background:linear-gradient(90deg,#fff9e6,transparent 60%);border-left-color:#d97706;}
+.turno-item.proximo:hover{background:linear-gradient(90deg,#fef3c7,transparent 60%);}
+.turno-item.proximo .turno-hora{color:#d97706;}
+
+/* Turno inminente (< 2hs) */
+.turno-item.inminente{background:linear-gradient(90deg,#fee2e2,#fff5f5 60%);border-left:3px solid var(--rosa);animation:pulse-border 2s ease-in-out infinite;}
+.turno-item.inminente .turno-hora{color:var(--rosa);}
+
+@keyframes pulse-border{0%,100%{border-left-color:var(--rosa);}50%{border-left-color:#ff6b8b;}}
+
+.badge-urgente{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;
+  font-family:'DM Mono',monospace;letter-spacing:0.5px;text-transform:uppercase;
+  margin-left:6px;
+}
+.badge-proximo{background:#fef3c7;color:#92400e;border:1px solid #fbbf24;}
+.badge-inminente{background:var(--rosa);color:white;box-shadow:0 2px 8px rgba(192,54,90,0.3);animation:pulse 1.5s ease-in-out infinite;}
+.badge-dot-pulse{width:5px;height:5px;background:currentColor;border-radius:50%;animation:blink 1s ease-in-out infinite;}
+
+/* Aviso destacado arriba de la agenda */
+.aviso-inminente{
+  background:linear-gradient(135deg,var(--rosa),#e04670);
+  color:white;padding:14px 18px;border-radius:var(--r);
+  margin-bottom:14px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 4px 20px rgba(192,54,90,0.25);
+  animation:pulse-shadow 2s ease-in-out infinite;
+}
+.aviso-inminente-icon{
+  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.aviso-inminente-icon svg{width:20px;height:20px;stroke:white;stroke-width:2;fill:none;}
+.aviso-inminente-body{flex:1;min-width:0;}
+.aviso-inminente-title{font-size:13.5px;font-weight:700;letter-spacing:-0.1px;}
+.aviso-inminente-sub{font-size:12px;opacity:0.9;margin-top:2px;}
+
+.aviso-proximo{
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  color:#78350f;padding:14px 18px;border-radius:var(--r);
+  margin-bottom:14px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 4px 14px rgba(217,119,6,0.2);
+}
+.aviso-proximo-icon{
+  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.aviso-proximo-icon svg{width:20px;height:20px;stroke:#78350f;stroke-width:2;fill:none;}
+.aviso-proximo-body{flex:1;min-width:0;}
+.aviso-proximo-title{font-size:13.5px;font-weight:700;letter-spacing:-0.1px;}
+.aviso-proximo-sub{font-size:12px;opacity:0.85;margin-top:2px;}
+
+@keyframes pulse-shadow{0%,100%{box-shadow:0 4px 20px rgba(192,54,90,0.25);}50%{box-shadow:0 4px 30px rgba(192,54,90,0.5);}}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
 .turno-time{flex-shrink:0;width:72px;}
 .turno-hora{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--azul);line-height:1;}
 .turno-fecha{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;}
@@ -1140,26 +1197,105 @@ async function cargarTurnos(){
   }catch(e){console.error(e);}
 }
 
+// Calcula minutos restantes hasta un turno. Retorna null si ya pasó o es lejano.
+function minutosHastaTurno(t){
+  try{
+    const [h, m] = (t.hora||'00:00').split(':').map(x=>parseInt(x));
+    const [y, mo, d] = t.fecha.split('T')[0].split('-').map(x=>parseInt(x));
+    const fechaTurno = new Date(y, mo-1, d, h, m, 0);
+    const ahora = new Date();
+    return Math.round((fechaTurno.getTime() - ahora.getTime()) / 60000);
+  }catch(e){ return null; }
+}
+
+// Clasifica el turno según proximidad
+function estadoProximidad(t){
+  if(t.estado === 'completado' || t.estado === 'en-curso') return null;
+  const mins = minutosHastaTurno(t);
+  if(mins === null || mins < -30) return null; // ya pasó (con tolerancia de 30min)
+  if(mins <= 120 && mins >= -30) return 'inminente'; // en las próximas 2hs (o empezando)
+  if(mins <= 24*60) return 'proximo'; // en las próximas 24hs
+  return null;
+}
+
+// Texto amigable de cuánto falta
+function textoTiempoRestante(mins){
+  if(mins < 0) return `hace ${Math.abs(mins)} min`;
+  if(mins < 60) return `en ${mins} min`;
+  if(mins < 24*60){
+    const hs = Math.floor(mins/60);
+    const m = mins%60;
+    return m>0 ? `en ${hs}h ${m}min` : `en ${hs}h`;
+  }
+  const dias = Math.floor(mins/(24*60));
+  return dias === 1 ? 'mañana' : `en ${dias} días`;
+}
+
 function renderAgenda(){
   const hoy=new Date().toISOString().split('T')[0];
   const ord=[...turnos].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora));
   document.getElementById('cnt-total').textContent=turnos.length;
-  document.getElementById('cnt-hoy').textContent=turnos.filter(t=>t.fecha===hoy).length;
+  document.getElementById('cnt-hoy').textContent=turnos.filter(t=>t.fecha.split('T')[0]===hoy).length;
   document.getElementById('badge-turnos').textContent=turnos.length;
-  const fut=ord.filter(t=>t.fecha>=hoy&&t.estado!=='completado');
-  if(fut.length){document.getElementById('cnt-proximo').textContent=fut[0].hora;document.getElementById('cnt-proximo-sub').textContent=fut[0].paciente+' · '+new Date(fut[0].fecha+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});}
+  const fut=ord.filter(t=>t.fecha.split('T')[0]>=hoy&&t.estado!=='completado');
+  if(fut.length){document.getElementById('cnt-proximo').textContent=fut[0].hora;document.getElementById('cnt-proximo-sub').textContent=fut[0].paciente+' · '+new Date(fut[0].fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});}
   if(!turnos.length){document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">Sin turnos. Programá uno con el botón de arriba.</div>';return;}
-  document.getElementById('agenda-lista').innerHTML=ord.map(t=>{
-    const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+
+  // Detectar aviso destacado: turno inminente o próximo más urgente
+  let avisoHtml = '';
+  const turnoInminente = fut.find(t => estadoProximidad(t) === 'inminente');
+  const turnoProximo = !turnoInminente ? fut.find(t => estadoProximidad(t) === 'proximo') : null;
+  if(turnoInminente){
+    const mins = minutosHastaTurno(turnoInminente);
+    const txt = textoTiempoRestante(mins);
+    avisoHtml = `<div class="aviso-inminente">
+      <div class="aviso-inminente-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
+      <div class="aviso-inminente-body">
+        <div class="aviso-inminente-title">⚡ Turno inminente ${mins >= 0 ? '— empieza ' + txt : '— debería haber empezado ' + txt}</div>
+        <div class="aviso-inminente-sub">${turnoInminente.paciente} · ${turnoInminente.tipo} · ${turnoInminente.hora} hs</div>
+      </div>
+    </div>`;
+  } else if(turnoProximo){
+    const mins = minutosHastaTurno(turnoProximo);
+    const txt = textoTiempoRestante(mins);
+    avisoHtml = `<div class="aviso-proximo">
+      <div class="aviso-proximo-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+      <div class="aviso-proximo-body">
+        <div class="aviso-proximo-title">Próximo turno ${txt}</div>
+        <div class="aviso-proximo-sub">${turnoProximo.paciente} · ${turnoProximo.tipo} · ${turnoProximo.hora} hs</div>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('agenda-lista').innerHTML = avisoHtml + ord.map(t=>{
+    const fl=new Date(t.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
     const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':'<span class="badge b-gray">Pendiente</span>';
+    const prox = estadoProximidad(t);
+    const claseFila = prox==='inminente'?'turno-item inminente':prox==='proximo'?'turno-item proximo':'turno-item';
+    let badgeUrg='';
+    if(prox==='inminente'){
+      const mins = minutosHastaTurno(t);
+      const txt = mins >= 0 ? textoTiempoRestante(mins) : 'ahora';
+      badgeUrg = `<span class="badge-urgente badge-inminente"><span class="badge-dot-pulse"></span>${txt}</span>`;
+    } else if(prox==='proximo'){
+      const mins = minutosHastaTurno(t);
+      badgeUrg = `<span class="badge-urgente badge-proximo">⏰ ${textoTiempoRestante(mins)}</span>`;
+    }
     const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
     const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
     const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
     const ba=t.estado==='completado'?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
-    return`<div class="turno-item"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bi}${bj}</div></div>`;
+    return`<div class="${claseFila}"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bi}${bj}</div></div>`;
   }).join('');
 }
+
+// Refrescar cada 60 segundos para que los badges de "quedan X min" se actualicen solos
+setInterval(() => {
+  if(turnos.length && document.getElementById('sec-agenda').style.display !== 'none'){
+    renderAgenda();
+  }
+}, 60000);
 
 // Mensajes globales para WA/Gmail
 const mensajesLinks = {};
