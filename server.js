@@ -12,7 +12,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -647,32 +648,7 @@ async function registrarWebhookDaily() {
   } catch (err) { console.log('⚠ Webhook Daily no registrado:', err.message); }
 }
 
-// ===== SUBIR PDF FIRMADO =====
-app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => {
-  try {
-    const { pdf_base64, nombre } = req.body;
-    if (!pdf_base64) return res.status(400).json({ error: 'Falta el PDF' });
-    // Verificar tamaño (máx 5MB en base64 = ~3.75MB real)
-    if (pdf_base64.length > 7000000) return res.status(400).json({ error: 'El PDF es demasiado grande (máx 5MB)' });
-    await pool.query(
-      'UPDATE dictamenes SET pdf_firmado=$1, pdf_firmado_nombre=$2, pdf_firmado_fecha=NOW() WHERE id=$3',
-      [pdf_base64, nombre||'informe-firmado.pdf', req.params.id]
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// ===== VER PDF FIRMADO =====
-app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
-  try {
-    const r = await pool.query('SELECT pdf_firmado, pdf_firmado_nombre FROM dictamenes WHERE id=$1', [req.params.id]);
-    if (!r.rows.length || !r.rows[0].pdf_firmado) return res.status(404).json({ error: 'No hay PDF firmado' });
-    const buf = Buffer.from(r.rows[0].pdf_firmado, 'base64');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf'}"`);
-    res.send(buf);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// ===== PROXY ANTHROPIC =====
 app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
   try {
     if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key de IA no configurada. Agregá ANTHROPIC_API_KEY en las variables de entorno de Railway.' });
