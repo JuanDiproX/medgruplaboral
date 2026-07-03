@@ -116,6 +116,21 @@ async function initDB() {
     `);
     await client.query(`UPDATE medicos SET matricula='MP 5558' WHERE nombre='Dr. Muroni, Esteban' AND (matricula IS NULL OR matricula='')`).catch(()=>{});
 
+    // Columnas extendidas para informe IA (estructura 6 secciones)
+    for (const q2 of [
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS apellido_nombre VARCHAR(300)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS fecha_nacimiento VARCHAR(50)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS lugar_nacimiento VARCHAR(200)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS estado_civil VARCHAR(200)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS estudios VARCHAR(200)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS puesto VARCHAR(200)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS antiguedad VARCHAR(100)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS situacion_licencia TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS metodologia TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS analisis TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS diagnostico_cie VARCHAR(200)`,
+    ]) await client.query(q2).catch(()=>{});
+
     // Fix columnas
     for (const q of [
       `ALTER TABLE IF EXISTS dictamenes ALTER COLUMN hora_inicio TYPE VARCHAR(100)`,
@@ -341,12 +356,20 @@ app.get('/api/dictamenes/turno/:turnoId/medico', authMiddleware, async (req, res
 });
 app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
-    const { turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,aptitud,dias_reposo,derivacion,indicaciones,sala,matricula,especialidad } = req.body;
+    const { turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,aptitud,dias_reposo,derivacion,indicaciones,sala,matricula,especialidad,
+      apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
     const count = await pool.query('SELECT COUNT(*) FROM dictamenes');
     const numero = 'DICT-2026-' + String(parseInt(count.rows[0].count)+1).padStart(4,'0');
-    const r = await pool.query(`INSERT INTO dictamenes (numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo,derivacion,indicaciones,sala,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,matricula,especialidad)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`,
-      [numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo||0,derivacion||'Sin derivación',indicaciones||'',sala||'',paciente_dni||'',edad||'',obra_social||'',profesion||'',antecedentes||'',hallazgos||'',conclusion||'',matricula||'',especialidad||'Medicina Laboral']);
+    const r = await pool.query(`INSERT INTO dictamenes
+      (numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo,derivacion,indicaciones,sala,
+       paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,matricula,especialidad,
+       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33) RETURNING *`,
+      [numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo||0,
+       derivacion||'Sin derivación',indicaciones||'',sala||'',paciente_dni||'',edad||'',obra_social||'',profesion||'',
+       antecedentes||'',hallazgos||'',conclusion||'',matricula||'',especialidad||'Medicina Laboral',
+       apellido_nombre||'',fecha_nacimiento||'',lugar_nacimiento||'',estado_civil||'',estudios||'',
+       puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'']);
     res.json({ ok: true, dictamen: r.rows[0], numero });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -355,9 +378,22 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
     const chk = await pool.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'No encontrado' });
     if ((Date.now()-new Date(chk.rows[0].creado_en).getTime())/(1000*60*60) > 5) return res.status(403).json({ error: 'No editable: pasaron más de 5 horas' });
-    const { aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion } = req.body;
-    await pool.query(`UPDATE dictamenes SET aptitud=COALESCE($1,aptitud),dias_reposo=COALESCE($2,dias_reposo),derivacion=COALESCE($3,derivacion),indicaciones=COALESCE($4,indicaciones),paciente_dni=COALESCE($5,paciente_dni),edad=COALESCE($6,edad),obra_social=COALESCE($7,obra_social),profesion=COALESCE($8,profesion),antecedentes=COALESCE($9,antecedentes),hallazgos=COALESCE($10,hallazgos),conclusion=COALESCE($11,conclusion) WHERE id=$12`,
-      [aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,req.params.id]);
+    const { aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,
+      apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
+    await pool.query(`UPDATE dictamenes SET
+      aptitud=COALESCE($1,aptitud),dias_reposo=COALESCE($2,dias_reposo),derivacion=COALESCE($3,derivacion),
+      indicaciones=COALESCE($4,indicaciones),paciente_dni=COALESCE($5,paciente_dni),edad=COALESCE($6,edad),
+      obra_social=COALESCE($7,obra_social),profesion=COALESCE($8,profesion),antecedentes=COALESCE($9,antecedentes),
+      hallazgos=COALESCE($10,hallazgos),conclusion=COALESCE($11,conclusion),
+      apellido_nombre=COALESCE($12,apellido_nombre),fecha_nacimiento=COALESCE($13,fecha_nacimiento),
+      lugar_nacimiento=COALESCE($14,lugar_nacimiento),estado_civil=COALESCE($15,estado_civil),
+      estudios=COALESCE($16,estudios),puesto=COALESCE($17,puesto),antiguedad=COALESCE($18,antiguedad),
+      situacion_licencia=COALESCE($19,situacion_licencia),metodologia=COALESCE($20,metodologia),
+      analisis=COALESCE($21,analisis),diagnostico_cie=COALESCE($22,diagnostico_cie)
+      WHERE id=$23`,
+      [aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,
+       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie,
+       req.params.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -379,55 +415,132 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
 
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Informe ${d.numero}</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:42px 46px;font-size:12.5px;line-height:1.65;}
-.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:22px;}
-.logo-img{height:42px;width:auto;object-fit:contain;}.doc-numero{font-family:'DM Mono',sans-serif;font-size:13px;font-weight:500;color:#3a6ea8;}
-.doc-fecha{font-size:10.5px;color:#5a5750;margin-top:4px;}h1{font-size:17px;font-weight:700;margin-bottom:4px;}
-.subt{font-size:11px;color:#5a5750;margin-bottom:18px;text-transform:uppercase;letter-spacing:0.5px;}
-h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 8px;}p{margin-bottom:8px;text-align:justify;}ul{margin:6px 0 6px 18px;}
-.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:13px 16px;margin:10px 0 16px;}
-.datos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;}.dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}
-.dato-value{font-weight:600;color:#1a1916;}
-.conc{border-radius:9px;padding:14px 18px;margin-top:8px;background:${aptBg};border:1.5px solid ${aptBorder};}
-.conc-label{font-size:15px;font-weight:700;color:${aptColor};}
-.firmas-row{display:flex;gap:24px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid #e8e4de;}
-.hash{margin-top:24px;text-align:right;font-size:8.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.wm{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
-@media print{body{padding:24px 30px;}}</style></head><body>
+    // Determinar tipo de informe según el turno
+    let turnoInfo = null;
+    if (d.turno_id) {
+      const tr = await pool.query('SELECT tipo FROM turnos WHERE id=$1', [d.turno_id]);
+      if (tr.rows.length) turnoInfo = tr.rows[0];
+    }
+    const tipoConsulta = turnoInfo?.tipo || 'Evaluación Médico-Laboral';
+
+    // Datos extendidos (pueden venir de la IA o estar vacíos)
+    const apellidoNombre = d.apellido_nombre || d.paciente?.toUpperCase() || '—';
+    const fechaNac = d.fecha_nacimiento || '—';
+    const lugarNac = d.lugar_nacimiento || '—';
+    const estadoCivil = d.estado_civil || '—';
+    const estudios = d.estudios || '—';
+    const puesto = d.puesto || d.profesion || '—';
+    const antiguedad = d.antiguedad || '—';
+    const sitLicencia = d.situacion_licencia || '—';
+    const metodologia = d.metodologia || `Se procedió a la realización de una evaluación pericial semiestructurada por vía telemática el día de la fecha, bajo estricto encuadre profesional. El abordaje comprendió el examen semiológico directo, el rastreo de psicodinamismos, el análisis de factores etiológicos y psicopatológicos preexistentes, así como la compulsa de la documentación médica obrante en el legajo.\n\nSe deja expresa constancia de que el presente dictamen se emite en el marco de la legislación vigente de Medicina del Trabajo, garantizando el resguardo y la protección de los datos personales del examinado.`;
+    const analisis = d.analisis || '';
+    const diagCIE = d.diagnostico_cie || '';
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<title>Informe ${d.numero}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
+.logo-img{height:40px;width:auto;object-fit:contain;}
+.doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
+.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+.titulo-doc{margin:12px 0 4px;text-align:center;}
+.titulo-doc h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1916;}
+.titulo-doc .subtitulo{font-size:11px;color:#5a5750;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;}
+.destinatario{background:#f4f7fb;border-left:3px solid #3a6ea8;padding:8px 12px;margin:10px 0 16px;font-size:11.5px;}
+.destinatario strong{color:#2a5080;}
+h2{font-size:12px;font-weight:700;color:white;background:#3a6ea8;padding:5px 10px;margin:16px 0 8px;letter-spacing:0.3px;text-transform:uppercase;}
+p{margin-bottom:8px;text-align:justify;}
+ul{margin:4px 0 8px 18px;}
+li{margin-bottom:5px;}
+.bullet-item{display:flex;gap:6px;margin-bottom:5px;font-size:12.5px;}
+.bullet-item::before{content:"●";color:#3a6ea8;flex-shrink:0;}
+.conc-box{border-radius:8px;padding:12px 16px;margin:10px 0;background:${aptBg};border:1.5px solid ${aptBorder};}
+.conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
+.conc-sub{font-size:10.5px;color:#5a5750;}
+.firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:40px;padding-top:16px;border-top:1.5px solid #e8e4de;}
+.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
+.firma-nombre{font-size:11.5px;font-weight:700;}
+.firma-esp{font-size:10px;color:#5a5750;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
+.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
+.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+@media print{body{padding:20px 28px;}h2{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+</style></head><body>
+
 <div class="header">
   <div style="display:flex;align-items:center;gap:11px;">
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
-    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div></div>
+    <div>
+      <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP</div>
+      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div>
+    </div>
   </div>
-  <div style="text-align:right;"><div class="doc-numero">${d.numero}</div><div class="doc-fecha">Tierra del Fuego, ${fechaEmision}</div></div>
+  <div class="doc-ref">
+    <div class="doc-numero">${d.numero}</div>
+    <div>Tierra del Fuego, ${fechaEmision}</div>
+    <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
+  </div>
 </div>
-<h1>Informe de ${d.empresa ? d.empresa + ' — ' : ''}${todos[0]?.especialidad||'Medicina Laboral'}</h1>
-<div class="subt">A la Dirección de Recursos Humanos / Asesoría Legal — Empresa: ${d.empresa||'—'}</div>
-<h2>I. Objeto del informe</h2>
-<p>El presente dictamen tiene por objeto documentar los hallazgos y conclusiones de la Junta Médica realizada al/a la evaluado/a <strong>${d.paciente}</strong>, a fin de determinar su aptitud laboral, llevada a cabo en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
-<h2>II. Integración de la junta médica</h2><ul>${integrantesHtml}</ul>
-<h2>Datos identificatorios del evaluado</h2>
-<div class="datos-box"><div class="datos-grid">
-  <div><div class="dato-label">Nombre y apellido</div><div class="dato-value">${d.paciente}</div></div>
-  <div><div class="dato-label">DNI</div><div class="dato-value">${d.paciente_dni||'—'}</div></div>
-  <div><div class="dato-label">Edad</div><div class="dato-value">${d.edad?d.edad+' años':'—'}</div></div>
-  <div><div class="dato-label">Obra social</div><div class="dato-value">${d.obra_social||'—'}</div></div>
-  <div><div class="dato-label">Profesión / Ocupación</div><div class="dato-value">${d.profesion||'—'}</div></div>
-  <div><div class="dato-label">Fecha de evaluación</div><div class="dato-value">${fechaConsulta}</div></div>
-</div></div>
-${d.antecedentes?`<h2>III. Antecedentes y cronología de los hechos</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
-${d.hallazgos?`<h2>IV. Hallazgos del examen</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>`:''}
-<h2>V. Conclusión médico-legal</h2>
+
+<div class="titulo-doc">
+  <h1>Informe de Evaluación ${tipoConsulta}</h1>
+  <div class="subtitulo">Medicina del Trabajo · Psiquiatría Forense</div>
+</div>
+
+<div class="destinatario">
+  <strong>A:</strong> Dirección de Recursos Humanos – ${d.empresa||'—'}<br/>
+  <strong>REFERENCIA:</strong> ${tipoConsulta} – ${d.paciente}<br/>
+  <strong>FECHA DE EMISIÓN:</strong> ${fechaEmision.toUpperCase()}
+</div>
+
+<h2>I. Datos personales del evaluado</h2>
+<div style="padding:4px 0;">
+  <div class="bullet-item">Apellidos y Nombres: <strong>${apellidoNombre}</strong></div>
+  <div class="bullet-item">Documento Nacional de Identidad: DNI ${d.paciente_dni||'—'}</div>
+  ${fechaNac!=='—'?`<div class="bullet-item">Fecha de Nacimiento: ${fechaNac}</div>`:''}
+  ${lugarNac!=='—'?`<div class="bullet-item">Lugar de Nacimiento: ${lugarNac}</div>`:''}
+  ${estadoCivil!=='—'?`<div class="bullet-item">Estado Civil: ${estadoCivil}</div>`:''}
+  ${estudios!=='—'?`<div class="bullet-item">Estudios cursados: ${estudios}</div>`:''}
+  <div class="bullet-item">Empresa: ${d.empresa||'—'}</div>
+  ${puesto!=='—'?`<div class="bullet-item">Puesto de Trabajo: ${puesto}</div>`:''}
+  ${antiguedad!=='—'?`<div class="bullet-item">Antigüedad: ${antiguedad}</div>`:''}
+  ${d.obra_social?`<div class="bullet-item">Obra Social: ${d.obra_social}</div>`:''}
+  ${sitLicencia!=='—'?`<div class="bullet-item">Situación de Licencia: ${sitLicencia}</div>`:''}
+</div>
+
+<h2>II. Metodología adoptada</h2>
+<p style="white-space:pre-wrap;">${metodologia}</p>
+<ul>${integrantesHtml}</ul>
+
+${d.antecedentes?`<h2>III. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
+
+${d.hallazgos?`<h2>IV. Examen semiológico (estado actual)</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>`:''}
+
+${analisis?`<h2>V. Análisis médico-legal de la documentación</h2><p style="white-space:pre-wrap;">${analisis}</p>`:''}
+
+<h2>VI. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
-<div class="conc"><div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
-<div style="font-size:10.5px;color:#5a5750;margin-top:3px;">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación: '+d.derivacion:''}</div></div>
-${d.indicaciones?`<h2>Indicaciones y tratamiento</h2><p style="white-space:pre-wrap;">${d.indicaciones}</p>`:''}
-<div class="firmas-row">${firmasHtml}</div>
-<div class="hash">Código de verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
-<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero}</div>
-<script>window.onload=function(){window.print();}</script></body></html>`;
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
+<div class="conc-box">
+  <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
+  <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
+</div>
+${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
+
+<p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
+
+<div class="firmas-row">
+  ${firmasHtml}
+</div>
+
+<div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero} · medgruplaboral.com.ar</div>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) { res.status(500).json({ error: err.message }); }

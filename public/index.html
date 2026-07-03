@@ -1307,13 +1307,10 @@ async function doLoginEmpresaDesdeMain(){
 
 // ===== IA: GENERAR INFORME DESDE TEXTO LIBRE =====
 async function generarInformeIA(){
-  // Funciona tanto desde el panel de notas (durante la llamada) como desde el formulario de dictamen
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
-  const textoEl = desdeNotas
-    ? document.getElementById('notas-libre')
-    : document.getElementById('dict-texto-libre');
+  const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
   const texto = textoEl?.value?.trim();
-  if(!texto){ alert('Escribí algo antes de generar el informe.'); return; }
+  if(!texto){ alert('Escribí los datos del paciente antes de generar el informe.'); return; }
 
   const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
   const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
@@ -1321,7 +1318,71 @@ async function generarInformeIA(){
 
   btn.disabled=true;
   if(btnText) btnText.textContent='Generando...';
-  if(statusEl){ statusEl.style.display='flex'; }
+  if(statusEl) statusEl.style.display='flex';
+
+  // Datos del turno actual para darle contexto a la IA
+  const turnoCtx = consultaActual || turnoDictamenActual || {};
+  const empresa = turnoCtx.empresa || '';
+  const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
+  const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+
+  const SYSTEM_PROMPT = `Sos el Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN: 102128 – MP: 603), especialista en medicina laboral argentina.
+Tu tarea es redactar un informe médico-laboral COMPLETO y PROFESIONAL basado en las notas que te proporcione el médico.
+
+ESTRUCTURA OBLIGATORIA DEL INFORME (6 secciones):
+
+I. DATOS PERSONALES DEL EVALUADO
+Extraé y listá: apellidos y nombres (en mayúsculas), DNI, fecha de nacimiento, lugar de nacimiento, estado civil y grupo familiar, estudios cursados, empresa, puesto de trabajo, antigüedad, situación de licencia.
+
+II. METODOLOGÍA ADOPTADA
+Describí que se realizó una evaluación pericial semiestructurada por vía telemática, con examen semiológico directo, rastreo de psicodinamismos, análisis de factores etiológicos y psicopatológicos, compulsa de documentación. Adaptá según el tipo de consulta.
+
+III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES
+Describí los antecedentes neurológicos, psiquiátricos previos, hábitos tóxicos, afecciones crónicas, tratamientos actuales que mencione el médico.
+
+IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)
+Describí el estado general del paciente y cada función psíquica: conciencia y orientación, atención y sensopercepción, memoria, pensamiento, juicio, afectividad y volición. Usá terminología semiológica formal. Si el médico describe hallazgos positivos o negativos, incorporalos. Si dice "sin alteraciones" o similar, describí cada función como conservada.
+
+V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN
+Analizá la documentación presentada, certificados, evolución clínica, consistencia diagnóstica, tratamiento farmacológico y su correlación con la gravedad invocada. Si hay inconsistencias, señalalas técnicamente.
+
+VI. CONCLUSIONES MÉDICO-LEGALES
+Redactá 3-4 puntos numerados:
+1. Encuadre diagnóstico (con código CIE-10 si corresponde)
+2. Análisis de incapacidad o capacidad laboral
+3. Tiempo de licencia y su justificación
+4. Dictamen final de aptitud
+
+REGLAS:
+- Usá lenguaje médico-legal forense formal y técnico, igual que lo haría un perito judicial
+- Primera persona del singular para el dictamen
+- Terminología en castellano rioplatense médico
+- Respondé SOLO con JSON válido, sin markdown, sin texto extra
+- El JSON tiene estas claves:
+{
+  "apellido_nombre": "APELLIDO NOMBRE en mayúsculas",
+  "dni": "número",
+  "fecha_nacimiento": "dd/mm/aaaa o texto",
+  "lugar_nacimiento": "ciudad provincia",
+  "estado_civil": "texto incluyendo grupo familiar",
+  "estudios": "nivel educativo",
+  "puesto": "cargo/tarea",
+  "antiguedad": "años",
+  "situacion_licencia": "descripción de la licencia",
+  "metodologia": "párrafo completo sección II",
+  "antecedentes": "párrafo completo sección III",
+  "hallazgos": "párrafo completo sección IV con todas las funciones psíquicas",
+  "analisis": "párrafo completo sección V",
+  "conclusion": "texto completo sección VI con puntos numerados",
+  "diagnostico_cie": "código y nombre CIE-10",
+  "aptitud": "apto" o "restricc" o "no-apto",
+  "dias_reposo": número entero,
+  "derivacion": "Sin derivación" u otra especialidad,
+  "indicaciones": "indicaciones finales si corresponde",
+  "obra_social": "nombre obra social",
+  "profesion": "profesión u ocupación",
+  "edad": "número en años"
+}`;
 
   try{
     const res = await fetch('https://api.anthropic.com/v1/messages',{
@@ -1329,26 +1390,17 @@ async function generarInformeIA(){
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        system:`Sos un asistente médico especializado en medicina laboral argentina. 
-Tu tarea es extraer información de notas médicas informales y estructurarlas en un informe.
-Respondé SOLO con un JSON válido, sin texto adicional, sin markdown, sin backticks.
-El JSON debe tener exactamente estas claves:
-{
-  "dni": "string o vacío",
-  "edad": "string con número o vacío",
-  "obra_social": "string o vacío", 
-  "profesion": "string o vacío",
-  "antecedentes": "párrafo con antecedentes y motivo de consulta, redactado en lenguaje médico formal",
-  "hallazgos": "párrafo con hallazgos del examen, redactado en lenguaje médico formal",
-  "conclusion": "párrafo con conclusión médico-legal, redactado en lenguaje médico formal",
-  "aptitud": "apto" o "restricc" o "no-apto",
-  "dias_reposo": número entero,
-  "derivacion": "Sin derivación" u otra especialidad,
-  "indicaciones": "string con indicaciones o vacío"
-}
-Usá lenguaje médico-legal formal y profesional en los campos de texto. Si algo no está claro en las notas, dejá el campo vacío.`,
-        messages:[{role:'user',content:`Notas del médico: "${texto}"\n\nConvertí estas notas en el JSON estructurado del informe.`}]
+        max_tokens:3000,
+        system: SYSTEM_PROMPT,
+        messages:[{role:'user',content:`DATOS DE LA CONSULTA:
+- Empresa: ${empresa}
+- Tipo de consulta: ${tipo}
+- Fecha: ${fecha}
+
+NOTAS DEL MÉDICO:
+${texto}
+
+Generá el informe médico-laboral completo en formato JSON según la estructura indicada.`}]
       })
     });
 
@@ -1356,54 +1408,64 @@ Usá lenguaje médico-legal formal y profesional en los campos de texto. Si algo
     const rawText = (data.content||[]).map(b=>b.text||'').join('').trim();
 
     let info;
-    try{
-      info = JSON.parse(rawText);
-    }catch(e){
-      // Intentar extraer JSON de la respuesta si viene con texto alrededor
+    try{ info = JSON.parse(rawText); }
+    catch(e){
       const match = rawText.match(/\{[\s\S]*\}/);
       if(match) info = JSON.parse(match[0]);
-      else throw new Error('La IA no devolvió un JSON válido');
+      else throw new Error('La IA no pudo generar el informe. Intentá con más detalle en las notas.');
     }
 
-    // Poblar los campos — tanto en notas como en dictamen
-    if(desdeNotas){
-      if(info.dni) document.getElementById('notas-dni').value = info.dni;
-      if(info.edad) document.getElementById('notas-edad').value = info.edad;
-      if(info.obra_social) document.getElementById('notas-obrasocial').value = info.obra_social;
-      if(info.profesion) document.getElementById('notas-profesion').value = info.profesion;
-      if(info.antecedentes) document.getElementById('notas-antecedentes').value = info.antecedentes;
-      if(info.hallazgos) document.getElementById('notas-hallazgos').value = info.hallazgos;
-      if(info.conclusion) document.getElementById('notas-conclusion').value = info.conclusion;
-      if(info.aptitud) document.getElementById('notas-aptitud').value = info.aptitud;
-      if(info.dias_reposo !== undefined) document.getElementById('notas-reposo').value = info.dias_reposo;
+    // Guardar el informe completo en un campo oculto para el PDF
+    window._informeIA = info;
+
+    // Poblar los campos del formulario
+    const destino = desdeNotas ? 'notas' : 'dict';
+    const set = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined && val !== null) el.value = val; };
+
+    if(destino === 'notas'){
+      set('notas-dni', info.dni);
+      set('notas-edad', info.edad);
+      set('notas-obrasocial', info.obra_social);
+      set('notas-profesion', info.profesion || info.puesto);
+      set('notas-antecedentes', info.antecedentes);
+      set('notas-hallazgos', info.hallazgos);
+      set('notas-conclusion', info.conclusion);
+      if(info.aptitud) set('notas-aptitud', info.aptitud);
+      set('notas-reposo', info.dias_reposo ?? 0);
       guardarNotaBorrador();
     } else {
-      if(info.dni) document.getElementById('dict-dni').value = info.dni;
-      if(info.edad) document.getElementById('dict-edad').value = info.edad;
-      if(info.obra_social) document.getElementById('dict-obrasocial').value = info.obra_social;
-      if(info.profesion) document.getElementById('dict-profesion').value = info.profesion;
-      if(info.antecedentes) document.getElementById('dict-antecedentes').value = info.antecedentes;
-      if(info.hallazgos) document.getElementById('dict-hallazgos').value = info.hallazgos;
-      if(info.conclusion) document.getElementById('dict-conclusion').value = info.conclusion;
-      if(info.aptitud) document.getElementById('dict-aptitud').value = info.aptitud;
-      if(info.dias_reposo !== undefined) document.getElementById('dict-reposo').value = info.dias_reposo;
-      if(info.derivacion) document.getElementById('dict-derivacion').value = info.derivacion.includes('Sin')?'Sin derivación':info.derivacion;
-      if(info.indicaciones) document.getElementById('dict-indicaciones').value = info.indicaciones;
+      set('dict-dni', info.dni);
+      set('dict-edad', info.edad);
+      set('dict-obrasocial', info.obra_social);
+      set('dict-profesion', info.profesion || info.puesto);
+      set('dict-antecedentes', info.antecedentes);
+      set('dict-hallazgos', info.hallazgos);
+      set('dict-conclusion', info.conclusion);
+      if(info.aptitud) set('dict-aptitud', info.aptitud);
+      set('dict-reposo', info.dias_reposo ?? 0);
+      if(info.derivacion) set('dict-derivacion', info.derivacion.toLowerCase().includes('sin') ? 'Sin derivación' : info.derivacion);
+      set('dict-indicaciones', info.indicaciones);
+      // Campos extendidos para el PDF completo
+      set('dict-paciente-input', info.apellido_nombre || document.getElementById('dict-paciente-input').value);
+      // Guardamos datos extra en campos ocultos
+      ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
+        let el = document.getElementById('ia-campo-'+k);
+        if(!el){ el=document.createElement('input'); el.type='hidden'; el.id='ia-campo-'+k; document.body.appendChild(el); }
+        el.value = info[k] || '';
+      });
     }
 
-    // Feedback visual
     if(btnText) btnText.textContent='✓ Informe generado';
     btn.style.background='linear-gradient(135deg,#1e6640,#3a9460)';
     setTimeout(()=>{
-      if(btnText) btnText.textContent= desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+      if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
       btn.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';
-    }, 3000);
-
-    addLog('blue','Informe generado con IA','Campos completados automáticamente — revisá antes de guardar');
+    },3000);
+    addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
 
   }catch(err){
-    alert('Error al generar el informe: '+err.message);
-    if(btnText) btnText.textContent= desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+    alert('Error: '+err.message);
+    if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
   } finally {
     btn.disabled=false;
     if(statusEl) statusEl.style.display='none';
@@ -2140,7 +2202,19 @@ async function guardarDictamen(){
         derivacion, indicaciones,
         sala: t?.sala||'',
         matricula: medicoActual?.matricula||'',
-        especialidad: medicoActual?.especialidad||'Medicina Laboral'
+        especialidad: medicoActual?.especialidad||'Medicina Laboral',
+        // Campos extendidos generados por la IA
+        apellido_nombre: document.getElementById('ia-campo-apellido_nombre')?.value||'',
+        fecha_nacimiento: document.getElementById('ia-campo-fecha_nacimiento')?.value||'',
+        lugar_nacimiento: document.getElementById('ia-campo-lugar_nacimiento')?.value||'',
+        estado_civil: document.getElementById('ia-campo-estado_civil')?.value||'',
+        estudios: document.getElementById('ia-campo-estudios')?.value||'',
+        puesto: document.getElementById('ia-campo-puesto')?.value||'',
+        antiguedad: document.getElementById('ia-campo-antiguedad')?.value||'',
+        situacion_licencia: document.getElementById('ia-campo-situacion_licencia')?.value||'',
+        metodologia: document.getElementById('ia-campo-metodologia')?.value||'',
+        analisis: document.getElementById('ia-campo-analisis')?.value||'',
+        diagnostico_cie: document.getElementById('ia-campo-diagnostico_cie')?.value||''
       })
     });
     data=await res.json();
@@ -2155,7 +2229,7 @@ async function guardarDictamen(){
     document.getElementById('cert-pdf-links').innerHTML=`
       <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-        Informe de Junta Médica
+        Informe médico-laboral
       </a>
       ${t?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
