@@ -794,20 +794,34 @@ tr:hover td{background:var(--azul-light);}
     </div>
 
     <!-- Panel flotante de notas durante la llamada -->
-    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:360px;max-height:80vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
-      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:default;flex-shrink:0;">
+    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:380px;max-height:85vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
+      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
         <div style="color:white;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Notas rápidas
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Dictado libre + IA
         </div>
         <button onclick="toggleNotasPanel()" style="background:none;border:none;color:white;cursor:pointer;font-size:18px;line-height:1;opacity:0.8;">×</button>
       </div>
-      <div style="padding:14px 16px;overflow-y:auto;">
-        <div style="font-size:10.5px;color:var(--text3);margin-bottom:12px;font-family:'DM Mono',monospace;">
-          Se autoguardan mientras hablás. Se cargan solas en el informe al finalizar.
+      <div style="padding:14px 16px;overflow-y:auto;flex:1;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6;">
+          Escribí libremente lo que observás durante la consulta. La IA va a completar el informe con esos datos.
+        </div>
+        <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:var(--azul);">
+          <strong>Ejemplo:</strong> "Masculino 45 años DNI 28400123 OSDE operario. Dolor lumbar 3 meses, estudios normales. Sin limitación funcional. Apto con restricción de carga mayor 10kg por 30 días."
+        </div>
+        <textarea id="notas-libre" placeholder="Escribí acá tus observaciones durante la consulta..." style="width:100%;min-height:180px;font-size:13px;padding:10px;border:1.5px solid var(--border2);border-radius:8px;resize:vertical;font-family:'DM Sans',sans-serif;line-height:1.6;" oninput="guardarNotaBorrador()"></textarea>
+
+        <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span id="btn-ia-text">Generar informe con IA</span>
+        </button>
+
+        <div id="ia-status" style="display:none;margin-top:8px;font-size:11.5px;text-align:center;color:var(--text3);display:flex;align-items:center;justify-content:center;gap:6px;">
+          <div style="width:12px;height:12px;border:2px solid var(--border2);border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
+          Analizando y completando el informe...
         </div>
 
-        <div class="divider" style="margin-top:0;">Datos del paciente</div>
+        <div class="divider" style="margin-top:14px;">O completá manualmente</div>
         <div class="form-grid" style="margin-bottom:6px;">
           <div class="form-group">
             <label class="form-lbl">DNI</label>
@@ -826,23 +840,21 @@ tr:hover td{background:var(--azul-light);}
             <input type="text" id="notas-profesion" placeholder="Ocupación" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
           </div>
         </div>
-
-        <div class="divider">Informe médico</div>
-        <div class="form-group" style="margin-bottom:8px;">
+        <div class="form-group" style="margin-bottom:6px;">
           <label class="form-lbl">Antecedentes</label>
-          <textarea id="notas-antecedentes" placeholder="Motivo, cronología..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+          <textarea id="notas-antecedentes" placeholder="Motivo, cronología..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
-        <div class="form-group" style="margin-bottom:8px;">
-          <label class="form-lbl">Hallazgos del examen</label>
-          <textarea id="notas-hallazgos" placeholder="Lo que vayas viendo..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="form-lbl">Hallazgos</label>
+          <textarea id="notas-hallazgos" placeholder="Lo que vayas viendo..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
-        <div class="form-group" style="margin-bottom:8px;">
+        <div class="form-group" style="margin-bottom:6px;">
           <label class="form-lbl">Conclusión</label>
-          <textarea id="notas-conclusion" placeholder="Fundamento de la decisión..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+          <textarea id="notas-conclusion" placeholder="Fundamento..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
-        <div class="form-group" style="margin-bottom:10px;">
+        <div class="form-group" style="margin-bottom:6px;">
           <label class="form-lbl">Indicaciones</label>
-          <textarea id="notas-indicaciones" placeholder="Tratamiento, seguimiento..." style="min-height:50px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+          <textarea id="notas-indicaciones" placeholder="Tratamiento..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
         </div>
         <div class="form-grid" style="margin-bottom:4px;">
           <div class="form-group">
@@ -964,6 +976,27 @@ tr:hover td{background:var(--azul-light);}
               </div>
             </div>
             <div class="card-body">
+
+              <!-- DICTADO LIBRE CON IA -->
+              <div style="background:linear-gradient(135deg,#f0f0ff,#faf0ff);border:1.5px solid #c4b5fd;border-radius:var(--r-sm);padding:14px 16px;margin-bottom:18px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" style="width:16px;height:16px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span style="font-size:12px;font-weight:600;color:#6366f1;letter-spacing:-0.1px;">Completar con IA</span>
+                  <span style="font-size:10.5px;color:var(--text3);">— Escribí libremente, la IA completa el informe</span>
+                </div>
+                <textarea id="dict-texto-libre" placeholder='Ej: "Masculino 45 años, DNI 28.400.123, OSDE, operario. Dolor lumbar 3 meses, estudios normales. Sin limitación funcional. Apto con restricción de carga mayor 10kg por 30 días."' style="width:100%;min-height:90px;font-size:13px;padding:9px 11px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:DM Sans,sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;"></textarea>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                  <button onclick="generarInformeIA()" id="btn-generar-ia-dict" style="padding:9px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span id="btn-ia-dict-text">Generar informe</span>
+                  </button>
+                  <div id="ia-dict-status" style="display:none;font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:5px;">
+                    <div style="width:11px;height:11px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
+                    Analizando...
+                  </div>
+                </div>
+              </div>
+
               <div class="form-grid">
                 <div class="form-group full">
                   <label class="form-lbl">Antecedentes y motivo de la consulta</label>
@@ -1270,6 +1303,111 @@ async function doLoginEmpresaDesdeMain(){
     localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
     window.location.href = '/empresa';
   } catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
+
+// ===== IA: GENERAR INFORME DESDE TEXTO LIBRE =====
+async function generarInformeIA(){
+  // Funciona tanto desde el panel de notas (durante la llamada) como desde el formulario de dictamen
+  const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
+  const textoEl = desdeNotas
+    ? document.getElementById('notas-libre')
+    : document.getElementById('dict-texto-libre');
+  const texto = textoEl?.value?.trim();
+  if(!texto){ alert('Escribí algo antes de generar el informe.'); return; }
+
+  const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
+  const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
+  const btn = desdeNotas ? document.getElementById('btn-generar-ia') : document.getElementById('btn-generar-ia-dict');
+
+  btn.disabled=true;
+  if(btnText) btnText.textContent='Generando...';
+  if(statusEl){ statusEl.style.display='flex'; }
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        system:`Sos un asistente médico especializado en medicina laboral argentina. 
+Tu tarea es extraer información de notas médicas informales y estructurarlas en un informe.
+Respondé SOLO con un JSON válido, sin texto adicional, sin markdown, sin backticks.
+El JSON debe tener exactamente estas claves:
+{
+  "dni": "string o vacío",
+  "edad": "string con número o vacío",
+  "obra_social": "string o vacío", 
+  "profesion": "string o vacío",
+  "antecedentes": "párrafo con antecedentes y motivo de consulta, redactado en lenguaje médico formal",
+  "hallazgos": "párrafo con hallazgos del examen, redactado en lenguaje médico formal",
+  "conclusion": "párrafo con conclusión médico-legal, redactado en lenguaje médico formal",
+  "aptitud": "apto" o "restricc" o "no-apto",
+  "dias_reposo": número entero,
+  "derivacion": "Sin derivación" u otra especialidad,
+  "indicaciones": "string con indicaciones o vacío"
+}
+Usá lenguaje médico-legal formal y profesional en los campos de texto. Si algo no está claro en las notas, dejá el campo vacío.`,
+        messages:[{role:'user',content:`Notas del médico: "${texto}"\n\nConvertí estas notas en el JSON estructurado del informe.`}]
+      })
+    });
+
+    const data = await res.json();
+    const rawText = (data.content||[]).map(b=>b.text||'').join('').trim();
+
+    let info;
+    try{
+      info = JSON.parse(rawText);
+    }catch(e){
+      // Intentar extraer JSON de la respuesta si viene con texto alrededor
+      const match = rawText.match(/\{[\s\S]*\}/);
+      if(match) info = JSON.parse(match[0]);
+      else throw new Error('La IA no devolvió un JSON válido');
+    }
+
+    // Poblar los campos — tanto en notas como en dictamen
+    if(desdeNotas){
+      if(info.dni) document.getElementById('notas-dni').value = info.dni;
+      if(info.edad) document.getElementById('notas-edad').value = info.edad;
+      if(info.obra_social) document.getElementById('notas-obrasocial').value = info.obra_social;
+      if(info.profesion) document.getElementById('notas-profesion').value = info.profesion;
+      if(info.antecedentes) document.getElementById('notas-antecedentes').value = info.antecedentes;
+      if(info.hallazgos) document.getElementById('notas-hallazgos').value = info.hallazgos;
+      if(info.conclusion) document.getElementById('notas-conclusion').value = info.conclusion;
+      if(info.aptitud) document.getElementById('notas-aptitud').value = info.aptitud;
+      if(info.dias_reposo !== undefined) document.getElementById('notas-reposo').value = info.dias_reposo;
+      guardarNotaBorrador();
+    } else {
+      if(info.dni) document.getElementById('dict-dni').value = info.dni;
+      if(info.edad) document.getElementById('dict-edad').value = info.edad;
+      if(info.obra_social) document.getElementById('dict-obrasocial').value = info.obra_social;
+      if(info.profesion) document.getElementById('dict-profesion').value = info.profesion;
+      if(info.antecedentes) document.getElementById('dict-antecedentes').value = info.antecedentes;
+      if(info.hallazgos) document.getElementById('dict-hallazgos').value = info.hallazgos;
+      if(info.conclusion) document.getElementById('dict-conclusion').value = info.conclusion;
+      if(info.aptitud) document.getElementById('dict-aptitud').value = info.aptitud;
+      if(info.dias_reposo !== undefined) document.getElementById('dict-reposo').value = info.dias_reposo;
+      if(info.derivacion) document.getElementById('dict-derivacion').value = info.derivacion.includes('Sin')?'Sin derivación':info.derivacion;
+      if(info.indicaciones) document.getElementById('dict-indicaciones').value = info.indicaciones;
+    }
+
+    // Feedback visual
+    if(btnText) btnText.textContent='✓ Informe generado';
+    btn.style.background='linear-gradient(135deg,#1e6640,#3a9460)';
+    setTimeout(()=>{
+      if(btnText) btnText.textContent= desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+      btn.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';
+    }, 3000);
+
+    addLog('blue','Informe generado con IA','Campos completados automáticamente — revisá antes de guardar');
+
+  }catch(err){
+    alert('Error al generar el informe: '+err.message);
+    if(btnText) btnText.textContent= desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+  } finally {
+    btn.disabled=false;
+    if(statusEl) statusEl.style.display='none';
+  }
 }
 
 async function doLogin(){
@@ -1725,21 +1863,26 @@ function iniciarTurno(id){
   document.getElementById('cert-ok').style.display='none';
   document.getElementById('notas-panel').style.display='none';
   document.getElementById('video-container').classList.add('active');
-  // Buscar el link específico del médico logueado (con su nombre precargado)
+
+  // Buscar el link exacto del médico logueado para cargar en el iframe
   let linkPropio = null;
   if(t.linksMedicos && t.linksMedicos.length && usuarioActual){
     const nombreActual=(usuarioActual.nombre||'').toLowerCase();
+    // Buscar por apellido (primer fragmento antes de la coma)
     const match=t.linksMedicos.find(lm=>{
       const apellido = lm.nombre.toLowerCase().split(',')[0].trim();
-      return nombreActual.includes(apellido) || lm.nombre.toLowerCase().includes(nombreActual.split(' ')[0]);
+      const primerNombre = nombreActual.split(/[,\s]+/)[0];
+      return apellido.includes(primerNombre) || nombreActual.includes(apellido);
     });
     linkPropio = match ? match.link : t.linksMedicos[0].link;
   }
-  document.getElementById('daily-frame').src = linkPropio || t.linkPaciente;
+  const linkIframe = linkPropio || t.linkPaciente;
+
+  document.getElementById('daily-frame').src = linkIframe;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
-  // Pre-cargar mensajes
-  const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+
+  const fl=new Date(t.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
   (t.linksMedicos||[]).forEach((lm,i)=>{mensajesLinks[`med_${t.id}_${i}`]=makeMsg(lm.link,lm.nombre);});
   mensajesLinks[`pac_${t.id}`]=makeMsg(t.linkPaciente,t.paciente);
@@ -1747,13 +1890,35 @@ function iniciarTurno(id){
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
   addLog('blue','Consulta iniciada',t.paciente+' · '+t.hora);
-  // El registro real de asistencia (médico/paciente entrando a la sala) lo toma automáticamente el webhook de Daily.co
   document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
 }
 
 let dictamenActualId=null;
 let dictamenActualCreado=null;
 let turnoDictamenActual=null;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function finalizarConsulta(){
   if(!confirm('¿Finalizar la consulta?'))return;
@@ -1767,12 +1932,10 @@ async function finalizarConsulta(){
     registrarEventoTurno(consultaActual.id,'fin_consulta',usuarioActual?.nombre||'');
     renderAgenda();
   }
-  // Ocultar todo lo demás, solo dejar dictamen + log
   document.getElementById('links-box').style.display='none';
   document.getElementById('metrics-row').style.display='none';
   document.getElementById('turnos-card').style.display='none';
   addLog('blue','Consulta finalizada','Duración: '+dur);
-
   await abrirDictamenParaTurno(consultaActual, dur);
   addLog('amber','Completá tu dictamen médico','');
   window.scrollTo({top:0,behavior:'smooth'});
