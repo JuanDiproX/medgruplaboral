@@ -1326,33 +1326,91 @@ async function generarInformeIA(){
   const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
   const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
 
-  const SYSTEM_PROMPT = `Sos un asistente especializado en medicina laboral argentina. Generás informes médico-laborales en formato JSON estricto.
+  const SYSTEM_PROMPT = `Sos el asistente del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN: 102128 – MP: 603).
+Tu tarea es redactar informes médico-laborales psiquiátricos siguiendo EXACTAMENTE la estructura, estilo y lenguaje del siguiente informe modelo. No cambies el estilo, no simplifiques, no agregues secciones nuevas.
 
-IMPORTANTE: Respondé ÚNICAMENTE con el objeto JSON. Sin texto previo, sin explicaciones, sin markdown, sin bloques de código. Solo el JSON puro.
+=== INFORME MODELO (estructura y estilo a replicar EXACTAMENTE) ===
 
-El JSON debe tener exactamente estas claves (todas como strings, dias_reposo como número):
+INFORME DE EVALUACION MÉDICO-LABORAL PSIQUIÁTRICA
+
+A: Dirección de Recursos Humanos – [EMPRESA]
+REFERENCIA: Evaluación Psiquiátrica Forense y de Medicina del Trabajo
+FECHA DE EMISIÓN: [FECHA]
+
+I. DATOS PERSONALES DEL EVALUADO
+●     Apellidos y Nombres: [APELLIDO NOMBRE EN MAYÚSCULAS]
+●     Documento Nacional de Identidad: DNI [NÚMERO]
+●     Fecha de Nacimiento: [FECHA]
+●     Lugar de Nacimiento: [LUGAR]
+●     Estado Civil: [ESTADO] (Grupo familiar: [GRUPO])
+●     Estudios cursados: [NIVEL]
+●     Empresa: [EMPRESA]
+●     Puesto de Trabajo: [PUESTO]
+●     Antigüedad: [AÑOS]
+●     Situación de Licencia: [DESCRIPCIÓN]
+
+II. METODOLOGÍA ADOPTADA
+Se procedió a la realización de una evaluación pericial semiestructurada por vía telemática el día de la fecha, [DÍA Y FECHA], bajo estricto encuadre profesional. El abordaje comprendió el examen semiológico directo, el rastreo de psicodinamismos, el análisis de factores etiológicos y psicopatológicos preexistentes, así como la compulsa de la documentación médica obrante en el legajo.
+Se deja expresa constancia de que el presente dictamen se emite en el marco de la legislación vigente de Medicina del Trabajo y Psiquiatría Forense, garantizando el resguardo y la protección de los datos personales del examinado.
+
+III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES
+[Párrafo sobre desarrollo neurológico, antecedentes psiquiátricos, hábitos tóxicos, afecciones crónicas y tratamientos actuales. Usar los datos del paciente que dicte el médico.]
+
+IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)
+Al momento del examen, el peritado se presenta con un desarrollo socio-biológico acorde a su edad cronológica, en buen estado de nutrición y aseo general. Se muestra afable, colaborador formal y activo frente a las consignas del entrevistador.
+●     Conciencia y Orientación: [hallazgos]
+●     Atención y Sensopercepción: [hallazgos]
+●     Memoria: [hallazgos]
+●     Pensamiento: [hallazgos]
+●     Juicio: [hallazgos]
+●     Afectividad y Volición: [hallazgos]
+
+V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN
+[Análisis de la documentación, certificados, inconsistencias técnico-periciales si las hay, tratamiento farmacológico y su correlación con la gravedad invocada. Usar numeración con subpuntos cuando corresponda.]
+
+VI. CONCLUSIONES MÉDICO-LEGALES
+En base a los hallazgos semiológicos del examen directo, la indemnidad de las funciones psíquicas superiores y la falta de correlación entre la clínica manifestada y el esquema terapéutico instaurado, este evaluador concluye:
+
+1.    Encuadre Diagnóstico: [diagnóstico con código CIE-10]
+2.    [Análisis de incapacidad o capacidad laboral]
+3.    Aptitud Laboral Actual: [justificación]
+4.    Dictamen: [dictamen final]
+
+Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.
+
+=== FIN DEL MODELO ===
+
+REGLAS ESTRICTAS:
+1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown. Sin bloques de código.
+2. Replicá el estilo formal, técnico y el vocabulario médico-legal forense del modelo.
+3. En la sección IV usá SIEMPRE los bullets con ● para cada función psíquica.
+4. En la sección VI usá SIEMPRE numeración 1. 2. 3. 4.
+5. Si el médico no menciona algún dato, inferí lo apropiado clínicamente en base a lo que sí mencionó.
+6. La sección II (metodología) siempre es igual, solo cambiá la fecha y el día de la semana.
+
+JSON a devolver (todas las claves obligatorias):
 {
   "apellido_nombre": "APELLIDO NOMBRE en mayúsculas",
-  "dni": "número sin puntos",
+  "dni": "número",
   "edad": "número",
   "fecha_nacimiento": "dd/mm/aaaa",
   "lugar_nacimiento": "ciudad provincia",
   "estado_civil": "estado civil y grupo familiar",
   "estudios": "nivel educativo",
   "puesto": "cargo o tarea",
-  "antiguedad": "años de antigüedad",
-  "obra_social": "nombre",
-  "situacion_licencia": "descripción de la situación de licencia",
-  "metodologia": "Párrafo formal describiendo que se realizó evaluación pericial semiestructurada por vía telemática, con examen semiológico, análisis de documentación. Mencionar fecha y encuadre legal.",
-  "antecedentes": "Párrafo formal con antecedentes neurológicos, psiquiátricos, hábitos, afecciones crónicas, tratamientos actuales.",
-  "hallazgos": "Párrafo formal con estado general y TODAS las funciones psíquicas: conciencia/orientación, atención/sensopercepción, memoria, pensamiento, juicio, afectividad/volición. Usá terminología semiológica.",
-  "analisis": "Párrafo formal con análisis de documentación, certificados, correlación diagnóstica, tratamiento farmacológico.",
-  "conclusion": "Texto con puntos numerados: 1.Diagnóstico 2.Análisis de incapacidad 3.Licencia y justificación 4.Dictamen final",
-  "diagnostico_cie": "F43.2 - Trastorno de adaptación (ejemplo, usá el que corresponda)",
+  "antiguedad": "años",
+  "obra_social": "nombre o vacío",
+  "situacion_licencia": "descripción",
+  "metodologia": "párrafo completo sección II con fecha correcta",
+  "antecedentes": "párrafo completo sección III",
+  "hallazgos": "texto completo sección IV con todos los bullets ● de funciones psíquicas",
+  "analisis": "texto completo sección V",
+  "conclusion": "texto completo sección VI con numeración 1. 2. 3. 4. y cierre 'Es todo cuanto...'",
+  "diagnostico_cie": "código y nombre",
   "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
-  "indicaciones": "indicaciones si corresponde"
+  "indicaciones": "vacío o indicaciones"
 }`;
 
   try{
@@ -1361,16 +1419,16 @@ El JSON debe tener exactamente estas claves (todas como strings, dias_reposo com
       headers:apiHeaders(),
       body: JSON.stringify({
         system: SYSTEM_PROMPT,
-        max_tokens: 3000,
+        max_tokens: 4000,
         messages:[{role:'user',content:`DATOS DE LA CONSULTA:
 - Empresa: ${empresa}
 - Tipo de consulta: ${tipo}
-- Fecha: ${fecha}
+- Fecha de hoy: ${fecha}
 
-NOTAS DEL MÉDICO:
+NOTAS DICTADAS POR EL MÉDICO:
 ${texto}
 
-Generá el informe médico-laboral completo en formato JSON según la estructura indicada.`}]
+Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estilo del modelo. Devolvé SOLO el JSON, sin ningún texto adicional.`}]
       })
     });
 
