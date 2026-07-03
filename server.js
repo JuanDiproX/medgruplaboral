@@ -475,7 +475,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 </div>
 <h1>Acta de Asistencia — ${t.tipo||'Consulta Médica'}</h1>
 <div class="subt">Constancia de asistencia mediante registro de eventos de la videoconsulta</div>
-<p>Se deja constancia de que en el día de la fecha se llevó a cabo una <strong>${(t.tipo||'consulta médica').toLowerCase()}</strong>, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>, realizada en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
+<p>Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.</p>
 <div class="datos-box">
   <div><div class="dato-label">Paciente</div><div class="dato-value">${t.paciente}</div></div>
   <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
