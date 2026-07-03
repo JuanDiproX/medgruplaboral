@@ -351,6 +351,94 @@ tbody tr:hover{background:var(--azul-light);}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:4px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--azul);}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — MOBILE (portal empresa)
+   ═══════════════════════════════════════════════ */
+@media (max-width: 900px){
+  .login-page{flex-direction:column;}
+  .login-left{padding:2rem 1.5rem;}
+  .login-right{width:100%;padding:2rem 1.5rem;box-shadow:none;}
+  .login-form-wrap{max-width:100%;}
+
+  .topbar{padding:0 1rem;height:auto;flex-wrap:wrap;gap:8px;padding:10px 1rem;}
+  .topbar-left{gap:10px;flex-wrap:wrap;min-width:0;}
+  .topbar-logo{padding-right:10px;gap:8px;}
+  .topbar-logo img{height:26px;}
+  .topbar-brand{font-size:13px;}
+  .topbar-tag{font-size:8.5px;}
+  .empresa-info .empresa-name{font-size:13px;}
+  .empresa-info .empresa-label{font-size:9px;}
+  .top-badge{font-size:10px;padding:4px 8px;}
+  .btn-logout-top{font-size:11px;padding:6px 10px;}
+
+  .main{padding:1.25rem 1rem 2rem;}
+  .page-header{flex-direction:column;align-items:stretch;gap:10px;}
+  .page-title{font-size:20px;}
+  .page-title::before{height:20px;}
+  .page-sub{font-size:12px;}
+  .today-chip{font-size:11px;padding:7px 11px;align-self:flex-start;}
+
+  .stats-row{grid-template-columns:1fr;gap:10px;margin-bottom:1.25rem;}
+  .stat-card{padding:1rem 1.15rem;}
+  .stat-icon{width:36px;height:36px;margin-bottom:8px;}
+  .stat-val{font-size:24px;}
+  .stat-lbl{font-size:9.5px;}
+  .stat-hint{font-size:11px;}
+
+  .card-hdr{padding:0.8rem 1rem;}
+  .card-title{font-size:13px;}
+  .search-bar{padding:10px 1rem;flex-direction:column;gap:8px;}
+  .search-input,.filter{font-size:14px;}
+  .filter{width:100%;}
+
+  /* Tabla → tarjetas */
+  .table-wrap{overflow-x:visible;}
+  table,thead,tbody,tr{display:block;width:100%;}
+  thead{display:none;}
+  tbody tr{
+    border:1px solid var(--border);border-radius:12px;
+    margin:10px 1rem;padding:12px;background:white;
+  }
+  tbody tr:hover{background:white;}
+  tbody td{
+    display:block;border:none;padding:6px 0;font-size:13px;
+  }
+  tbody td::before{
+    content:attr(data-label);
+    display:inline-block;font-size:10px;text-transform:uppercase;
+    letter-spacing:.5px;font-family:'DM Mono',monospace;color:var(--text3);
+    font-weight:600;margin-right:8px;min-width:80px;
+  }
+  tbody td.no-label::before{display:none;}
+  .paciente-cell{align-items:center;}
+  .avatar{width:32px;height:32px;font-size:12px;}
+  .fecha-cell{display:flex;gap:8px;align-items:baseline;}
+  .fecha-day{font-size:12.5px;}
+  .fecha-time{font-size:11px;}
+  .docs-cell{gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .btn{font-size:11.5px;padding:6px 10px;}
+  .medicos-cell{margin-top:2px;}
+  .medico-tag{font-size:10.5px;padding:2px 7px;}
+
+  .modal{padding:1rem;margin:12px;border-radius:14px;max-height:calc(100vh - 24px);}
+  .modal-head{padding:1rem 1.15rem;flex-wrap:wrap;gap:8px;}
+  .modal-avatar{width:38px;height:38px;font-size:13px;}
+  .modal-title{font-size:15.5px;}
+  .modal-subtitle{font-size:10.5px;}
+  .modal-body{padding:1.15rem;}
+  .info-grid{grid-template-columns:1fr;gap:8px;padding:11px 12px;}
+  .info-value{font-size:13px;}
+  .informe-card{padding:11px 13px;}
+  .informe-medico{font-size:13px;}
+}
+
+@media (max-width: 400px){
+  .main{padding:1rem 0.75rem 1.5rem;}
+  tbody tr{margin:8px 0.5rem;padding:11px;}
+  .btn{font-size:11px;padding:6px 9px;}
+  .modal{margin:8px;padding:0.85rem;}
+}
 </style>
 </head>
 <body>
@@ -651,7 +739,7 @@ function renderTabla(turnos){
           ? medicos.map(m => `<span class="medico-tag">${m}</span>`).join('')
           : '<span class="sin-info">—</span>';
         return `<tr>
-          <td>
+          <td class="no-label">
             <div class="paciente-cell">
               <div class="avatar">${iniciales(t.paciente)}</div>
               <div>
@@ -660,16 +748,16 @@ function renderTabla(turnos){
               </div>
             </div>
           </td>
-          <td>
+          <td data-label="Fecha">
             <div class="fecha-cell">
               <div class="fecha-day">${formatFechaDia(t.fecha)}</div>
               <div class="fecha-time">${formatFechaCorta(t.fecha)}</div>
             </div>
           </td>
-          <td><span class="tipo-badge">${t.tipo||'—'}</span></td>
-          <td><span class="badge ${badgeClass[t.estado]||'b-gris'}">${badgeLabel[t.estado]||t.estado}</span></td>
-          <td><div class="medicos-cell">${medicosHtml}</div></td>
-          <td><div class="docs-cell">${docs}</div></td>
+          <td data-label="Tipo"><span class="tipo-badge">${t.tipo||'—'}</span></td>
+          <td data-label="Estado"><span class="badge ${badgeClass[t.estado]||'b-gris'}">${badgeLabel[t.estado]||t.estado}</span></td>
+          <td data-label="Médicos"><div class="medicos-cell">${medicosHtml}</div></td>
+          <td class="no-label"><div class="docs-cell">${docs}</div></td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;

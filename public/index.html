@@ -425,6 +425,183 @@ tr:hover td{background:var(--azul-light);}
 @keyframes spin{to{transform:rotate(360deg);}}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:3px;}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (Samsung Fold 7 cerrado, iPhone, etc.)
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 900px){
+
+  /* LOGIN: stack vertical */
+  .login-page{flex-direction:column;}
+  .login-left{padding:2rem 1.5rem;min-height:auto;}
+  .login-logo-wrap{padding:1.25rem 1.5rem;max-width:100%;margin-bottom:1rem;}
+  .login-logo-img{width:180px;}
+  .login-tagline{font-size:13px;max-width:100%;}
+  .login-features{max-width:100%;gap:8px;margin-top:1.25rem;}
+  .login-feat{font-size:12px;}
+  .login-right{width:100%;padding:2rem 1.5rem;box-shadow:none;}
+  .login-form-wrap{max-width:100%;}
+
+  /* SIDEBAR: se convierte en menu drawer con botón hamburguesa */
+  .sidebar{
+    transform:translateX(-100%);width:250px;
+    transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:4px 0 24px rgba(0,0,0,0.15);
+  }
+  .sidebar.open{transform:translateX(0);}
+
+  /* Overlay oscuro cuando el menú está abierto */
+  .sidebar-overlay{
+    display:none;position:fixed;inset:0;
+    background:rgba(15,23,42,0.5);z-index:99;
+    backdrop-filter:blur(2px);
+  }
+  .sidebar-overlay.open{display:block;}
+
+  /* Botón hamburguesa (visible solo en mobile) */
+  .btn-hamburguesa{
+    display:flex;align-items:center;justify-content:center;
+    width:40px;height:40px;border-radius:10px;
+    background:white;border:1px solid var(--border);
+    cursor:pointer;flex-shrink:0;
+    box-shadow:var(--shadow-sm);
+  }
+  .btn-hamburguesa svg{width:20px;height:20px;stroke:var(--text);stroke-width:2;fill:none;}
+
+  /* MAIN */
+  .main{margin-left:0;padding:1rem 1rem 2rem;}
+
+  /* HEADER — apilado con hamburguesa a la izquierda */
+  .page-hdr{
+    flex-direction:column;align-items:stretch;gap:12px;
+    margin-bottom:1rem;
+  }
+  .page-hdr-top{display:flex;align-items:center;gap:10px;}
+  .page-title{font-size:19px;}
+  .page-title::before{height:19px;}
+  .page-sub{font-size:11.5px;margin-left:11px;}
+  .hdr-right{
+    flex-wrap:wrap;gap:8px;justify-content:stretch;
+  }
+  .hdr-right .btn{flex:1;min-width:0;padding:9px 12px;font-size:12px;}
+  .date-chip{display:none;} /* muy poco valor en mobile */
+
+  /* Botones en el hdr — más compactos */
+  .btn{padding:8px 12px;font-size:12px;}
+  .btn svg{width:12px;height:12px;}
+
+  /* GRIDS — a una columna */
+  .two-col{grid-template-columns:1fr;gap:1rem;}
+  .three-col{grid-template-columns:1fr;gap:10px;margin-bottom:1rem;}
+
+  /* METRIC CARDS — compactas */
+  .metric-card{padding:0.9rem 1rem;gap:11px;}
+  .metric-icon{width:38px;height:38px;border-radius:10px;}
+  .metric-icon svg{width:17px;height:17px;}
+  .metric-lbl{font-size:9px;}
+  .metric-val{font-size:18px;}
+  .metric-hint{font-size:10px;}
+
+  /* CARDS y padding compactos */
+  .card-hdr{padding:0.8rem 1rem;}
+  .card-title{font-size:13px;}
+  .card-body{padding:1rem;}
+
+  /* TURNO ITEM — apilado y compacto */
+  .turno-item{
+    flex-wrap:wrap;padding:0.85rem 1rem;
+    align-items:flex-start;gap:10px;
+  }
+  .turno-time{width:auto;display:flex;align-items:baseline;gap:6px;}
+  .turno-hora{font-size:14px;}
+  .turno-fecha{font-size:10px;margin-top:0;}
+  .turno-info{width:100%;order:2;min-width:0;}
+  .turno-paciente{font-size:13.5px;}
+  .turno-meta{font-size:11px;gap:4px;flex-wrap:wrap;}
+  .turno-actions{
+    width:100%;order:3;
+    flex-wrap:wrap;gap:5px;
+  }
+  .turno-actions .btn,
+  .turno-actions .badge{font-size:11px;padding:5px 9px;}
+
+  /* Avisos de turno próximo/inminente */
+  .aviso-inminente,.aviso-proximo{padding:11px 13px;gap:10px;}
+  .aviso-inminente-icon,.aviso-proximo-icon{width:34px;height:34px;}
+  .aviso-inminente-icon svg,.aviso-proximo-icon svg{width:16px;height:16px;}
+  .aviso-inminente-title,.aviso-proximo-title{font-size:12.5px;}
+  .aviso-inminente-sub,.aviso-proximo-sub{font-size:11px;}
+  .badge-urgente{font-size:9px;padding:1px 6px;}
+
+  /* VIDEO — altura reducida en mobile */
+  #daily-frame{height:60vh;min-height:340px;}
+  .video-topbar{padding:9px 12px;flex-wrap:wrap;gap:6px;}
+  .video-bottombar{padding:9px 12px;flex-wrap:wrap;gap:8px;}
+  .rec-pill{font-size:10px;padding:3px 8px;}
+  #video-label{font-size:11px !important;}
+  #video-sala{display:none;}
+  .video-timer{font-size:11px;}
+  .video-bottombar .btn{flex:1;justify-content:center;}
+
+  /* Panel de notas — full width en mobile */
+  #notas-panel{
+    width:calc(100vw - 24px) !important;
+    max-height:70vh !important;
+    right:12px !important;bottom:12px !important;left:12px !important;
+  }
+
+  /* LINKS de participantes */
+  .link-url{font-size:10px;padding:6px 8px;}
+  .participante-nombre{font-size:11.5px;flex-wrap:wrap;}
+  .share-btns{flex-wrap:wrap;}
+  .btn-wa,.btn-gmail{font-size:11px;padding:6px 10px;}
+
+  /* FORMS */
+  .form-grid{grid-template-columns:1fr;gap:9px;}
+  input[type=text],input[type=date],input[type=password],select,textarea{font-size:14px;} /* 14+ para evitar zoom en iOS */
+
+  /* MODALS */
+  .modal{padding:1.25rem;max-height:calc(100vh - 30px);border-radius:12px;}
+  .modal-title{font-size:16px;}
+  .modal-footer{flex-direction:column-reverse;gap:8px;}
+  .modal-footer .btn{width:100%;justify-content:center;}
+
+  /* TABLES */
+  table{font-size:12px;}
+  th,td{padding:8px 0.75rem;}
+  th{font-size:9px;}
+
+  /* SIDEBAR FOOTER */
+  .sidebar-footer{padding:0.75rem;}
+  .user-card{padding:9px 11px;}
+  .user-nombre{font-size:12px;}
+  .user-email{font-size:10px;}
+
+  /* Log de actividad más compacto */
+  .tl-item{padding:7px 0;gap:8px;}
+  .tl-time{font-size:9.5px;width:44px;}
+  .tl-desc{font-size:12px;}
+  .tl-sub{font-size:10.5px;}
+
+  /* Timeline (log) — panel colapsable */
+  #log-timeline{max-height:220px;overflow-y:auto;}
+}
+
+/* ═══════════════════════════════════════════════
+   Pantallas MUY chicas (Fold cerrado, <400px)
+   ═══════════════════════════════════════════════ */
+@media (max-width: 400px){
+  .main{padding:0.75rem 0.75rem 1.5rem;}
+  .card-hdr{padding:0.7rem 0.85rem;}
+  .card-body{padding:0.85rem;}
+  .card-title{font-size:12.5px;}
+  .metric-card{padding:0.75rem 0.9rem;}
+  .metric-val{font-size:17px;}
+  .turno-item{padding:0.75rem 0.85rem;}
+  .hdr-right .btn{font-size:11.5px;padding:8px 10px;}
+  .btn{font-size:11px;padding:7px 10px;}
+  #daily-frame{height:55vh;min-height:300px;}
+}
 </style>
 </head>
 <body>
@@ -564,9 +741,14 @@ tr:hover td{background:var(--azul-light);}
 
 <main class="main">
   <div class="page-hdr">
-    <div>
-      <div class="page-title" id="page-title">Agenda</div>
-      <div class="page-sub" id="page-sub">Turnos programados y videoconsultas</div>
+    <div class="page-hdr-top">
+      <button class="btn-hamburguesa" onclick="toggleSidebar()" style="display:none;" id="btn-menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="page-title" id="page-title">Agenda</div>
+        <div class="page-sub" id="page-sub">Turnos programados y videoconsultas</div>
+      </div>
     </div>
     <div class="hdr-right">
       <div class="date-chip" id="current-date"></div>
@@ -580,6 +762,10 @@ tr:hover td{background:var(--azul-light);}
       </button>
     </div>
   </div>
+
+  <!-- Overlay para cerrar el menú al tocar fuera (mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
 
   <!-- ── AGENDA ── -->
   <div id="sec-agenda">
@@ -1132,6 +1318,7 @@ function mostrarApp(){
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('cert-ok').style.display='none';
   cargarMedicos();cargarTurnos();cargarEmpresasSelect();
+  actualizarBotonMenu();
 }
 
 async function checkSession(){
@@ -1144,6 +1331,22 @@ async function checkSession(){
   }catch(e){localStorage.removeItem('medgrup_token');sessionToken=null;}
 }
 
+function toggleSidebar(){
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if(!sb || !ov) return;
+  sb.classList.toggle('open');
+  ov.classList.toggle('open');
+}
+
+function esMobile(){ return window.matchMedia('(max-width: 900px)').matches; }
+
+function actualizarBotonMenu(){
+  const btn = document.getElementById('btn-menu');
+  if(btn) btn.style.display = esMobile() ? 'flex' : 'none';
+}
+window.addEventListener('resize', actualizarBotonMenu);
+
 function showSection(id,el){
   ['agenda','medicos','perfil','empresas'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec)sec.style.display='none';});
   document.getElementById('sec-'+id).style.display='block';
@@ -1155,6 +1358,13 @@ function showSection(id,el){
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
   if(id==='empresas')cargarEmpresas();
+  // Cerrar el sidebar automáticamente al elegir opción (solo en mobile)
+  if(esMobile()){
+    const sb = document.querySelector('.sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    if(sb) sb.classList.remove('open');
+    if(ov) ov.classList.remove('open');
+  }
 }
 
 let medicosData=[];
@@ -1515,7 +1725,17 @@ function iniciarTurno(id){
   document.getElementById('cert-ok').style.display='none';
   document.getElementById('notas-panel').style.display='none';
   document.getElementById('video-container').classList.add('active');
-  document.getElementById('daily-frame').src=(t.linksMedicos&&t.linksMedicos[0])?t.linksMedicos[0].link:t.linkPaciente;
+  // Buscar el link específico del médico logueado (con su nombre precargado)
+  let linkPropio = null;
+  if(t.linksMedicos && t.linksMedicos.length && usuarioActual){
+    const nombreActual=(usuarioActual.nombre||'').toLowerCase();
+    const match=t.linksMedicos.find(lm=>{
+      const apellido = lm.nombre.toLowerCase().split(',')[0].trim();
+      return nombreActual.includes(apellido) || lm.nombre.toLowerCase().includes(nombreActual.split(' ')[0]);
+    });
+    linkPropio = match ? match.link : t.linksMedicos[0].link;
+  }
+  document.getElementById('daily-frame').src = linkPropio || t.linkPaciente;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
   // Pre-cargar mensajes
