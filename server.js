@@ -647,7 +647,32 @@ async function registrarWebhookDaily() {
   } catch (err) { console.log('⚠ Webhook Daily no registrado:', err.message); }
 }
 
-// ===== PROXY ANTHROPIC (evita CORS desde el frontend) =====
+// ===== SUBIR PDF FIRMADO =====
+app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => {
+  try {
+    const { pdf_base64, nombre } = req.body;
+    if (!pdf_base64) return res.status(400).json({ error: 'Falta el PDF' });
+    // Verificar tamaño (máx 5MB en base64 = ~3.75MB real)
+    if (pdf_base64.length > 7000000) return res.status(400).json({ error: 'El PDF es demasiado grande (máx 5MB)' });
+    await pool.query(
+      'UPDATE dictamenes SET pdf_firmado=$1, pdf_firmado_nombre=$2, pdf_firmado_fecha=NOW() WHERE id=$3',
+      [pdf_base64, nombre||'informe-firmado.pdf', req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== VER PDF FIRMADO =====
+app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT pdf_firmado, pdf_firmado_nombre FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!r.rows.length || !r.rows[0].pdf_firmado) return res.status(404).json({ error: 'No hay PDF firmado' });
+    const buf = Buffer.from(r.rows[0].pdf_firmado, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf'}"`);
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
   try {
     if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key de IA no configurada. Agregá ANTHROPIC_API_KEY en las variables de entorno de Railway.' });
@@ -681,7 +706,38 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC_API_KEY, daily: !!DAILY_API_KEY }));
+// ===== SUBIR PDF FIRMADO =====
+app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => {
+  try {
+    const { pdf_base64, nombre } = req.body;
+    if (!pdf_base64) return res.status(400).json({ error: 'Falta el archivo' });
+    // Validar que sea un PDF (base64 de PDF empieza con JVBERi)
+    if (!pdf_base64.includes('JVBERi') && !pdf_base64.startsWith('data:application/pdf')) {
+      return res.status(400).json({ error: 'El archivo debe ser un PDF' });
+    }
+    // Guardar solo el base64 puro sin el prefijo data:...
+    const base64puro = pdf_base64.replace(/^data:application\/pdf;base64,/, '');
+    await pool.query(
+      'UPDATE dictamenes SET pdf_firmado=$1, pdf_firmado_nombre=$2, pdf_firmado_fecha=NOW() WHERE id=$3',
+      [base64puro, nombre||'informe-firmado.pdf', req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Servir el PDF firmado (si existe) o el generado
+app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT pdf_firmado, pdf_firmado_nombre FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!r.rows.length || !r.rows[0].pdf_firmado) return res.status(404).json({ error: 'No hay PDF firmado' });
+    const buf = Buffer.from(r.rows[0].pdf_firmado, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf'}"`);
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

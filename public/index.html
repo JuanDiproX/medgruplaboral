@@ -1685,7 +1685,8 @@ function renderAgenda(){
     const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
     const ba=t.estado==='completado'?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
-    return`<div class="${claseFila}"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bi}${bj}</div></div>`;
+    const bfirma=t.estado==='completado'&&usuarioActual?.rol==='admin'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;border-color:var(--rosa-mid);color:var(--rosa);" onclick="subirPDFFirmado('${t.id}')" title="Subir informe firmado por el doctor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir firmado</button>`:'';
+    return`<div class="${claseFila}"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente">${t.paciente}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${eb}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bfirma}${bi}${bj}</div></div>`;
   }).join('');
 }
 
@@ -1804,17 +1805,125 @@ async function consultaInmediata(){
   }catch(e){alert('Error: '+e.message);}
 }
 
+// Input oculto para subir PDF firmado
+const _inputPDF = document.createElement('input');
+_inputPDF.type = 'file';
+_inputPDF.accept = 'application/pdf';
+_inputPDF.style.display = 'none';
+document.body.appendChild(_inputPDF);
+let _dictamenIdParaFirmar = null;
+
+async function subirPDFFirmado(turnoId){
+  try{
+    const res = await fetch('/api/dictamenes/turno/'+turnoId, {headers:apiHeaders()});
+    const data = await res.json();
+    const dicts = data.dictamenes||[];
+    if(!dicts.length){ alert('Primero guardá el dictamen antes de subir el PDF firmado.'); return; }
+    _dictamenIdParaFirmar = dicts[0].id;
+    _inputPDF.click();
+  }catch(e){ alert('Error: '+e.message); }
+}
+
+_inputPDF.onchange = async function(){
+  const file = this.files[0];
+  if(!file || !_dictamenIdParaFirmar) return;
+  if(file.size > 5*1024*1024){ alert('El PDF no puede superar 5MB.'); this.value=''; return; }
+  try{
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const toast = document.createElement('div');
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a5080;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);';
+    toast.textContent='⏳ Subiendo PDF firmado...';
+    document.body.appendChild(toast);
+    const res = await fetch('/api/dictamenes/'+_dictamenIdParaFirmar+'/pdf-firmado',{
+      method:'POST', headers:apiHeaders(),
+      body: JSON.stringify({ pdf_base64: base64, nombre: file.name })
+    });
+    const data = await res.json();
+    toast.remove();
+    if(!data.ok){ alert('Error al subir: '+(data.error||'—')); return; }
+    const ok = document.createElement('div');
+    ok.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e6640;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);';
+    ok.innerHTML='✓ PDF firmado subido — ya visible para la empresa';
+    document.body.appendChild(ok);
+    setTimeout(()=>ok.remove(), 4000);
+    addLog('blue','PDF firmado subido', file.name);
+    _dictamenIdParaFirmar = null;
+    this.value = '';
+    cargarTurnos();
+  }catch(e){ alert('Error al subir el PDF: '+e.message); }
+};
+
 async function verInformePDF(turnoId){
   try{
     const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
     const data=await res.json();
     const dictamenes=data.dictamenes||[];
     if(!dictamenes.length){alert('Todavía no hay ningún dictamen cargado para este turno.');return;}
-    // Priorizar el del médico logueado si existe, sino el más reciente
     const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
     const elegido=propio||dictamenes[0];
-    window.open('/api/dictamenes/'+elegido.id+'/pdf','_blank');
+    // Si existe PDF firmado lo muestra, sino el generado automáticamente
+    if(elegido.pdf_firmado){
+      window.open('/api/dictamenes/'+elegido.id+'/pdf-firmado','_blank');
+    } else {
+      window.open('/api/dictamenes/'+elegido.id+'/pdf','_blank');
+    }
   }catch(e){alert('Error al buscar el informe: '+e.message);}
+}
+
+// Subir PDF firmado por el doctor
+let _pdfInputEl = null;
+function subirPDFFirmado(turnoId){
+  if(!_pdfInputEl){
+    _pdfInputEl = document.createElement('input');
+    _pdfInputEl.type = 'file';
+    _pdfInputEl.accept = 'application/pdf';
+    document.body.appendChild(_pdfInputEl);
+  }
+  _pdfInputEl.onchange = async () => {
+    const file = _pdfInputEl.files[0];
+    if(!file) return;
+    if(file.size > 5*1024*1024){ alert('El PDF no puede superar 5MB'); return; }
+    const res = await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
+    const data = await res.json();
+    const dicts = data.dictamenes||[];
+    if(!dicts.length){ alert('No hay dictamen guardado para este turno todavía'); return; }
+    const dict = dicts[0];
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const toast = document.createElement('div');
+      toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a5080;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.2);white-space:nowrap;';
+      toast.textContent='Subiendo PDF firmado...';
+      document.body.appendChild(toast);
+      try{
+        const upRes = await fetch('/api/dictamenes/'+dict.id+'/pdf-firmado',{
+          method:'POST', headers:apiHeaders(),
+          body: JSON.stringify({ pdf_base64: base64, nombre: file.name })
+        });
+        const upData = await upRes.json();
+        if(upData.ok){
+          toast.style.background='#1e6640';
+          toast.textContent='✓ PDF firmado subido — la empresa ya puede verlo';
+          addLog('blue','PDF firmado subido',dict.paciente);
+        } else {
+          toast.style.background='#c0365a';
+          toast.textContent='Error: '+(upData.error||'No se pudo subir');
+        }
+      }catch(err){
+        toast.style.background='#c0365a';
+        toast.textContent='Error de conexión';
+      }
+      setTimeout(()=>toast.remove(), 4000);
+    };
+    reader.readAsDataURL(file);
+    _pdfInputEl.value='';
+  };
+  _pdfInputEl.click();
 }
 
 function unirseTurno(id){

@@ -723,7 +723,7 @@ function renderTabla(turnos){
         const primerDict = tieneInforme ? t.dictamenes_data[0] : null;
         const docs = `
           ${tieneInforme
-            ? `<a href="/api/dictamenes/${primerDict.id}/pdf" target="_blank" class="btn btn-primary">
+            ? `<a href="${primerDict.pdf_firmado ? '/api/dictamenes/'+primerDict.id+'/pdf-firmado' : '/api/dictamenes/'+primerDict.id+'/pdf'}" target="_blank" class="btn btn-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
                 Informe</a>`
             : '<span class="sin-info">Sin informe</span>'}
@@ -788,7 +788,7 @@ function verDetalle(t){
           <span class="badge ${aptBadge[d.aptitud]||'b-gris'}">${aptLabels[d.aptitud]||d.aptitud}</span>
         </div>
         ${d.conclusion ? `<div class="informe-conc">${d.conclusion.substring(0,240)}${d.conclusion.length>240?'…':''}</div>` : ''}
-        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;">
+        <a href="${d.pdf_firmado ? '/api/dictamenes/'+d.id+'/pdf-firmado' : '/api/dictamenes/'+d.id+'/pdf'}" target="_blank" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           Descargar informe PDF
         </a>
