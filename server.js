@@ -667,9 +667,18 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
       })
     });
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'Error de la IA' });
+    if (!response.ok) {
+      console.error('Anthropic API error:', JSON.stringify(data));
+      return res.status(response.status).json({ error: data.error?.message || 'Error de la IA', detalle: data });
+    }
+    // Log del texto devuelto para debug
+    const texto = (data.content||[]).map(b=>b.text||'').join('');
+    console.log('IA response preview:', texto.substring(0,300));
     res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Proxy IA error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));

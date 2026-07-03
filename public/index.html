@@ -1326,62 +1326,33 @@ async function generarInformeIA(){
   const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
   const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
 
-  const SYSTEM_PROMPT = `Sos el Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN: 102128 – MP: 603), especialista en medicina laboral argentina.
-Tu tarea es redactar un informe médico-laboral COMPLETO y PROFESIONAL basado en las notas que te proporcione el médico.
+  const SYSTEM_PROMPT = `Sos un asistente especializado en medicina laboral argentina. Generás informes médico-laborales en formato JSON estricto.
 
-ESTRUCTURA OBLIGATORIA DEL INFORME (6 secciones):
+IMPORTANTE: Respondé ÚNICAMENTE con el objeto JSON. Sin texto previo, sin explicaciones, sin markdown, sin bloques de código. Solo el JSON puro.
 
-I. DATOS PERSONALES DEL EVALUADO
-Extraé y listá: apellidos y nombres (en mayúsculas), DNI, fecha de nacimiento, lugar de nacimiento, estado civil y grupo familiar, estudios cursados, empresa, puesto de trabajo, antigüedad, situación de licencia.
-
-II. METODOLOGÍA ADOPTADA
-Describí que se realizó una evaluación pericial semiestructurada por vía telemática, con examen semiológico directo, rastreo de psicodinamismos, análisis de factores etiológicos y psicopatológicos, compulsa de documentación. Adaptá según el tipo de consulta.
-
-III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES
-Describí los antecedentes neurológicos, psiquiátricos previos, hábitos tóxicos, afecciones crónicas, tratamientos actuales que mencione el médico.
-
-IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)
-Describí el estado general del paciente y cada función psíquica: conciencia y orientación, atención y sensopercepción, memoria, pensamiento, juicio, afectividad y volición. Usá terminología semiológica formal. Si el médico describe hallazgos positivos o negativos, incorporalos. Si dice "sin alteraciones" o similar, describí cada función como conservada.
-
-V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN
-Analizá la documentación presentada, certificados, evolución clínica, consistencia diagnóstica, tratamiento farmacológico y su correlación con la gravedad invocada. Si hay inconsistencias, señalalas técnicamente.
-
-VI. CONCLUSIONES MÉDICO-LEGALES
-Redactá 3-4 puntos numerados:
-1. Encuadre diagnóstico (con código CIE-10 si corresponde)
-2. Análisis de incapacidad o capacidad laboral
-3. Tiempo de licencia y su justificación
-4. Dictamen final de aptitud
-
-REGLAS:
-- Usá lenguaje médico-legal forense formal y técnico, igual que lo haría un perito judicial
-- Primera persona del singular para el dictamen
-- Terminología en castellano rioplatense médico
-- Respondé SOLO con JSON válido, sin markdown, sin texto extra
-- El JSON tiene estas claves:
+El JSON debe tener exactamente estas claves (todas como strings, dias_reposo como número):
 {
   "apellido_nombre": "APELLIDO NOMBRE en mayúsculas",
-  "dni": "número",
-  "fecha_nacimiento": "dd/mm/aaaa o texto",
+  "dni": "número sin puntos",
+  "edad": "número",
+  "fecha_nacimiento": "dd/mm/aaaa",
   "lugar_nacimiento": "ciudad provincia",
-  "estado_civil": "texto incluyendo grupo familiar",
+  "estado_civil": "estado civil y grupo familiar",
   "estudios": "nivel educativo",
-  "puesto": "cargo/tarea",
-  "antiguedad": "años",
-  "situacion_licencia": "descripción de la licencia",
-  "metodologia": "párrafo completo sección II",
-  "antecedentes": "párrafo completo sección III",
-  "hallazgos": "párrafo completo sección IV con todas las funciones psíquicas",
-  "analisis": "párrafo completo sección V",
-  "conclusion": "texto completo sección VI con puntos numerados",
-  "diagnostico_cie": "código y nombre CIE-10",
+  "puesto": "cargo o tarea",
+  "antiguedad": "años de antigüedad",
+  "obra_social": "nombre",
+  "situacion_licencia": "descripción de la situación de licencia",
+  "metodologia": "Párrafo formal describiendo que se realizó evaluación pericial semiestructurada por vía telemática, con examen semiológico, análisis de documentación. Mencionar fecha y encuadre legal.",
+  "antecedentes": "Párrafo formal con antecedentes neurológicos, psiquiátricos, hábitos, afecciones crónicas, tratamientos actuales.",
+  "hallazgos": "Párrafo formal con estado general y TODAS las funciones psíquicas: conciencia/orientación, atención/sensopercepción, memoria, pensamiento, juicio, afectividad/volición. Usá terminología semiológica.",
+  "analisis": "Párrafo formal con análisis de documentación, certificados, correlación diagnóstica, tratamiento farmacológico.",
+  "conclusion": "Texto con puntos numerados: 1.Diagnóstico 2.Análisis de incapacidad 3.Licencia y justificación 4.Dictamen final",
+  "diagnostico_cie": "F43.2 - Trastorno de adaptación (ejemplo, usá el que corresponda)",
   "aptitud": "apto" o "restricc" o "no-apto",
-  "dias_reposo": número entero,
-  "derivacion": "Sin derivación" u otra especialidad,
-  "indicaciones": "indicaciones finales si corresponde",
-  "obra_social": "nombre obra social",
-  "profesion": "profesión u ocupación",
-  "edad": "número en años"
+  "dias_reposo": 0,
+  "derivacion": "Sin derivación",
+  "indicaciones": "indicaciones si corresponde"
 }`;
 
   try{
@@ -1407,11 +1378,30 @@ Generá el informe médico-laboral completo en formato JSON según la estructura
     const rawText = (data.content||[]).map(b=>b.text||'').join('').trim();
 
     let info;
-    try{ info = JSON.parse(rawText); }
-    catch(e){
-      const match = rawText.match(/\{[\s\S]*\}/);
-      if(match) info = JSON.parse(match[0]);
-      else throw new Error('La IA no pudo generar el informe. Intentá con más detalle en las notas.');
+    try{
+      // Intentar parsear directamente
+      info = JSON.parse(rawText);
+    } catch(e1){
+      try{
+        // Buscar el JSON dentro del texto (puede venir con texto alrededor)
+        const match = rawText.match(/\{[\s\S]*\}/);
+        if(match) {
+          info = JSON.parse(match[0]);
+        } else {
+          // Último intento: buscar desde la primera llave
+          const start = rawText.indexOf('{');
+          const end = rawText.lastIndexOf('}');
+          if(start !== -1 && end !== -1) {
+            info = JSON.parse(rawText.substring(start, end+1));
+          } else {
+            console.error('IA raw response:', rawText.substring(0,500));
+            throw new Error('La IA respondió en un formato inesperado. Intentá con notas más detalladas.');
+          }
+        }
+      } catch(e2){
+        console.error('Parse error:', e2.message, 'Raw:', rawText.substring(0,500));
+        throw new Error('Error al interpretar la respuesta de la IA: ' + e2.message);
+      }
     }
 
     // Guardar el informe completo en un campo oculto para el PDF
