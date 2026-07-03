@@ -267,16 +267,33 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
     const resp = await fetch('https://api.daily.co/v1/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
-      body: JSON.stringify({ name: nombreSala, properties: { enable_recording: 'cloud', enable_chat: true, exp: Math.floor(Date.now()/1000)+(60*60*24*30), max_participants: 10 } })
+      body: JSON.stringify({
+        name: nombreSala,
+        properties: {
+          enable_recording: 'cloud',
+          enable_chat: true,
+          exp: Math.floor(Date.now()/1000)+(60*60*24*30),
+          max_participants: 10,
+          enable_prejoin_ui: false // salta la pantalla que pide el nombre
+        }
+      })
     });
     const sala = await resp.json();
     if (!resp.ok) return res.status(500).json({ error: 'No se pudo crear la sala', detalle: sala });
-    const linksMedicos = (ml||[]).map(n => ({ nombre: n, link: sala.url+'?t=owner' }));
+
+    // Cada médico obtiene un link con su nombre precargado como owner
+    const linksMedicos = (ml||[]).map(n => ({
+      nombre: n,
+      link: `${sala.url}?t=owner&userName=${encodeURIComponent(n)}`
+    }));
+    // El paciente obtiene un link con su nombre precargado como participante
+    const linkPaciente = `${sala.url}?userName=${encodeURIComponent(paciente)}`;
+
     const turnoId = `turno-${Date.now()}`;
     await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo)
       VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11)`,
       [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
-       sala.name, sala.url, sala.url+'?t=owner', JSON.stringify(linksMedicos), motivo||'']);
+       sala.name, linkPaciente, sala.url+'?t=owner', JSON.stringify(linksMedicos), motivo||'']);
     for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
     res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: sala.url+'?t=owner', links_medicos: linksMedicos, turno_id: turnoId, paciente });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -386,7 +403,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 8px;}p{margin-bo
   </div>
   <div style="text-align:right;"><div class="doc-numero">${d.numero}</div><div class="doc-fecha">Tierra del Fuego, ${fechaEmision}</div></div>
 </div>
-<h1>Informe de Junta Médica Laboral</h1>
+<h1>Informe de ${d.empresa ? d.empresa + ' — ' : ''}${todos[0]?.especialidad||'Medicina Laboral'}</h1>
 <div class="subt">A la Dirección de Recursos Humanos / Asesoría Legal — Empresa: ${d.empresa||'—'}</div>
 <h2>I. Objeto del informe</h2>
 <p>El presente dictamen tiene por objeto documentar los hallazgos y conclusiones de la Junta Médica realizada al/a la evaluado/a <strong>${d.paciente}</strong>, a fin de determinar su aptitud laboral, llevada a cabo en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
@@ -456,9 +473,9 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   </div>
   <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
 </div>
-<h1>Acta de Asistencia — Junta Médica Laboral</h1>
+<h1>Acta de Asistencia — ${t.tipo||'Consulta Médica'}</h1>
 <div class="subt">Constancia de asistencia mediante registro de eventos de la videoconsulta</div>
-<p>Se deja constancia de que en el día de la fecha se llevó a cabo una junta médica, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>, realizada en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
+<p>Se deja constancia de que en el día de la fecha se llevó a cabo una <strong>${(t.tipo||'consulta médica').toLowerCase()}</strong>, convocada en virtud de la solicitud de <strong>${t.empresa||'—'}</strong> para evaluar los alcances de la situación laboral del/la Sr./Sra. <strong>${t.paciente}</strong>, realizada en modalidad de telemedicina a través de la plataforma MEDGRUP.</p>
 <div class="datos-box">
   <div><div class="dato-label">Paciente</div><div class="dato-value">${t.paciente}</div></div>
   <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
@@ -480,10 +497,25 @@ app.post('/api/webhooks/daily', async (req, res) => {
   try {
     const { type, payload={} } = req.body;
     const sala = payload.room||payload.room_name||'';
-    const nombre = payload.user_name||payload.userName||'Participante';
-    if (type==='participant.joined'&&sala) {
+    const nombreRaw = payload.user_name||payload.userName||'Participante';
+    const nombre = decodeURIComponent(nombreRaw).replace(/\+/g,' ').trim();
+
+    if (type==='participant.joined' && sala) {
       const t = await pool.query('SELECT id FROM turnos WHERE sala=$1 LIMIT 1', [sala]);
-      if (t.rows.length) await pool.query('INSERT INTO eventos_turno (turno_id,tipo,participante) VALUES ($1,$2,$3)', [t.rows[0].id, payload.owner?'union_medico':'union_paciente', nombre]);
+      if (t.rows.length) {
+        const turnoId = t.rows[0].id;
+        // Determinar si es médico: por flag owner O por coincidencia de nombre con turno_medicos
+        let esMedico = payload.owner === true;
+        if (!esMedico) {
+          const medicos = await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1', [turnoId]);
+          esMedico = medicos.rows.some(m => {
+            const apellido = m.medico_nombre.toLowerCase().split(',')[0].trim();
+            return nombre.toLowerCase().includes(apellido) || apellido.includes(nombre.toLowerCase().split(/[\s%]+/)[0]);
+          });
+        }
+        const tipo = esMedico ? 'union_medico' : 'union_paciente';
+        await pool.query('INSERT INTO eventos_turno (turno_id,tipo,participante) VALUES ($1,$2,$3)', [turnoId, tipo, nombre]);
+      }
     }
     res.json({ ok: true });
   } catch (err) { res.json({ ok: true }); }
