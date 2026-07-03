@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 
 app.use(cors());
@@ -645,6 +646,31 @@ async function registrarWebhookDaily() {
     console.log('✓ Webhook Daily registrado:', webhookUrl);
   } catch (err) { console.log('⚠ Webhook Daily no registrado:', err.message); }
 }
+
+// ===== PROXY ANTHROPIC (evita CORS desde el frontend) =====
+app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
+  try {
+    if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key de IA no configurada. Agregá ANTHROPIC_API_KEY en las variables de entorno de Railway.' });
+    const { system, messages, max_tokens } = req.body;
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: max_tokens || 3000,
+        system,
+        messages
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'Error de la IA' });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));

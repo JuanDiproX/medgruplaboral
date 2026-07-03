@@ -1385,13 +1385,12 @@ REGLAS:
 }`;
 
   try{
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
+    const res = await fetch('/api/ia/generar-informe',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:apiHeaders(),
       body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:3000,
         system: SYSTEM_PROMPT,
+        max_tokens: 3000,
         messages:[{role:'user',content:`DATOS DE LA CONSULTA:
 - Empresa: ${empresa}
 - Tipo de consulta: ${tipo}
