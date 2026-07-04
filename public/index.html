@@ -924,51 +924,13 @@ tr:hover td{background:var(--azul-light);}
             </div>
             <div class="card-body" id="dictamenes-lista-body" style="padding-top:0.9rem;"></div>
           </div>
-          <!-- Card 1: Datos identificatorios del evaluado -->
-          <div class="card">
-            <div class="card-hdr">
-              <div class="card-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Datos identificatorios del evaluado
-              </div>
-            </div>
-            <div class="card-body">
-              <div style="background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:4px;">
-                <div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;">
-                  <span id="dict-empresa">—</span> &nbsp;·&nbsp; Consulta de <span id="dict-duracion">—</span>
-                </div>
-              </div>
-              <div class="form-grid">
-                <div class="form-group full">
-                  <label class="form-lbl">Nombre y apellido</label>
-                  <input type="text" id="dict-paciente-input" placeholder="Apellido, Nombre"/>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">DNI</label>
-                  <input type="text" id="dict-dni" placeholder="00.000.000"/>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">Edad</label>
-                  <input type="text" id="dict-edad" placeholder="años"/>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">Obra social</label>
-                  <input type="text" id="dict-obrasocial" placeholder="Si corresponde"/>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">Profesión / Ocupación</label>
-                  <input type="text" id="dict-profesion" placeholder="Cargo / tarea"/>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Card 2: Informe médico -->
+          <!-- CARD ÚNICA: DICTADO IA + FIRMA -->
           <div class="card">
             <div class="card-hdr">
               <div class="card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                Informe médico-legal
+                Redacción del informe médico
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 <span class="badge b-blue" id="dict-numero">N° —</span>
@@ -976,78 +938,92 @@ tr:hover td{background:var(--azul-light);}
               </div>
             </div>
             <div class="card-body">
+              <div style="background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">
+                <span id="dict-empresa">—</span> · <span id="dict-duracion">—</span>
+              </div>
 
-              <!-- DICTADO LIBRE CON IA -->
-              <div style="background:linear-gradient(135deg,#f0f0ff,#faf0ff);border:1.5px solid #c4b5fd;border-radius:var(--r-sm);padding:14px 16px;margin-bottom:18px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" style="width:16px;height:16px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <span style="font-size:12px;font-weight:600;color:#6366f1;letter-spacing:-0.1px;">Completar con IA</span>
-                  <span style="font-size:10.5px;color:var(--text3);">— Escribí libremente, la IA completa el informe</span>
+              <!-- PASO 1: DICTADO LIBRE CON IA -->
+              <div style="background:linear-gradient(135deg,#f0f0ff,#faf0ff);border:1.5px solid #c4b5fd;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">1</div>
+                  <span style="font-size:13.5px;font-weight:700;color:#6366f1;letter-spacing:-0.1px;">Dictá el caso — la IA redacta el informe</span>
                 </div>
-                <textarea id="dict-texto-libre" placeholder='Ej: "Masculino 45 años, DNI 28.400.123, OSDE, operario. Dolor lumbar 3 meses, estudios normales. Sin limitación funcional. Apto con restricción de carga mayor 10kg por 30 días."' style="width:100%;min-height:90px;font-size:13px;padding:9px 11px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:DM Sans,sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;"></textarea>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-                  <button onclick="generarInformeIA()" id="btn-generar-ia-dict" style="padding:9px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px;line-height:1.5;">
+                  Escribí libremente los datos del paciente, hallazgos, análisis de documentación y aptitud. La IA armará el informe completo con la estructura del Dr. Barboza (I. Datos personales, II. Metodología, III. Antecedentes, IV. Examen semiológico, V. Análisis médico-legal, VI. Conclusiones).
+                </div>
+                <textarea id="dict-texto-libre" placeholder='Ej: "Luis Francisco Pérez Aragón DNI 36708613, nacido 15/02/1992 en Río Grande TDF, soltero con 2 hijos, secundario completo, procesos en Solnik S.A. hace 12 años. Licencia desde 19/06/2026. Sin antecedentes psiquiátricos previos. Al examen: lúcido, orientado, sin alteraciones perceptivas, memoria conservada, pensamiento ordenado, juicio conservado, afecto estable. Certificado Dr. Pérez por insomnio, sin tratamiento psicofarmacológico. Trastorno adaptativo F43.2. Apto para reintegrarse."' style="width:100%;min-height:130px;font-size:13px;padding:12px 14px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:DM Sans,sans-serif;resize:vertical;outline:none;line-height:1.65;background:white;box-sizing:border-box;"></textarea>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                  <button onclick="generarInformeIA()" id="btn-generar-ia-dict" style="padding:11px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:DM Sans,sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     <span id="btn-ia-dict-text">Generar informe</span>
                   </button>
-                  <div id="ia-dict-status" style="display:none;font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:5px;">
-                    <div style="width:11px;height:11px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
-                    Analizando...
+                  <div id="ia-dict-status" style="display:none;font-size:11.5px;color:var(--text3);align-items:center;gap:6px;">
+                    <div style="width:12px;height:12px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
+                    <span>Analizando y redactando...</span>
                   </div>
                 </div>
               </div>
 
-              <div class="form-grid">
-                <div class="form-group full">
-                  <label class="form-lbl">Antecedentes y motivo de la consulta</label>
-                  <textarea id="dict-antecedentes" placeholder="Cronología, licencias previas, contexto..." style="min-height:75px;"></textarea>
+              <!-- PASO 2: PREVIEW EDITABLE DEL INFORME GENERADO -->
+              <div id="informe-preview-wrap" style="display:none;background:white;border:2px solid #d4edda;border-radius:12px;padding:0;margin-bottom:16px;overflow:hidden;">
+                <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:12px 16px;display:flex;align-items:center;gap:8px;">
+                  <div style="width:24px;height:24px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">2</div>
+                  <span style="color:white;font-size:13.5px;font-weight:700;">Revisá el informe generado — podés editarlo</span>
                 </div>
-                <div class="form-group full">
-                  <label class="form-lbl">Hallazgos del examen</label>
-                  <textarea id="dict-hallazgos" placeholder="Estado mental, semiología, examen físico..." style="min-height:75px;"></textarea>
-                </div>
-                <div class="form-group full">
-                  <label class="form-lbl">Conclusión médico-legal</label>
-                  <textarea id="dict-conclusion" placeholder="Fundamento de la decisión..." style="min-height:75px;"></textarea>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">Aptitud laboral</label>
-                  <select id="dict-aptitud">
-                    <option value="apto">Apto</option>
-                    <option value="restricc">Apto con restricciones</option>
-                    <option value="no-apto">No apto</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-lbl">Días de reposo</label>
-                  <input type="text" id="dict-reposo" value="0"/>
-                </div>
-                <div class="form-group full">
-                  <label class="form-lbl">Derivación</label>
-                  <select id="dict-derivacion">
-                    <option value="Sin derivación">Sin derivación</option>
-                    <option>Clínica médica</option>
-                    <option>Psiquiatría</option>
-                    <option>Traumatología</option>
-                    <option>Cardiología</option>
-                    <option>Neurología</option>
-                  </select>
-                </div>
-                <div class="form-group full">
-                  <label class="form-lbl">Indicaciones y tratamiento</label>
-                  <textarea id="dict-indicaciones" placeholder="Tratamiento, seguimiento, observaciones..." style="min-height:70px;"></textarea>
+                <div style="padding:16px 18px;max-height:500px;overflow-y:auto;">
+                  <textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
                 </div>
               </div>
 
-              <button class="btn btn-primary btn-full" id="btn-guardar-dict" onclick="guardarDictamen()">
+              <!-- PASO 3: FIRMA DIGITAL -->
+              <div id="firma-wrap" style="display:none;background:linear-gradient(135deg,#fff9e6,#fef3c7);border:1.5px solid #fbbf24;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                  <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">3</div>
+                  <span style="font-size:13.5px;font-weight:700;color:#92400e;letter-spacing:-0.1px;">Firmá el informe digitalmente</span>
+                </div>
+                <div style="font-size:11.5px;color:#78350f;margin-bottom:10px;line-height:1.5;">
+                  Firmá con el mouse, dedo o lápiz óptico dentro del recuadro. La firma se agregará al PDF final del informe.
+                </div>
+                <div style="background:white;border:2px dashed #fbbf24;border-radius:8px;overflow:hidden;position:relative;">
+                  <canvas id="firma-canvas" style="display:block;width:100%;height:180px;touch-action:none;cursor:crosshair;background:white;"></canvas>
+                  <div id="firma-placeholder" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#c8c4be;font-size:13px;pointer-events:none;font-style:italic;">Firmá acá</div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                  <button type="button" onclick="limpiarFirma()" style="padding:8px 14px;background:white;color:#92400e;border:1.5px solid #fbbf24;border-radius:8px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+                    Limpiar
+                  </button>
+                  <div style="flex:1;font-size:11px;color:#78350f;display:flex;align-items:center;padding:0 10px;">
+                    <span id="firma-status">Sin firmar aún</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botón principal de guardado -->
+              <button class="btn btn-primary btn-full" id="btn-guardar-dict" onclick="guardarDictamen()" style="padding:14px;font-size:14px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-                Guardar y emitir certificado
+                Guardar y emitir informe firmado
               </button>
+
+              <!-- Campos ocultos que la IA rellena internamente -->
+              <input type="hidden" id="dict-paciente-input"/>
+              <input type="hidden" id="dict-dni"/>
+              <input type="hidden" id="dict-edad"/>
+              <input type="hidden" id="dict-obrasocial"/>
+              <input type="hidden" id="dict-profesion"/>
+              <input type="hidden" id="dict-antecedentes"/>
+              <input type="hidden" id="dict-hallazgos"/>
+              <input type="hidden" id="dict-conclusion"/>
+              <input type="hidden" id="dict-aptitud" value="apto"/>
+              <input type="hidden" id="dict-reposo" value="0"/>
+              <input type="hidden" id="dict-derivacion" value="Sin derivación"/>
+              <input type="hidden" id="dict-indicaciones"/>
+              <input type="hidden" id="firma-base64"/>
 
               <div id="cert-ok" style="display:none;margin-top:14px;background:linear-gradient(135deg,#eaf5f0,#d4eddc);border:1px solid rgba(30,102,64,0.2);border-radius:var(--r);padding:1rem 1.2rem;">
                 <div style="font-size:14px;font-weight:700;color:#1e6640;display:flex;align-items:center;gap:6px;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><polyline points="20,6 9,17 4,12"/></svg>
-                  Certificado emitido
+                  Informe emitido
                 </div>
                 <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:6px;"></div>
                 <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;" id="cert-pdf-links"></div>
@@ -1492,14 +1468,28 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
       set('dict-reposo', info.dias_reposo ?? 0);
       if(info.derivacion) set('dict-derivacion', info.derivacion.toLowerCase().includes('sin') ? 'Sin derivación' : info.derivacion);
       set('dict-indicaciones', info.indicaciones);
-      // Campos extendidos para el PDF completo
       set('dict-paciente-input', info.apellido_nombre || document.getElementById('dict-paciente-input').value);
-      // Guardamos datos extra en campos ocultos
       ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
         let el = document.getElementById('ia-campo-'+k);
         if(!el){ el=document.createElement('input'); el.type='hidden'; el.id='ia-campo-'+k; document.body.appendChild(el); }
         el.value = info[k] || '';
       });
+
+      // Mostrar el paso 2 (preview) y paso 3 (firma)
+      const previewWrap = document.getElementById('informe-preview-wrap');
+      const previewText = document.getElementById('informe-preview-text');
+      const firmaWrap = document.getElementById('firma-wrap');
+      if(previewWrap && previewText){
+        previewText.value = armarPreviewInforme(info);
+        previewWrap.style.display = 'block';
+      }
+      if(firmaWrap){
+        firmaWrap.style.display = 'block';
+        // Inicializar el canvas si aún no lo hicimos, con un pequeño delay para que el DOM esté listo
+        setTimeout(() => {
+          if(!firmaContext) inicializarFirmaCanvas();
+        }, 100);
+      }
     }
 
     if(btnText) btnText.textContent='✓ Informe generado';
@@ -1517,6 +1507,113 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
     btn.disabled=false;
     if(statusEl) statusEl.style.display='none';
   }
+}
+
+// ===== FIRMA DIGITAL EN CANVAS =====
+let firmaContext = null, firmaDrawing = false, firmaHasContent = false, firmaLastPos = null;
+
+function inicializarFirmaCanvas(){
+  const canvas = document.getElementById('firma-canvas');
+  if(!canvas) return;
+  // Ajustar resolución al DPR para trazos nítidos
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  firmaContext = canvas.getContext('2d');
+  firmaContext.scale(dpr, dpr);
+  firmaContext.strokeStyle = '#1a1916';
+  firmaContext.lineWidth = 2.2;
+  firmaContext.lineCap = 'round';
+  firmaContext.lineJoin = 'round';
+
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0] || e;
+    return { x: touch.clientX - r.left, y: touch.clientY - r.top };
+  };
+  const startDraw = (e) => {
+    e.preventDefault();
+    firmaDrawing = true;
+    firmaLastPos = getPos(e);
+    firmaContext.beginPath();
+    firmaContext.moveTo(firmaLastPos.x, firmaLastPos.y);
+    document.getElementById('firma-placeholder').style.display = 'none';
+  };
+  const draw = (e) => {
+    if(!firmaDrawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    firmaContext.lineTo(p.x, p.y);
+    firmaContext.stroke();
+    firmaLastPos = p;
+    firmaHasContent = true;
+    document.getElementById('firma-status').textContent = '✓ Firma capturada — podés guardar el informe';
+    document.getElementById('firma-status').style.color = '#1e6640';
+    document.getElementById('firma-status').style.fontWeight = '600';
+  };
+  const endDraw = (e) => {
+    if(!firmaDrawing) return;
+    e?.preventDefault();
+    firmaDrawing = false;
+    if(firmaHasContent){
+      // Guardar la firma como base64
+      document.getElementById('firma-base64').value = canvas.toDataURL('image/png');
+    }
+  };
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', startDraw, {passive:false});
+  canvas.addEventListener('touchmove', draw, {passive:false});
+  canvas.addEventListener('touchend', endDraw);
+}
+
+function limpiarFirma(){
+  if(!firmaContext) return;
+  const canvas = document.getElementById('firma-canvas');
+  const rect = canvas.getBoundingClientRect();
+  firmaContext.clearRect(0, 0, rect.width, rect.height);
+  firmaHasContent = false;
+  document.getElementById('firma-base64').value = '';
+  document.getElementById('firma-placeholder').style.display = 'block';
+  document.getElementById('firma-status').textContent = 'Sin firmar aún';
+  document.getElementById('firma-status').style.color = '#78350f';
+  document.getElementById('firma-status').style.fontWeight = 'normal';
+}
+
+// ===== PREVIEW LEGIBLE DEL INFORME GENERADO =====
+function armarPreviewInforme(info){
+  const fecha = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+  const empresa = (consultaActual||turnoDictamenActual||{}).empresa || '';
+  const partes = [];
+  partes.push('INFORME DE EVALUACIÓN MÉDICO-LABORAL PSIQUIÁTRICA');
+  partes.push('');
+  partes.push('A: Dirección de Recursos Humanos – ' + (empresa||'—').toUpperCase());
+  partes.push('REFERENCIA: Evaluación Psiquiátrica Forense y de Medicina del Trabajo');
+  partes.push('FECHA DE EMISIÓN: ' + fecha);
+  partes.push('');
+  partes.push('I. DATOS PERSONALES DEL EVALUADO');
+  if(info.apellido_nombre) partes.push('●  Apellidos y Nombres: ' + info.apellido_nombre);
+  if(info.dni) partes.push('●  Documento Nacional de Identidad: DNI ' + info.dni);
+  if(info.fecha_nacimiento) partes.push('●  Fecha de Nacimiento: ' + info.fecha_nacimiento);
+  if(info.lugar_nacimiento) partes.push('●  Lugar de Nacimiento: ' + info.lugar_nacimiento);
+  if(info.estado_civil) partes.push('●  Estado Civil: ' + info.estado_civil);
+  if(info.estudios) partes.push('●  Estudios cursados: ' + info.estudios);
+  if(empresa) partes.push('●  Empresa: ' + empresa);
+  if(info.puesto) partes.push('●  Puesto de Trabajo: ' + info.puesto);
+  if(info.antiguedad) partes.push('●  Antigüedad: ' + info.antiguedad);
+  if(info.situacion_licencia) partes.push('●  Situación de Licencia: ' + info.situacion_licencia);
+  partes.push('');
+  if(info.metodologia){ partes.push('II. METODOLOGÍA ADOPTADA'); partes.push(info.metodologia); partes.push(''); }
+  if(info.antecedentes){ partes.push('III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES'); partes.push(info.antecedentes); partes.push(''); }
+  if(info.hallazgos){ partes.push('IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)'); partes.push(info.hallazgos); partes.push(''); }
+  if(info.analisis){ partes.push('V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN'); partes.push(info.analisis); partes.push(''); }
+  if(info.conclusion){ partes.push('VI. CONCLUSIONES MÉDICO-LEGALES'); partes.push(info.conclusion); partes.push(''); }
+  partes.push('Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.');
+  return partes.join('\n');
 }
 
 async function doLogin(){
@@ -2378,6 +2475,30 @@ async function guardarDictamen(){
 
     dictamenActualId=data.dictamen.id;
     const num=data.numero;
+
+    // Si hay firma digital, guardarla en el servidor para que aparezca en el PDF
+    const firmaBase64 = document.getElementById('firma-base64').value;
+    if(firmaBase64){
+      try{
+        await fetch('/api/dictamenes/'+data.dictamen.id+'/firma',{
+          method:'POST', headers:apiHeaders(),
+          body: JSON.stringify({ firma_base64: firmaBase64 })
+        });
+        addLog('blue','Firma digital agregada','El PDF ya incluye la firma del doctor');
+      }catch(err){ console.error('Error guardando firma:',err); }
+    }
+
+    // Si hay preview editado, actualizarlo también
+    const previewText = document.getElementById('informe-preview-text');
+    if(previewText && previewText.value){
+      try{
+        await fetch('/api/dictamenes/'+data.dictamen.id+'/informe-completo',{
+          method:'POST', headers:apiHeaders(),
+          body: JSON.stringify({ informe_texto: previewText.value })
+        });
+      }catch(err){ console.error('Error guardando texto completo:',err); }
+    }
+
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
       <div>${num} · ${pacienteNombre} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
@@ -2385,7 +2506,7 @@ async function guardarDictamen(){
     document.getElementById('cert-pdf-links').innerHTML=`
       <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-        Informe médico-laboral
+        Informe médico-laboral firmado
       </a>
       ${t?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>

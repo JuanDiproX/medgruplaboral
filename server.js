@@ -131,6 +131,8 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS metodologia TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS analisis TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS diagnostico_cie VARCHAR(200)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
     ]) await client.query(q2).catch(()=>{});
 
     // Fix columnas
@@ -412,7 +414,14 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric' }) : '—';
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
-    const firmasHtml = todos.map(m => `<div style="text-align:center;flex:1;min-width:180px;"><div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div><div style="font-size:12px;font-weight:600;">${m.medico}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad||'Medicina Laboral'}</div><div style="font-size:9.5px;color:#9a9790;">${m.matricula?'MN/MP '+m.matricula:''}</div></div>`).join('');
+    const firmasHtml = todos.map(m => {
+      // Si es el médico principal (el del dictamen) y tiene firma digital, mostrarla
+      const esDoctorFirmante = m.medico === d.medico && d.firma_doctor;
+      const firmaImg = esDoctorFirmante
+        ? `<img src="data:image/png;base64,${d.firma_doctor}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
+        : `<div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>`;
+      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.medico}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad||'Medicina Laboral'}</div><div style="font-size:9.5px;color:#9a9790;">${m.matricula?'MN/MP '+m.matricula:''}</div></div>`;
+    }).join('');
     const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
@@ -647,6 +656,27 @@ async function registrarWebhookDaily() {
     console.log('✓ Webhook Daily registrado:', webhookUrl);
   } catch (err) { console.log('⚠ Webhook Daily no registrado:', err.message); }
 }
+
+// ===== FIRMA DIGITAL DEL DOCTOR =====
+app.post('/api/dictamenes/:id/firma', authMiddleware, async (req, res) => {
+  try {
+    const { firma_base64 } = req.body;
+    if (!firma_base64) return res.status(400).json({ error: 'Falta la firma' });
+    const limpia = firma_base64.replace(/^data:image\/[a-z]+;base64,/, '');
+    await pool.query('UPDATE dictamenes SET firma_doctor=$1 WHERE id=$2', [limpia, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== INFORME COMPLETO EDITADO =====
+app.post('/api/dictamenes/:id/informe-completo', authMiddleware, async (req, res) => {
+  try {
+    const { informe_texto } = req.body;
+    if (!informe_texto) return res.status(400).json({ error: 'Falta el texto' });
+    await pool.query('UPDATE dictamenes SET informe_completo=$1 WHERE id=$2', [informe_texto, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // ===== PROXY ANTHROPIC =====
 app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
