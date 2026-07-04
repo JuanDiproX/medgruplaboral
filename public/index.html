@@ -1361,8 +1361,9 @@ REGLAS ESTRICTAS:
 2. Replicá el estilo formal, técnico y el vocabulario médico-legal forense del modelo.
 3. En la sección IV usá SIEMPRE los bullets con ● para cada función psíquica.
 4. En la sección VI usá SIEMPRE numeración 1. 2. 3. 4.
-5. Si el médico no menciona algún dato, inferí lo apropiado clínicamente en base a lo que sí mencionó.
+5. Si el médico NO menciona algún dato personal (apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil, estudios, obra_social, etc.), DEJÁ ESE CAMPO COMO STRING VACÍO "". NUNCA escribas "Sin datos", "No especificado", "N/A" ni similares. Un campo vacío se omite automáticamente en el informe.
 6. La sección II (metodología) siempre es igual, solo cambiá la fecha y el día de la semana.
+7. NO agregues la frase "Es todo cuanto puedo afirmar..." dentro del campo conclusion. Ese cierre se agrega automáticamente aparte.
 
 JSON a devolver (todas las claves obligatorias):
 {
@@ -1596,23 +1597,38 @@ function armarPreviewInforme(info){
   partes.push('FECHA DE EMISIÓN: ' + fecha);
   partes.push('');
   partes.push('I. DATOS PERSONALES DEL EVALUADO');
-  if(info.apellido_nombre) partes.push('●  Apellidos y Nombres: ' + info.apellido_nombre);
-  if(info.dni) partes.push('●  Documento Nacional de Identidad: DNI ' + info.dni);
-  if(info.fecha_nacimiento) partes.push('●  Fecha de Nacimiento: ' + info.fecha_nacimiento);
-  if(info.lugar_nacimiento) partes.push('●  Lugar de Nacimiento: ' + info.lugar_nacimiento);
-  if(info.estado_civil) partes.push('●  Estado Civil: ' + info.estado_civil);
-  if(info.estudios) partes.push('●  Estudios cursados: ' + info.estudios);
+
+  // Ayudante para validar si el dato tiene contenido real (no "Sin datos", vacío, etc)
+  const tieneDato = (v) => {
+    if(!v) return false;
+    const s = String(v).trim().toLowerCase();
+    if(s === '' || s === '—' || s === 'sin datos' || s === 'no especificado' || s === 'no consta') return false;
+    return true;
+  };
+
+  if(tieneDato(info.apellido_nombre)) partes.push('●  Apellidos y Nombres: ' + info.apellido_nombre);
+  if(tieneDato(info.dni)) partes.push('●  Documento Nacional de Identidad: DNI ' + info.dni);
+  if(tieneDato(info.fecha_nacimiento)) partes.push('●  Fecha de Nacimiento: ' + info.fecha_nacimiento);
+  if(tieneDato(info.lugar_nacimiento)) partes.push('●  Lugar de Nacimiento: ' + info.lugar_nacimiento);
+  if(tieneDato(info.estado_civil)) partes.push('●  Estado Civil: ' + info.estado_civil);
+  if(tieneDato(info.estudios)) partes.push('●  Estudios cursados: ' + info.estudios);
   if(empresa) partes.push('●  Empresa: ' + empresa);
-  if(info.puesto) partes.push('●  Puesto de Trabajo: ' + info.puesto);
-  if(info.antiguedad) partes.push('●  Antigüedad: ' + info.antiguedad);
-  if(info.situacion_licencia) partes.push('●  Situación de Licencia: ' + info.situacion_licencia);
+  if(tieneDato(info.puesto)) partes.push('●  Puesto de Trabajo: ' + info.puesto);
+  if(tieneDato(info.antiguedad)) partes.push('●  Antigüedad: ' + info.antiguedad);
+  if(tieneDato(info.situacion_licencia)) partes.push('●  Situación de Licencia: ' + info.situacion_licencia);
   partes.push('');
-  if(info.metodologia){ partes.push('II. METODOLOGÍA ADOPTADA'); partes.push(info.metodologia); partes.push(''); }
-  if(info.antecedentes){ partes.push('III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES'); partes.push(info.antecedentes); partes.push(''); }
-  if(info.hallazgos){ partes.push('IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)'); partes.push(info.hallazgos); partes.push(''); }
-  if(info.analisis){ partes.push('V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN'); partes.push(info.analisis); partes.push(''); }
-  if(info.conclusion){ partes.push('VI. CONCLUSIONES MÉDICO-LEGALES'); partes.push(info.conclusion); partes.push(''); }
-  partes.push('Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.');
+
+  if(tieneDato(info.metodologia)){ partes.push('II. METODOLOGÍA ADOPTADA'); partes.push(info.metodologia); partes.push(''); }
+  if(tieneDato(info.antecedentes)){ partes.push('III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES'); partes.push(info.antecedentes); partes.push(''); }
+  if(tieneDato(info.hallazgos)){ partes.push('IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)'); partes.push(info.hallazgos); partes.push(''); }
+  if(tieneDato(info.analisis)){ partes.push('V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN'); partes.push(info.analisis); partes.push(''); }
+  if(tieneDato(info.conclusion)){ partes.push('VI. CONCLUSIONES MÉDICO-LEGALES'); partes.push(info.conclusion); partes.push(''); }
+
+  // Solo agregar cierre si la conclusión NO lo tiene ya (evita duplicación)
+  const yaTieneCierre = info.conclusion && info.conclusion.toLowerCase().includes('es todo cuanto');
+  if(!yaTieneCierre){
+    partes.push('Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.');
+  }
   return partes.join('\n');
 }
 
