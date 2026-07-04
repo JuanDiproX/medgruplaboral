@@ -794,85 +794,63 @@ tr:hover td{background:var(--azul-light);}
     </div>
 
     <!-- Panel flotante de notas durante la llamada -->
-    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:380px;max-height:85vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
-      <div style="background:var(--grad-azul);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-        <div style="color:white;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          Dictado libre + IA
+    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:440px;max-height:90vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div style="color:white;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Redacción con IA — En vivo
         </div>
-        <button onclick="toggleNotasPanel()" style="background:none;border:none;color:white;cursor:pointer;font-size:18px;line-height:1;opacity:0.8;">×</button>
+        <button onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.15);border:none;color:white;cursor:pointer;font-size:16px;line-height:1;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">×</button>
       </div>
-      <div style="padding:14px 16px;overflow-y:auto;flex:1;">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6;">
-          Escribí libremente lo que observás durante la consulta. La IA va a completar el informe con esos datos.
-        </div>
-        <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:var(--azul);">
-          <strong>Ejemplo:</strong> "Masculino 45 años DNI 28400123 OSDE operario. Dolor lumbar 3 meses, estudios normales. Sin limitación funcional. Apto con restricción de carga mayor 10kg por 30 días."
-        </div>
-        <textarea id="notas-libre" placeholder="Escribí acá tus observaciones durante la consulta..." style="width:100%;min-height:180px;font-size:13px;padding:10px;border:1.5px solid var(--border2);border-radius:8px;resize:vertical;font-family:'DM Sans',sans-serif;line-height:1.6;" oninput="guardarNotaBorrador()"></textarea>
+      <div style="padding:16px;overflow-y:auto;flex:1;">
 
-        <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;">
+        <!-- PASO 1: DICTADO -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">1</div>
+          <span style="font-size:12.5px;font-weight:700;color:#6366f1;">Dictá el caso</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5;">
+          Escribí datos del paciente, hallazgos, análisis y aptitud. La IA arma el informe completo.
+        </div>
+        <textarea id="notas-libre" placeholder='Ej: "Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años. Licencia desde 19/6. Sin antecedentes psiquiátricos. Al examen lúcido, orientado, memoria conservada, juicio conservado, afecto estable. Certificado Dr. Pérez por insomnio, sin tratamiento psicofarmacológico. F43.2. Apto para reintegrarse."' style="width:100%;min-height:140px;font-size:12.5px;padding:10px 12px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;box-sizing:border-box;" oninput="guardarNotaBorrador()"></textarea>
+
+        <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           <span id="btn-ia-text">Generar informe con IA</span>
         </button>
 
-        <div id="ia-status" style="display:none;margin-top:8px;font-size:11.5px;text-align:center;color:var(--text3);display:flex;align-items:center;justify-content:center;gap:6px;">
-          <div style="width:12px;height:12px;border:2px solid var(--border2);border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
-          Analizando y completando el informe...
+        <div id="ia-status" style="display:none;margin-top:10px;font-size:11.5px;text-align:center;color:var(--text3);align-items:center;justify-content:center;gap:6px;">
+          <div style="width:12px;height:12px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>
+          Analizando y redactando...
         </div>
 
-        <div class="divider" style="margin-top:14px;">O completá manualmente</div>
-        <div class="form-grid" style="margin-bottom:6px;">
-          <div class="form-group">
-            <label class="form-lbl">DNI</label>
-            <input type="text" id="notas-dni" placeholder="00.000.000" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+        <!-- PASO 2: PREVIEW EDITABLE (se muestra tras generar con IA) -->
+        <div id="notas-preview-wrap" style="display:none;margin-top:14px;background:white;border:2px solid #d4edda;border-radius:12px;overflow:hidden;">
+          <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:10px 14px;display:flex;align-items:center;gap:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
+            <span style="color:white;font-size:12.5px;font-weight:700;">Revisá y editá el informe</span>
           </div>
-          <div class="form-group">
-            <label class="form-lbl">Edad</label>
-            <input type="text" id="notas-edad" placeholder="años" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
-          </div>
-          <div class="form-group">
-            <label class="form-lbl">Obra social</label>
-            <input type="text" id="notas-obrasocial" placeholder="Si corresponde" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
-          </div>
-          <div class="form-group">
-            <label class="form-lbl">Profesión</label>
-            <input type="text" id="notas-profesion" placeholder="Ocupación" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
+          <div style="padding:12px;">
+            <textarea id="notas-preview-text" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:6px;">
-          <label class="form-lbl">Antecedentes</label>
-          <textarea id="notas-antecedentes" placeholder="Motivo, cronología..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
+
+        <div id="notas-preview-hint" style="display:none;margin-top:10px;padding:10px 12px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;font-size:11.5px;color:var(--azul);line-height:1.5;">
+          💡 Cuando termines la consulta, cerrá esta ventana y hacé click en <strong>"Finalizar consulta"</strong> — el informe generado se guarda automáticamente al pasar al dictamen.
         </div>
-        <div class="form-group" style="margin-bottom:6px;">
-          <label class="form-lbl">Hallazgos</label>
-          <textarea id="notas-hallazgos" placeholder="Lo que vayas viendo..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:6px;">
-          <label class="form-lbl">Conclusión</label>
-          <textarea id="notas-conclusion" placeholder="Fundamento..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
-        </div>
-        <div class="form-group" style="margin-bottom:6px;">
-          <label class="form-lbl">Indicaciones</label>
-          <textarea id="notas-indicaciones" placeholder="Tratamiento..." style="min-height:44px;font-size:12.5px;" oninput="guardarNotaBorrador()"></textarea>
-        </div>
-        <div class="form-grid" style="margin-bottom:4px;">
-          <div class="form-group">
-            <label class="form-lbl">Aptitud</label>
-            <select id="notas-aptitud" style="font-size:12.5px;" onchange="guardarNotaBorrador()">
-              <option value="apto">Apto</option>
-              <option value="restricc">Con restricciones</option>
-              <option value="no-apto">No apto</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-lbl">Reposo (días)</label>
-            <input type="text" id="notas-reposo" value="0" style="font-size:12.5px;" oninput="guardarNotaBorrador()"/>
-          </div>
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:6px;display:flex;align-items:center;gap:5px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;color:#1e6640;"><polyline points="20,6 9,17 4,12"/></svg>
-          <span id="notas-guardado-status">Guardado</span>
+
+        <!-- Campos ocultos (los que rellena la IA para pasarlos al dictamen) -->
+        <input type="hidden" id="notas-dni"/>
+        <input type="hidden" id="notas-edad"/>
+        <input type="hidden" id="notas-obrasocial"/>
+        <input type="hidden" id="notas-profesion"/>
+        <input type="hidden" id="notas-antecedentes"/>
+        <input type="hidden" id="notas-hallazgos"/>
+        <input type="hidden" id="notas-conclusion"/>
+        <input type="hidden" id="notas-indicaciones"/>
+        <input type="hidden" id="notas-aptitud" value="apto"/>
+        <input type="hidden" id="notas-reposo" value="0"/>
+        <input type="hidden" id="notas-guardado-status"/>
         </div>
       </div>
     </div>
@@ -1456,6 +1434,26 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
       set('notas-conclusion', info.conclusion);
       if(info.aptitud) set('notas-aptitud', info.aptitud);
       set('notas-reposo', info.dias_reposo ?? 0);
+
+      // Guardar los datos extendidos en campos ocultos globales para pasar al dictamen
+      ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
+        let el = document.getElementById('ia-campo-'+k);
+        if(!el){ el=document.createElement('input'); el.type='hidden'; el.id='ia-campo-'+k; document.body.appendChild(el); }
+        el.value = info[k] || '';
+      });
+
+      // Mostrar el preview editable en el panel de notas
+      const previewWrap = document.getElementById('notas-preview-wrap');
+      const previewText = document.getElementById('notas-preview-text');
+      const previewHint = document.getElementById('notas-preview-hint');
+      if(previewWrap && previewText){
+        previewText.value = armarPreviewInforme(info);
+        previewWrap.style.display = 'block';
+        if(previewHint) previewHint.style.display = 'block';
+      }
+
+      // Guardar todo el info + texto del preview en el borrador para transferirlo al dictamen luego
+      window._informeIAEnVivo = info;
       guardarNotaBorrador();
     } else {
       set('dict-dni', info.dni);
@@ -2314,10 +2312,38 @@ async function abrirDictamenParaTurno(t, dur){
     document.getElementById('cert-ok').style.display='none';
     document.getElementById('btn-guardar-dict').innerHTML=`
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-      Guardar y emitir mi certificado
+      Guardar y emitir informe firmado
     `;
     dictamenActualId=null;
-    if(borrador){
+
+    // Si el doctor generó el informe con IA en el panel de notas durante la llamada,
+    // ya está armado — mostramos el preview y el paso de firma directamente
+    if(window._informeIAEnVivo){
+      const info = window._informeIAEnVivo;
+      // Rellenar el textarea del dictado libre para que el doctor vea qué escribió
+      const textoLibreDict = document.getElementById('dict-texto-libre');
+      const textoLibreNotas = document.getElementById('notas-libre');
+      if(textoLibreDict && textoLibreNotas) textoLibreDict.value = textoLibreNotas.value;
+
+      // Copiar el preview editado en el panel de notas (respeta ediciones)
+      const previewNotas = document.getElementById('notas-preview-text');
+      const previewDict = document.getElementById('informe-preview-text');
+      const previewDictWrap = document.getElementById('informe-preview-wrap');
+      const firmaWrap = document.getElementById('firma-wrap');
+      if(previewDict && previewNotas){
+        previewDict.value = previewNotas.value || armarPreviewInforme(info);
+        if(previewDictWrap) previewDictWrap.style.display = 'block';
+      }
+      if(firmaWrap){
+        firmaWrap.style.display = 'block';
+        setTimeout(() => { if(!firmaContext) inicializarFirmaCanvas(); }, 100);
+      }
+      // Rellenar el nombre del paciente si la IA lo detectó
+      if(info.apellido_nombre){
+        document.getElementById('dict-paciente-input').value = info.apellido_nombre;
+      }
+      addLog('green','Informe generado durante la llamada','Solo falta firmar y guardar');
+    } else if(borrador){
       addLog('green','Notas de la llamada recuperadas','Se cargaron automáticamente en el dictamen');
     }
   }
