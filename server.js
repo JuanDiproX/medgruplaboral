@@ -278,6 +278,57 @@ app.patch('/api/turnos/:id/estado', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== EDITAR TURNO (solo admin) =====
+// Actualiza paciente, fecha, hora, tipo, empresa, motivo y la lista de médicos.
+// La sala Daily y los links NO se tocan (se mantienen exactamente iguales).
+app.patch('/api/turnos/:id', adminMiddleware, async (req, res) => {
+  const { paciente, fecha, hora, tipo, empresa, motivo, medicos } = req.body;
+  try {
+    const chk = await pool.query('SELECT id FROM turnos WHERE id=$1', [req.params.id]);
+    if (!chk.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+
+    await pool.query(`UPDATE turnos SET
+      paciente = COALESCE($1, paciente),
+      fecha    = COALESCE($2, fecha),
+      hora     = COALESCE($3, hora),
+      tipo     = COALESCE($4, tipo),
+      empresa  = COALESCE($5, empresa),
+      motivo   = COALESCE($6, motivo)
+      WHERE id=$7`,
+      [paciente || null, fecha || null, hora || null, tipo || null, empresa || null, motivo || null, req.params.id]);
+
+    // Si vinieron médicos en el body, reemplazar la lista completa
+    if (Array.isArray(medicos)) {
+      await pool.query('DELETE FROM turno_medicos WHERE turno_id=$1', [req.params.id]);
+      for (const m of medicos) {
+        await pool.query(
+          'INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+          [req.params.id, m]
+        );
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== ELIMINAR TURNO (solo admin) =====
+// Borra en cascada: eventos, dictámenes, médicos asignados y el turno.
+// La sala Daily se deja intacta (expira sola por su exp property).
+app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
+  try {
+    const chk = await pool.query('SELECT paciente FROM turnos WHERE id=$1', [req.params.id]);
+    if (!chk.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+
+    await pool.query('DELETE FROM eventos_turno WHERE turno_id=$1', [req.params.id]);
+    await pool.query('DELETE FROM dictamenes    WHERE turno_id=$1', [req.params.id]);
+    await pool.query('DELETE FROM turno_medicos WHERE turno_id=$1', [req.params.id]);
+    await pool.query('DELETE FROM turnos        WHERE id=$1',       [req.params.id]);
+
+    res.json({ ok: true, paciente: chk.rows[0].paciente });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== CREAR SALA =====
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   try {
