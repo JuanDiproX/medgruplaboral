@@ -808,6 +808,35 @@ th{font-size:9px;}
   </div>
 </div>
 
+<!-- MODAL EDITAR ACTA (solo admin) -->
+<div class="modal-bg" id="modal-editar-acta">
+  <div class="modal" style="max-width:640px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="modal-title" style="margin-bottom:2px;">Editar acta de asistencia</div>
+        <div style="font-size:11.5px;color:var(--text3);" id="acta-turno-info">—</div>
+      </div>
+      <span class="badge b-rosa" style="font-size:11px;">Solo admin</span>
+    </div>
+
+    <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:1rem;font-size:12.5px;color:var(--azul);line-height:1.5;">
+      Podés editar la hora en formato <strong>HH:MM:SS</strong> (hora argentina), cambiar el participante o eliminar eventos erróneos. Los cambios se reflejan inmediatamente en el PDF del acta.
+    </div>
+
+    <div id="acta-eventos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
+
+    <div id="acta-error" style="display:none;margin-bottom:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalEditarActa()">Cerrar</button>
+      <a id="btn-ver-acta-updated" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        Ver acta actualizada
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR DICTAMEN COMPLETO (solo admin) -->
 <div class="modal-bg" id="modal-editar-dictamen">
   <div class="modal" style="max-width:720px;">
@@ -1537,7 +1566,11 @@ function renderAgenda(){
         // Médico: va al formulario inline
         : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`
       :'';
-    const ba=t.estado==='completado'?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
+    const ba=t.estado==='completado'
+      ? esAdmin
+        ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirModalEditarActa('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</button>`
+        : `<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`
+      :'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
     const bfirma=t.estado==='completado'&&esAdmin?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;border-color:var(--rosa-mid);color:var(--rosa);" onclick="subirPDFFirmado('${t.id}')" title="Subir informe firmado por el doctor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir firmado</button>`:'';
     // Botones de admin: editar y eliminar cualquier turno
@@ -2214,7 +2247,129 @@ function cerrarDictamen(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// ===== MODAL DE EDICIÓN COMPLETA DE DICTAMEN (admin, sin límite de tiempo) =====
+// ===== MODAL DE EDICIÓN DEL ACTA (admin) =====
+
+let actaTurnoId = null;
+let actaEventos = [];
+
+const TIPO_LABEL = {
+  inicio_medico:  'Inicio de videoconsulta',
+  union_medico:   'Médico se incorporó a la consulta',
+  union_paciente: 'Paciente se incorporó a la consulta',
+  fin_consulta:   'Finalización de la consulta'
+};
+const TIPO_OPTIONS = [
+  {v:'union_medico',   l:'Médico se incorporó a la consulta'},
+  {v:'union_paciente', l:'Paciente se incorporó a la consulta'},
+  {v:'inicio_medico',  l:'Inicio de videoconsulta'},
+  {v:'fin_consulta',   l:'Finalización de la consulta'},
+];
+
+async function abrirModalEditarActa(turnoId){
+  actaTurnoId = turnoId;
+  document.getElementById('acta-error').style.display='none';
+
+  const t = turnos.find(x=>x.id===turnoId);
+  document.getElementById('acta-turno-info').textContent =
+    t ? `${t.paciente} · ${new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'long'})} ${t.hora} hs` : turnoId;
+
+  document.getElementById('btn-ver-acta-updated').href = `/api/turnos/${turnoId}/acta`;
+  await recargarEventosActa();
+  document.getElementById('modal-editar-acta').classList.add('open');
+}
+
+function cerrarModalEditarActa(){
+  document.getElementById('modal-editar-acta').classList.remove('open');
+  actaTurnoId = null; actaEventos = [];
+}
+
+async function recargarEventosActa(){
+  if(!actaTurnoId) return;
+  try{
+    const r = await fetch('/api/turnos/'+actaTurnoId+'/eventos', {headers:apiHeaders()});
+    const data = await r.json();
+    actaEventos = data.eventos || [];
+    renderEventosActa();
+  }catch(e){ document.getElementById('acta-error').textContent='Error al cargar eventos'; document.getElementById('acta-error').style.display='block'; }
+}
+
+function horaARG(isoString){
+  return new Date(isoString).toLocaleTimeString('es-AR',{
+    hour:'2-digit', minute:'2-digit', second:'2-digit',
+    timeZone:'America/Argentina/Buenos_Aires', hour12:false
+  });
+}
+
+function renderEventosActa(){
+  const lista = document.getElementById('acta-eventos-lista');
+  if(!actaEventos.length){
+    lista.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:13px;">No hay eventos registrados para este turno.</div>';
+    return;
+  }
+  lista.innerHTML = actaEventos.map((ev,idx) => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;" id="ev-row-${ev.id}">
+      <div class="form-group" style="margin:0;">
+        <label class="form-lbl">Hora (HH:MM:SS)</label>
+        <input type="text" id="ev-hora-${ev.id}" value="${horaARG(ev.creado_en)}" placeholder="11:01:13" style="font-family:'DM Mono',monospace;font-size:13px;" maxlength="8"/>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-lbl">Participante</label>
+        <input type="text" id="ev-part-${ev.id}" value="${ev.participante||''}" placeholder="Dr. Barboza, Raúl"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;align-self:flex-end;padding-bottom:1px;">
+        <button class="btn btn-primary" style="padding:6px 11px;font-size:11.5px;white-space:nowrap;" onclick="guardarEventoActa(${ev.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;"><polyline points="20,6 9,17 4,12"/></svg>
+          Guardar
+        </button>
+        <button class="btn btn-danger" style="padding:6px 11px;font-size:11.5px;white-space:nowrap;" onclick="eliminarEventoActa(${ev.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+          Eliminar
+        </button>
+      </div>
+      <div style="grid-column:1/-1;font-size:11px;color:var(--text3);">
+        <span class="badge b-gray" style="font-size:10px;">${TIPO_LABEL[ev.tipo]||ev.tipo}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function guardarEventoActa(eventoId){
+  const errEl = document.getElementById('acta-error');
+  errEl.style.display='none';
+  const hora = document.getElementById('ev-hora-'+eventoId)?.value?.trim();
+  const participante = document.getElementById('ev-part-'+eventoId)?.value?.trim();
+
+  // Validar formato HH:MM:SS
+  if(hora && !/^\d{2}:\d{2}:\d{2}$/.test(hora)){
+    errEl.textContent = 'Formato de hora inválido. Usá HH:MM:SS (ej: 11:01:13)';
+    errEl.style.display='block'; return;
+  }
+  try{
+    const res = await fetch('/api/eventos/'+eventoId, {
+      method:'PATCH', headers:apiHeaders(),
+      body: JSON.stringify({ hora_arg: hora, participante })
+    });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent=data.error||'Error al guardar'; errEl.style.display='block'; return; }
+    mostrarToast('✓ Evento actualizado','#1e6640');
+    await recargarEventosActa();
+  }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
+
+async function eliminarEventoActa(eventoId){
+  const ev = actaEventos.find(e=>e.id===eventoId);
+  const desc = ev ? (TIPO_LABEL[ev.tipo]||ev.tipo) + (ev.participante ? ' — '+ev.participante : '') : 'este evento';
+  if(!confirm(`¿Eliminar "${desc}"?\nEsta acción no se puede deshacer.`)) return;
+  const errEl = document.getElementById('acta-error');
+  errEl.style.display='none';
+  try{
+    const res = await fetch('/api/eventos/'+eventoId, { method:'DELETE', headers:apiHeaders() });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent=data.error||'Error al eliminar'; errEl.style.display='block'; return; }
+    mostrarToast('✓ Evento eliminado del acta','#9a2847');
+    await recargarEventosActa();
+  }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
 
 async function abrirModalEditarDictamen(dictamenId){
   dictamenEditandoId = dictamenId;

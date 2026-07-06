@@ -399,6 +399,37 @@ app.get('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Editar hora/participante de un evento (solo admin)
+app.patch('/api/eventos/:id', adminMiddleware, async (req, res) => {
+  try {
+    const { hora_arg, participante } = req.body;
+    // hora_arg viene como "HH:MM:SS" en hora argentina — la convertimos a timestamp UTC para guardar
+    if (hora_arg) {
+      // Tomamos la fecha del evento original y le ponemos la hora argentina nueva
+      const ev = await pool.query('SELECT creado_en FROM eventos_turno WHERE id=$1', [req.params.id]);
+      if (!ev.rows.length) return res.status(404).json({ error: 'No encontrado' });
+      const fechaOriginal = new Date(ev.rows[0].creado_en);
+      // Fecha en Argentina (año/mes/día)
+      const fechaARG = fechaOriginal.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }); // YYYY-MM-DD
+      // Construir el nuevo timestamp combinando la fecha ARG con la hora ARG nueva
+      const nuevoTimestamp = new Date(`${fechaARG}T${hora_arg}-03:00`); // -03:00 = Argentina
+      await pool.query('UPDATE eventos_turno SET creado_en=$1 WHERE id=$2', [nuevoTimestamp.toISOString(), req.params.id]);
+    }
+    if (participante !== undefined) {
+      await pool.query('UPDATE eventos_turno SET participante=$1 WHERE id=$2', [participante, req.params.id]);
+    }
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Eliminar un evento del acta (solo admin)
+app.delete('/api/eventos/:id', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM eventos_turno WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== DICTÁMENES =====
 app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   try { const r = await pool.query('SELECT * FROM dictamenes ORDER BY creado_en DESC LIMIT 50'); res.json(r.rows); }
