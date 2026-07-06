@@ -137,6 +137,7 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS diagnostico_cie VARCHAR(200)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
     ]) await client.query(q2).catch(()=>{});
 
     // Fix columnas
@@ -436,24 +437,79 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
   try {
     const chk = await pool.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'No encontrado' });
-    if ((Date.now()-new Date(chk.rows[0].creado_en).getTime())/(1000*60*60) > 5) return res.status(403).json({ error: 'No editable: pasaron más de 5 horas' });
-    const { aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,
-      apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
-    await pool.query(`UPDATE dictamenes SET
-      aptitud=COALESCE($1,aptitud),dias_reposo=COALESCE($2,dias_reposo),derivacion=COALESCE($3,derivacion),
-      indicaciones=COALESCE($4,indicaciones),paciente_dni=COALESCE($5,paciente_dni),edad=COALESCE($6,edad),
-      obra_social=COALESCE($7,obra_social),profesion=COALESCE($8,profesion),antecedentes=COALESCE($9,antecedentes),
-      hallazgos=COALESCE($10,hallazgos),conclusion=COALESCE($11,conclusion),
-      apellido_nombre=COALESCE($12,apellido_nombre),fecha_nacimiento=COALESCE($13,fecha_nacimiento),
-      lugar_nacimiento=COALESCE($14,lugar_nacimiento),estado_civil=COALESCE($15,estado_civil),
-      estudios=COALESCE($16,estudios),puesto=COALESCE($17,puesto),antiguedad=COALESCE($18,antiguedad),
-      situacion_licencia=COALESCE($19,situacion_licencia),metodologia=COALESCE($20,metodologia),
-      analisis=COALESCE($21,analisis),diagnostico_cie=COALESCE($22,diagnostico_cie)
-      WHERE id=$23`,
-      [aptitud,dias_reposo,derivacion,indicaciones,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,
-       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie,
-       req.params.id]);
+
+    // Admin puede editar sin límite de tiempo. Médico solo dentro de las primeras 5 horas.
+    const esAdmin = req.usuario.rol === 'admin';
+    const horasPasadas = (Date.now()-new Date(chk.rows[0].creado_en).getTime())/(1000*60*60);
+    if (!esAdmin && horasPasadas > 5) return res.status(403).json({ error: 'No editable: pasaron más de 5 horas' });
+
+    const {
+      aptitud, dias_reposo, derivacion, indicaciones,
+      paciente_dni, edad, obra_social, profesion,
+      antecedentes, hallazgos, conclusion,
+      apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil,
+      estudios, puesto, antiguedad, situacion_licencia,
+      metodologia, analisis, diagnostico_cie,
+      // Campos extra editables solo por admin
+      medico, matricula, especialidad, paciente, empresa
+    } = req.body;
+
+    if (esAdmin) {
+      // Admin: actualiza todos los campos incluidos médico, matrícula, especialidad, nombre paciente
+      await pool.query(`UPDATE dictamenes SET
+        aptitud=COALESCE($1,aptitud), dias_reposo=COALESCE($2,dias_reposo),
+        derivacion=COALESCE($3,derivacion), indicaciones=COALESCE($4,indicaciones),
+        paciente_dni=COALESCE($5,paciente_dni), edad=COALESCE($6,edad),
+        obra_social=COALESCE($7,obra_social), profesion=COALESCE($8,profesion),
+        antecedentes=COALESCE($9,antecedentes), hallazgos=COALESCE($10,hallazgos),
+        conclusion=COALESCE($11,conclusion),
+        apellido_nombre=COALESCE($12,apellido_nombre), fecha_nacimiento=COALESCE($13,fecha_nacimiento),
+        lugar_nacimiento=COALESCE($14,lugar_nacimiento), estado_civil=COALESCE($15,estado_civil),
+        estudios=COALESCE($16,estudios), puesto=COALESCE($17,puesto),
+        antiguedad=COALESCE($18,antiguedad), situacion_licencia=COALESCE($19,situacion_licencia),
+        metodologia=COALESCE($20,metodologia), analisis=COALESCE($21,analisis),
+        diagnostico_cie=COALESCE($22,diagnostico_cie),
+        medico=COALESCE($23,medico), matricula=COALESCE($24,matricula),
+        especialidad=COALESCE($25,especialidad), paciente=COALESCE($26,paciente),
+        empresa=COALESCE($27,empresa)
+        WHERE id=$28`,
+        [aptitud, dias_reposo, derivacion, indicaciones, paciente_dni, edad,
+         obra_social, profesion, antecedentes, hallazgos, conclusion,
+         apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil,
+         estudios, puesto, antiguedad, situacion_licencia, metodologia, analisis, diagnostico_cie,
+         medico||null, matricula||null, especialidad||null, paciente||null, empresa||null,
+         req.params.id]);
+    } else {
+      await pool.query(`UPDATE dictamenes SET
+        aptitud=COALESCE($1,aptitud), dias_reposo=COALESCE($2,dias_reposo),
+        derivacion=COALESCE($3,derivacion), indicaciones=COALESCE($4,indicaciones),
+        paciente_dni=COALESCE($5,paciente_dni), edad=COALESCE($6,edad),
+        obra_social=COALESCE($7,obra_social), profesion=COALESCE($8,profesion),
+        antecedentes=COALESCE($9,antecedentes), hallazgos=COALESCE($10,hallazgos),
+        conclusion=COALESCE($11,conclusion),
+        apellido_nombre=COALESCE($12,apellido_nombre), fecha_nacimiento=COALESCE($13,fecha_nacimiento),
+        lugar_nacimiento=COALESCE($14,lugar_nacimiento), estado_civil=COALESCE($15,estado_civil),
+        estudios=COALESCE($16,estudios), puesto=COALESCE($17,puesto),
+        antiguedad=COALESCE($18,antiguedad), situacion_licencia=COALESCE($19,situacion_licencia),
+        metodologia=COALESCE($20,metodologia), analisis=COALESCE($21,analisis),
+        diagnostico_cie=COALESCE($22,diagnostico_cie)
+        WHERE id=$23`,
+        [aptitud, dias_reposo, derivacion, indicaciones, paciente_dni, edad,
+         obra_social, profesion, antecedentes, hallazgos, conclusion,
+         apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil,
+         estudios, puesto, antiguedad, situacion_licencia, metodologia, analisis, diagnostico_cie,
+         req.params.id]);
+    }
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Traer un dictamen individual por id (para el modal de edición admin)
+app.get('/api/dictamenes/:id/datos', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ ok: true, dictamen: r.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -593,6 +649,7 @@ ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
 <div class="conc-box">
   <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
+  ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
   <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
 </div>
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}

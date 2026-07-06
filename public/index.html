@@ -808,6 +808,84 @@ th{font-size:9px;}
   </div>
 </div>
 
+<!-- MODAL EDITAR DICTAMEN COMPLETO (solo admin) -->
+<div class="modal-bg" id="modal-editar-dictamen">
+  <div class="modal" style="max-width:720px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div class="modal-title" style="margin-bottom:2px;">Editar dictamen</div>
+        <div style="font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;" id="ed-numero-badge">—</div>
+      </div>
+      <span class="badge b-rosa" style="font-size:11px;">Solo admin — sin límite de tiempo</span>
+    </div>
+
+    <!-- Sección: Identificación -->
+    <div class="divider">Identificación</div>
+    <div class="form-grid" style="margin-bottom:8px;">
+      <div class="form-group full"><label class="form-lbl">Apellido y nombre del paciente (mayúsculas)</label><input type="text" id="ed-apellido-nombre" placeholder="APELLIDO, Nombre completo"/></div>
+      <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="ed-dni" placeholder="12345678"/></div>
+      <div class="form-group"><label class="form-lbl">Fecha de nacimiento</label><input type="text" id="ed-fecha-nac" placeholder="dd/mm/aaaa"/></div>
+      <div class="form-group"><label class="form-lbl">Edad</label><input type="text" id="ed-edad" placeholder="52"/></div>
+      <div class="form-group"><label class="form-lbl">Lugar de nacimiento</label><input type="text" id="ed-lugar-nac" placeholder="Río Grande, TDF"/></div>
+      <div class="form-group"><label class="form-lbl">Estado civil / Grupo familiar</label><input type="text" id="ed-estado-civil" placeholder="Casado (esposa e hijos, 3 hijos)"/></div>
+      <div class="form-group"><label class="form-lbl">Estudios</label><input type="text" id="ed-estudios" placeholder="Secundario completo"/></div>
+      <div class="form-group"><label class="form-lbl">Puesto / Función</label><input type="text" id="ed-puesto" placeholder="Función logística"/></div>
+      <div class="form-group"><label class="form-lbl">Antigüedad</label><input type="text" id="ed-antiguedad" placeholder="12 años"/></div>
+      <div class="form-group"><label class="form-lbl">Empresa</label><input type="text" id="ed-empresa" placeholder="Mirgor S.A."/></div>
+      <div class="form-group"><label class="form-lbl">Obra social</label><input type="text" id="ed-obra-social" placeholder="OSDE"/></div>
+      <div class="form-group full"><label class="form-lbl">Situación de licencia</label><input type="text" id="ed-situacion-lic" placeholder="En uso de licencia médica desde el 10/06/2026"/></div>
+    </div>
+
+    <!-- Sección: Contenido médico -->
+    <div class="divider">Contenido médico</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px;">
+      <div class="form-group"><label class="form-lbl">III. Antecedentes médicos y clínicos generales</label><textarea id="ed-antecedentes" style="min-height:80px;" placeholder="Descripción de antecedentes..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">IV. Examen semiológico (hallazgos)</label><textarea id="ed-hallazgos" style="min-height:100px;" placeholder="● Conciencia y Orientación: ..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">V. Análisis médico-legal</label><textarea id="ed-analisis" style="min-height:80px;" placeholder="Análisis de la documentación..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">VI. Conclusiones médico-legales</label><textarea id="ed-conclusion" style="min-height:100px;" placeholder="1. Encuadre Diagnóstico: ..."></textarea></div>
+    </div>
+
+    <!-- Sección: Aptitud y diagnóstico -->
+    <div class="divider">Aptitud y diagnóstico</div>
+    <div class="form-grid" style="margin-bottom:8px;">
+      <div class="form-group">
+        <label class="form-lbl">Aptitud laboral</label>
+        <select id="ed-aptitud">
+          <option value="apto">Aptitud Laboral Total</option>
+          <option value="restricc">Apto con restricciones</option>
+          <option value="no-apto">No apto / Reposo indicado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Texto complementario de aptitud</label>
+        <input type="text" id="ed-aptitud-texto" placeholder="en condiciones de aptitud sin restricciones para el trabajo que ostenta"/>
+      </div>
+      <div class="form-group"><label class="form-lbl">Diagnóstico CIE-10</label><input type="text" id="ed-cie" placeholder="Z63.4 — Desaparición y fallecimiento de familiar"/></div>
+      <div class="form-group"><label class="form-lbl">Días de reposo</label><input type="text" id="ed-reposo" placeholder="0"/></div>
+      <div class="form-group full"><label class="form-lbl">Indicaciones</label><input type="text" id="ed-indicaciones" placeholder="Se sugiere seguimiento médico general..."/></div>
+      <div class="form-group full"><label class="form-lbl">Derivación</label><input type="text" id="ed-derivacion" placeholder="Sin derivación"/></div>
+    </div>
+
+    <!-- Sección: Firma / Médico -->
+    <div class="divider">Datos del médico firmante</div>
+    <div class="form-grid" style="margin-bottom:8px;">
+      <div class="form-group full"><label class="form-lbl">Nombre del médico</label><input type="text" id="ed-medico" placeholder="Dr. Barboza, Raúl"/></div>
+      <div class="form-group"><label class="form-lbl">Especialidad (aparece en la firma)</label><input type="text" id="ed-especialidad" placeholder="Psiquiatra Forense y Médico del Trabajo"/></div>
+      <div class="form-group"><label class="form-lbl">Matrícula</label><input type="text" id="ed-matricula" placeholder="MN 102128 / MP 603"/></div>
+    </div>
+
+    <div id="ed-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalEditarDictamen()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-ed-guardar" onclick="guardarEdicionDictamen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+        Guardar cambios en el PDF
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const EMPRESAS={'LOGANT S.A.':'emp-logant','Huinoil S.A.':'emp-huinoil','CEMEP':'emp-cemep','Grupo L':'emp-grupol'};
 function empresaTag(emp){return`<span class="empresa-tag ${EMPRESAS[emp]||'emp-otra'}">${emp||'—'}</span>`;}
@@ -1452,7 +1530,13 @@ function renderAgenda(){
     }
     const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
     const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
-    const bd=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`:'';
+    const bd=t.estado==='completado'
+      ? esAdmin
+        // Admin: abre el modal de edición completa con todos los campos
+        ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDictamenCompletado('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`
+        // Médico: va al formulario inline
+        : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`
+      :'';
     const ba=t.estado==='completado'?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
     const bfirma=t.estado==='completado'&&esAdmin?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;border-color:var(--rosa-mid);color:var(--rosa);" onclick="subirPDFFirmado('${t.id}')" title="Subir informe firmado por el doctor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir firmado</button>`:'';
@@ -1918,6 +2002,7 @@ let dictamenActualId=null;
 let dictamenActualCreado=null;
 let turnoDictamenActual=null;
 let linkVideoActual=null;
+let dictamenEditandoId=null; // id del dictamen abierto en el modal de edición admin
 
 // Abre la videollamada en una pestaña aparte (pantalla completa nativa de Daily).
 // Muy útil en celulares: el iframe embebido queda chico, esto abre la llamada "como app".
@@ -1925,6 +2010,18 @@ function abrirLlamadaAparte(){
   if(!linkVideoActual){ mostrarToast('No hay una llamada activa','#c0365a'); return; }
   window.open(linkVideoActual,'_blank');
   mostrarToast('Llamada abierta en otra pestaña — volvé acá para finalizar y cargar el dictamen','#2a5080');
+}
+
+// Para admin: al clickear "Dictamen" en un turno completado abre el modal de edición completa.
+// Si no hay dictamen todavía, cae al formulario inline como siempre.
+async function abrirDictamenCompletado(turnoId){
+  try{
+    const res = await fetch('/api/dictamenes/turno/'+turnoId, {headers:apiHeaders()});
+    const data = await res.json();
+    const dicts = data.dictamenes || [];
+    if(!dicts.length){ editarDictamen(turnoId); return; }
+    abrirModalEditarDictamen(dicts[0].id);
+  }catch(e){ mostrarToast('Error: '+e.message,'#c0365a'); }
 }
 
 async function finalizarConsulta(){
@@ -2115,6 +2212,125 @@ function cerrarDictamen(){
   dictamenActualId=null;
   turnoDictamenActual=null;
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ===== MODAL DE EDICIÓN COMPLETA DE DICTAMEN (admin, sin límite de tiempo) =====
+
+async function abrirModalEditarDictamen(dictamenId){
+  dictamenEditandoId = dictamenId;
+  document.getElementById('ed-error').style.display='none';
+
+  // Buscar el dictamen en los datos ya cargados o pedirlo al servidor
+  let d = null;
+  // Primero intentamos encontrarlo en la lista de dictámenes que ya cargamos
+  try{
+    const r = await fetch('/api/dictamenes/'+dictamenId+'/datos', {headers:apiHeaders()});
+    if(r.ok){ d = (await r.json()).dictamen; }
+  }catch(e){}
+
+  if(!d){
+    mostrarToast('No se pudo cargar el dictamen','#c0365a');
+    return;
+  }
+
+  document.getElementById('ed-numero-badge').textContent = d.numero || '—';
+
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+  set('ed-apellido-nombre', d.apellido_nombre || d.paciente);
+  set('ed-dni',             d.paciente_dni);
+  set('ed-fecha-nac',       d.fecha_nacimiento);
+  set('ed-edad',            d.edad);
+  set('ed-lugar-nac',       d.lugar_nacimiento);
+  set('ed-estado-civil',    d.estado_civil);
+  set('ed-estudios',        d.estudios);
+  set('ed-puesto',          d.puesto || d.profesion);
+  set('ed-antiguedad',      d.antiguedad);
+  set('ed-empresa',         d.empresa);
+  set('ed-obra-social',     d.obra_social);
+  set('ed-situacion-lic',   d.situacion_licencia);
+  set('ed-antecedentes',    d.antecedentes);
+  set('ed-hallazgos',       d.hallazgos);
+  set('ed-analisis',        d.analisis);
+  set('ed-conclusion',      d.conclusion);
+  set('ed-cie',             d.diagnostico_cie);
+  set('ed-reposo',          d.dias_reposo ?? 0);
+  set('ed-indicaciones',    d.indicaciones);
+  set('ed-derivacion',      d.derivacion || 'Sin derivación');
+  set('ed-medico',          d.medico);
+  set('ed-especialidad',    d.especialidad);
+  set('ed-matricula',       d.matricula);
+  set('ed-aptitud-texto',   d.aptitud_texto || '');
+  const selAptitud = document.getElementById('ed-aptitud');
+  if(selAptitud) selAptitud.value = d.aptitud || 'apto';
+
+  document.getElementById('modal-editar-dictamen').classList.add('open');
+}
+
+function cerrarModalEditarDictamen(){
+  document.getElementById('modal-editar-dictamen').classList.remove('open');
+  dictamenEditandoId = null;
+}
+
+async function guardarEdicionDictamen(){
+  if(!dictamenEditandoId) return;
+  const errEl = document.getElementById('ed-error');
+  errEl.style.display='none';
+
+  const get = id => document.getElementById(id)?.value?.trim()||null;
+  const payload = {
+    apellido_nombre:    get('ed-apellido-nombre'),
+    paciente:           get('ed-apellido-nombre'),
+    paciente_dni:       get('ed-dni'),
+    fecha_nacimiento:   get('ed-fecha-nac'),
+    edad:               get('ed-edad'),
+    lugar_nacimiento:   get('ed-lugar-nac'),
+    estado_civil:       get('ed-estado-civil'),
+    estudios:           get('ed-estudios'),
+    puesto:             get('ed-puesto'),
+    antiguedad:         get('ed-antiguedad'),
+    empresa:            get('ed-empresa'),
+    obra_social:        get('ed-obra-social'),
+    situacion_licencia: get('ed-situacion-lic'),
+    antecedentes:       get('ed-antecedentes'),
+    hallazgos:          get('ed-hallazgos'),
+    analisis:           get('ed-analisis'),
+    conclusion:         get('ed-conclusion'),
+    diagnostico_cie:    get('ed-cie'),
+    dias_reposo:        parseInt(get('ed-reposo')||'0'),
+    indicaciones:       get('ed-indicaciones'),
+    derivacion:         get('ed-derivacion') || 'Sin derivación',
+    aptitud:            document.getElementById('ed-aptitud')?.value || 'apto',
+    aptitud_texto:      get('ed-aptitud-texto'),
+    medico:             get('ed-medico'),
+    especialidad:       get('ed-especialidad'),
+    matricula:          get('ed-matricula'),
+  };
+
+  const btn = document.getElementById('btn-ed-guardar');
+  btn.disabled=true; btn.textContent='Guardando...';
+
+  try{
+    const res = await fetch('/api/dictamenes/'+dictamenEditandoId, {
+      method:'PATCH', headers:apiHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!data.ok){
+      errEl.textContent = data.error || 'Error al guardar los cambios';
+      errEl.style.display='block';
+      return;
+    }
+    cerrarModalEditarDictamen();
+    mostrarToast('✓ Dictamen actualizado — el PDF ya refleja los cambios','#1e6640');
+    addLog('blue','Dictamen editado por admin', payload.apellido_nombre || '');
+    await cargarTurnos();
+  }catch(e){
+    errEl.textContent='Error de conexión: '+e.message;
+    errEl.style.display='block';
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg> Guardar cambios en el PDF`;
+  }
 }
 
 async function editarDictamen(turnoId){
