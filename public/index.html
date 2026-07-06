@@ -334,6 +334,16 @@ tr{transition:background 0.15s;}
 .aviso-inminente-title,.aviso-proximo-title{font-size:12.5px;}
 .aviso-inminente-sub,.aviso-proximo-sub{font-size:11px;}
 .badge-urgente{font-size:9px;padding:1px 6px;}
+/* VIDEO — en mobile la llamada pasa a PANTALLA COMPLETA como una app */
+.video-container.active{
+  position:fixed;inset:0;z-index:600;
+  margin:0;border-radius:0;border:none;
+  display:flex;flex-direction:column;
+  background:#080f1a;
+}
+.video-container.active #daily-frame{flex:1;height:auto !important;min-height:0 !important;}
+.video-container.active .video-topbar,
+.video-container.active .video-bottombar{flex-shrink:0;}
 #daily-frame{height:60vh;min-height:340px;}
 .video-topbar{padding:9px 12px;flex-wrap:wrap;gap:6px;}
 .video-bottombar{padding:9px 12px;flex-wrap:wrap;gap:8px;}
@@ -342,6 +352,8 @@ tr{transition:background 0.15s;}
 #video-sala{display:none;}
 .video-timer{font-size:11px;}
 .video-bottombar .btn{flex:1;justify-content:center;}
+/* El panel de notas queda por encima del video fullscreen */
+#notas-panel{z-index:700 !important;}
 #notas-panel{width:calc(100vw - 24px) !important;max-height:70vh !important;right:12px !important;bottom:12px !important;left:12px !important;}
 .link-url{font-size:10px;padding:6px 8px;}
 .participante-nombre{font-size:11.5px;flex-wrap:wrap;}
@@ -472,7 +484,13 @@ th{font-size:9px;}
           <div class="rec-pill"><div class="rec-dot"></div>GRABANDO</div>
           <div style="font-size:13px;color:rgba(255,255,255,0.8);font-weight:500;" id="video-label">—</div>
         </div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35);font-family:'DM Mono',monospace;" id="video-sala">—</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn" onclick="abrirLlamadaAparte()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;font-size:11.5px;" title="Abrir la videollamada en una pestaña aparte (pantalla completa nativa)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Abrir aparte
+          </button>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);font-family:'DM Mono',monospace;" id="video-sala">—</div>
+        </div>
       </div>
       <iframe id="daily-frame" allow="camera; microphone; fullscreen; display-capture" style="width:100%;height:480px;border:none;"></iframe>
       <div class="video-bottombar">
@@ -508,7 +526,7 @@ th{font-size:9px;}
             <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
             <span style="color:white;font-size:12.5px;font-weight:700;">Revisá y editá el informe</span>
           </div>
-          <div style="padding:12px;"><textarea id="notas-preview-text" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea></div>
+          <div style="padding:12px;"><textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea></div>
         </div>
         <div id="notas-preview-hint" style="display:none;margin-top:10px;padding:10px 12px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;font-size:11.5px;color:var(--azul);line-height:1.5;">💡 Cuando termines la consulta, cerrá esta ventana y hacé click en <strong>"Finalizar consulta"</strong> — el informe generado se guarda automáticamente al pasar al dictamen.</div>
         <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-aptitud" value="apto"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
@@ -1796,6 +1814,9 @@ function guardarNotaBorrador(){
   const key=notaKey();
   if(!key)return;
   const borrador={
+    // Lo más importante: el texto libre que el doctor va dictando durante la llamada.
+    // Se guarda en cada tecla — si no genera el informe todavía, no se pierde nada.
+    textoLibre:document.getElementById('notas-libre')?.value||'',
     dni:document.getElementById('notas-dni').value,
     edad:document.getElementById('notas-edad').value,
     obraSocial:document.getElementById('notas-obrasocial').value,
@@ -1805,12 +1826,14 @@ function guardarNotaBorrador(){
     conclusion:document.getElementById('notas-conclusion').value,
     indicaciones:document.getElementById('notas-indicaciones').value,
     aptitud:document.getElementById('notas-aptitud').value,
-    reposo:document.getElementById('notas-reposo').value
+    reposo:document.getElementById('notas-reposo').value,
+    // Si ya generó el informe con IA, guardamos también el preview editado
+    previewEditado:document.getElementById('notas-preview-text')?.value||''
   };
   try{
     localStorage.setItem(key,JSON.stringify(borrador));
     const st=document.getElementById('notas-guardado-status');
-    st.textContent='Guardado';
+    if(st) st.textContent='Guardado';
   }catch(e){}
 }
 
@@ -1821,6 +1844,9 @@ function cargarNotaBorrador(){
     const raw=localStorage.getItem(key);
     if(!raw)return;
     const b=JSON.parse(raw);
+    // Restaurar el texto libre dictado (solo si el textarea está vacío, para no pisar lo que esté escribiendo)
+    const notasLibre=document.getElementById('notas-libre');
+    if(notasLibre && !notasLibre.value && b.textoLibre) notasLibre.value=b.textoLibre;
     document.getElementById('notas-dni').value=b.dni||'';
     document.getElementById('notas-edad').value=b.edad||'';
     document.getElementById('notas-obrasocial').value=b.obraSocial||'';
@@ -1831,17 +1857,28 @@ function cargarNotaBorrador(){
     document.getElementById('notas-indicaciones').value=b.indicaciones||'';
     document.getElementById('notas-aptitud').value=b.aptitud||'apto';
     document.getElementById('notas-reposo').value=b.reposo||'0';
+    // Si ya había generado un preview con IA, restaurarlo también
+    if(b.previewEditado){
+      const pw=document.getElementById('notas-preview-wrap');
+      const pt=document.getElementById('notas-preview-text');
+      if(pw&&pt){ pt.value=b.previewEditado; pw.style.display='block'; }
+    }
   }catch(e){}
 }
 
-function obtenerYBorrarNotaBorrador(turnoId,medicoNombre){
+// Lee el borrador SIN borrarlo (se borra recién cuando el dictamen se guarda con éxito,
+// así una recarga de página no hace perder las notas del doctor)
+function obtenerNotaBorrador(turnoId,medicoNombre){
   const key=`medgrup_nota_${turnoId}_${medicoNombre}`;
   try{
     const raw=localStorage.getItem(key);
     if(!raw)return null;
-    localStorage.removeItem(key);
     return JSON.parse(raw);
   }catch(e){return null;}
+}
+
+function borrarNotaBorrador(turnoId,medicoNombre){
+  try{ localStorage.removeItem(`medgrup_nota_${turnoId}_${medicoNombre}`); }catch(e){}
 }
 
 function iniciarTurno(id){
@@ -1864,6 +1901,7 @@ function iniciarTurno(id){
     linkPropio = match ? match.link : t.linksMedicos[0].link;
   }
   const linkIframe = linkPropio || t.linkPaciente;
+  linkVideoActual = linkIframe;
 
   document.getElementById('daily-frame').src = linkIframe;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
@@ -1879,6 +1917,15 @@ function iniciarTurno(id){
 let dictamenActualId=null;
 let dictamenActualCreado=null;
 let turnoDictamenActual=null;
+let linkVideoActual=null;
+
+// Abre la videollamada en una pestaña aparte (pantalla completa nativa de Daily).
+// Muy útil en celulares: el iframe embebido queda chico, esto abre la llamada "como app".
+function abrirLlamadaAparte(){
+  if(!linkVideoActual){ mostrarToast('No hay una llamada activa','#c0365a'); return; }
+  window.open(linkVideoActual,'_blank');
+  mostrarToast('Llamada abierta en otra pestaña — volvé acá para finalizar y cargar el dictamen','#2a5080');
+}
 
 async function finalizarConsulta(){
   if(!confirm('¿Finalizar la consulta?'))return;
@@ -1921,7 +1968,7 @@ async function abrirDictamenParaTurno(t, dur){
   if(propio){
     cargarDictamenEnFormulario(propio);
   }else{
-    const borrador=obtenerYBorrarNotaBorrador(t.id, usuarioActual?.nombre);
+    const borrador=obtenerNotaBorrador(t.id, usuarioActual?.nombre);
     document.getElementById('dict-numero').textContent='Nuevo';
     document.getElementById('dict-edit-badge').style.display='none';
     document.getElementById('dict-dni').value=borrador?.dni||'';
@@ -1942,11 +1989,24 @@ async function abrirDictamenParaTurno(t, dur){
     `;
     dictamenActualId=null;
 
+    // Transferir el TEXTO LIBRE dictado durante la llamada al cuadro del dictamen.
+    // Funciona tanto si generó el informe con IA como si solo anotó y no generó nada:
+    // el doctor recupera todo lo que escribió y puede generar el informe ahora.
+    const textoLibreDict = document.getElementById('dict-texto-libre');
+    if(textoLibreDict && !textoLibreDict.value){
+      // Prioridad 1: lo que quedó en el panel de notas (si sigue en memoria)
+      const textoLibreNotas = document.getElementById('notas-libre');
+      if(textoLibreNotas && textoLibreNotas.value){
+        textoLibreDict.value = textoLibreNotas.value;
+      }
+      // Prioridad 2: el borrador guardado en localStorage
+      else if(borrador?.textoLibre){
+        textoLibreDict.value = borrador.textoLibre;
+      }
+    }
+
     if(window._informeIAEnVivo){
       const info = window._informeIAEnVivo;
-      const textoLibreDict = document.getElementById('dict-texto-libre');
-      const textoLibreNotas = document.getElementById('notas-libre');
-      if(textoLibreDict && textoLibreNotas) textoLibreDict.value = textoLibreNotas.value;
 
       const previewNotas = document.getElementById('notas-preview-text');
       const previewDict = document.getElementById('informe-preview-text');
@@ -1964,6 +2024,22 @@ async function abrirDictamenParaTurno(t, dur){
         document.getElementById('dict-paciente-input').value = info.apellido_nombre;
       }
       addLog('green','Informe generado durante la llamada','Solo falta firmar y guardar');
+    } else if(borrador?.previewEditado){
+      // Generó el informe en la llamada pero se recargó la página: recuperar el preview del borrador
+      const previewDict = document.getElementById('informe-preview-text');
+      const previewDictWrap = document.getElementById('informe-preview-wrap');
+      const firmaWrap = document.getElementById('firma-wrap');
+      if(previewDict && previewDictWrap){
+        previewDict.value = borrador.previewEditado;
+        previewDictWrap.style.display = 'block';
+      }
+      if(firmaWrap){
+        firmaWrap.style.display = 'block';
+        setTimeout(() => { if(!firmaContext) inicializarFirmaCanvas(); }, 100);
+      }
+      addLog('green','Informe recuperado del borrador','Revisá, firmá y guardá');
+    } else if(borrador?.textoLibre){
+      addLog('green','Notas de la llamada recuperadas','Tu dictado está en el cuadro — generá el informe cuando quieras');
     } else if(borrador){
       addLog('green','Notas de la llamada recuperadas','Se cargaron automáticamente en el dictamen');
     }
@@ -2176,6 +2252,9 @@ async function guardarDictamen(){
     `;
     document.getElementById('dict-edit-badge').style.display='inline-flex';
     addLog('rosa','Certificado emitido',num);
+    // El dictamen ya está guardado en el servidor: ahora sí borramos el borrador local
+    if(t) borrarNotaBorrador(t.id, usuarioActual?.nombre);
+    window._informeIAEnVivo = null;
     if(t){
       const resD=await fetch('/api/dictamenes/turno/'+t.id,{headers:apiHeaders()});
       const dataD=await resD.json();

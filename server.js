@@ -1,3 +1,7 @@
+// Forzar zona horaria argentina para todas las fechas/horas del servidor
+// (Railway corre en UTC — sin esto, las actas muestran horarios corridos 3 hs)
+process.env.TZ = 'America/Argentina/Buenos_Aires';
+
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
@@ -461,8 +465,8 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const d = r.rows[0];
     const otros = d.turno_id ? (await pool.query('SELECT * FROM dictamenes WHERE turno_id=$1 AND id!=$2 ORDER BY creado_en ASC', [d.turno_id, d.id])).rows : [];
     const todos = [d, ...otros];
-    const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric' });
-    const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric' }) : '—';
+    const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
+    const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
     const firmasHtml = todos.map(m => {
@@ -615,12 +619,12 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     const t = r.rows[0];
     const eventos = (await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC', [req.params.id])).rows;
-    const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric' });
-    const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric' });
+    const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
+    const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const tipoLabel = { inicio_medico:'Inicio de videoconsulta', union_medico:'Médico se incorporó a la consulta', union_paciente:'Paciente se incorporó a la consulta', fin_consulta:'Finalización de la consulta' };
     const tipoIcon = { inicio_medico:'▶', union_medico:'＋', union_paciente:'＋', fin_consulta:'■' };
     const eventosHtml = eventos.length ? eventos.map(e => {
-      const hora = new Date(e.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit' });
+      const hora = new Date(e.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'America/Argentina/Buenos_Aires' });
       return `<div class="ev-row"><div class="ev-hora">${hora}</div><div class="ev-icon">${tipoIcon[e.tipo]||'•'}</div><div class="ev-desc"><strong>${tipoLabel[e.tipo]||e.tipo}</strong>${e.participante?' — '+e.participante:''}</div></div>`;
     }).join('') : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">Sin eventos de asistencia registrados.</div>`;
 
