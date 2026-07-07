@@ -1354,8 +1354,18 @@ function mostrarApp(){
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('t-fecha').value=new Date().toISOString().split('T')[0];
   if(usuarioActual.rol==='admin') document.getElementById('nav-empresas').style.display='flex';
-  document.getElementById('form-dictamen').style.display='none';
-  document.getElementById('cert-ok').style.display='none';
+  // Resetear visibilidad de la agenda (pueden haber quedado ocultos si se cerró la pestaña en medio de un dictamen)
+  const metricsEl = document.getElementById('metrics-row');
+  const turnosEl = document.getElementById('turnos-card');
+  const dictEl = document.getElementById('form-dictamen');
+  const certEl = document.getElementById('cert-ok');
+  if(metricsEl) metricsEl.style.display='grid';
+  if(turnosEl) turnosEl.style.display='block';
+  if(dictEl) dictEl.style.display='none';
+  if(certEl) certEl.style.display='none';
+  // Asegurar que sec-agenda esté visible
+  const secAgenda = document.getElementById('sec-agenda');
+  if(secAgenda) secAgenda.style.display='block';
   cargarMedicos();cargarTurnos();cargarEmpresasSelect();
   actualizarBotonMenu();
 }
@@ -1481,10 +1491,17 @@ async function cargarTurnos(){
     const res=await fetch('/api/turnos',{headers:apiHeaders()});
     if(res.status===401){doLogout();return;}
     const data=await res.json();
-    if(!Array.isArray(data)){console.error('Respuesta inesperada de /api/turnos',data);return;}
+    if(!Array.isArray(data)){
+      console.error('Respuesta inesperada de /api/turnos',data);
+      document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar los turnos: '+(data.error||'respuesta inválida')+'</div>';
+      return;
+    }
     turnos=data.map(t=>({id:t.id,paciente:t.paciente,fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
     renderAgenda();
-  }catch(e){console.error(e);}
+  }catch(e){
+    console.error('Error en cargarTurnos:', e);
+    document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error de conexión al cargar los turnos. Recargá la página.</div>';
+  }
 }
 
 function minutosHastaTurno(t){
@@ -1523,12 +1540,15 @@ let tabTurnosActiva = 'proximos';
 
 function cambiarTabTurnos(tab){
   tabTurnosActiva = tab;
-  document.getElementById('tab-proximos').classList.toggle('active', tab==='proximos');
-  document.getElementById('tab-completados').classList.toggle('active', tab==='completados');
+  const elProx = document.getElementById('tab-proximos');
+  const elComp = document.getElementById('tab-completados');
+  if(elProx) elProx.classList.toggle('active', tab==='proximos');
+  if(elComp) elComp.classList.toggle('active', tab==='completados');
   renderAgenda();
 }
 
 function renderAgenda(){
+ try{
   const hoy=new Date().toISOString().split('T')[0];
   const ord=[...turnos].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora));
   document.getElementById('cnt-total').textContent=turnos.length;
@@ -1540,9 +1560,11 @@ function renderAgenda(){
   // Completados: los más recientes primero
   const completados = ord.filter(t=>t.estado==='completado').reverse();
 
-  // Contadores de pestañas
-  document.getElementById('count-proximos').textContent = proximos.length;
-  document.getElementById('count-completados').textContent = completados.length;
+  // Contadores de pestañas (null-safe: si el HTML está cacheado sin estos elementos, no rompe)
+  const elCountProx = document.getElementById('count-proximos');
+  const elCountComp = document.getElementById('count-completados');
+  if(elCountProx) elCountProx.textContent = proximos.length;
+  if(elCountComp) elCountComp.textContent = completados.length;
 
   const fut=ord.filter(t=>t.fecha.split('T')[0]>=hoy&&t.estado!=='completado');
   if(fut.length){document.getElementById('cnt-proximo').textContent=fut[0].hora;document.getElementById('cnt-proximo-sub').textContent=fut[0].paciente+' · '+new Date(fut[0].fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});}
@@ -1624,6 +1646,11 @@ function renderAgenda(){
     const bdel=esAdmin?`<button class="btn btn-danger btn-admin-del" style="padding:6px 12px;font-size:12px;" onclick="eliminarTurno('${t.id}')" title="Eliminar turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Eliminar</button>`:'';
     return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bfirma}${bedit}${bdel}</div></div>`;
   }).join('');
+ }catch(err){
+  console.error('Error en renderAgenda:', err);
+  const el = document.getElementById('agenda-lista');
+  if(el) el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al mostrar la agenda. Recargá la página (Ctrl+Shift+R).</div>';
+ }
 }
 
 setInterval(() => {
