@@ -758,6 +758,13 @@ th{font-size:9px;}
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
+    <div class="divider">Diagnóstico previo (opcional)</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Si el paciente ya viene con un diagnóstico, cargalo acá — la IA lo usa automáticamente al generar el informe.</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
+      <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="t-reposo-previo" placeholder="30"/></div>
+      <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
+    </div>
     <div class="divider">Médicos participantes</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Cada uno recibe su propio link de moderador.</div>
     <div class="medicos-check-list" id="medicos-check-list"></div>
@@ -793,6 +800,13 @@ th{font-size:9px;}
         <select id="edit-t-empresa"><option value="">Cargando empresas...</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="edit-t-motivo" placeholder="Descripción breve..."></textarea></div>
+    </div>
+    <div class="divider">Diagnóstico previo (opcional)</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">La IA usa estos datos como contexto al generar el informe del turno.</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="edit-t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
+      <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="edit-t-reposo-previo" placeholder="30"/></div>
+      <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="edit-t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
     </div>
     <div class="divider">Médicos participantes</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Podés agregar o quitar médicos. Los links de Daily se mantienen iguales.</div>
@@ -981,6 +995,16 @@ async function generarInformeIA(){
   const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
   const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
 
+  // Diagnóstico previo cargado al crear/editar el turno — se pasa a la IA como contexto
+  let contextoDiagnostico = '';
+  if(turnoCtx.diagnosticoPrevio || turnoCtx.medicoTratante || turnoCtx.diasReposoPrevio > 0){
+    const partes = [];
+    if(turnoCtx.diagnosticoPrevio) partes.push(`- Diagnóstico previo del paciente: ${turnoCtx.diagnosticoPrevio}`);
+    if(turnoCtx.diasReposoPrevio > 0) partes.push(`- Días de reposo indicados previamente: ${turnoCtx.diasReposoPrevio}`);
+    if(turnoCtx.medicoTratante) partes.push(`- Médico tratante que emitió el diagnóstico: ${turnoCtx.medicoTratante}`);
+    contextoDiagnostico = `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
+  }
+
   const SYSTEM_PROMPT = `Sos el asistente del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN: 102128 – MP: 603).
 Tu tarea es redactar informes médico-laborales psiquiátricos siguiendo EXACTAMENTE la estructura, estilo y lenguaje del siguiente informe modelo. No cambies el estilo, no simplifiques, no agregues secciones nuevas.
 
@@ -1079,7 +1103,7 @@ JSON a devolver (todas las claves obligatorias):
         messages:[{role:'user',content:`DATOS DE LA CONSULTA:
 - Empresa: ${empresa}
 - Tipo de consulta: ${tipo}
-- Fecha de hoy: ${fecha}
+- Fecha de hoy: ${fecha}${contextoDiagnostico}
 
 NOTAS DICTADAS POR EL MÉDICO:
 ${texto}
@@ -1436,7 +1460,7 @@ async function cargarTurnos(){
     if(res.status===401){doLogout();return;}
     const data=await res.json();
     if(!Array.isArray(data)){console.error('Respuesta inesperada de /api/turnos',data);return;}
-    turnos=data.map(t=>({id:t.id,paciente:t.paciente,fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
+    turnos=data.map(t=>({id:t.id,paciente:t.paciente,fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
     renderAgenda();
   }catch(e){console.error(e);}
 }
@@ -1576,7 +1600,7 @@ function renderAgenda(){
     // Botones de admin: editar y eliminar cualquier turno
     const bedit=esAdmin?`<button class="btn btn-ghost btn-admin-edit" style="padding:6px 12px;font-size:12px;" onclick="abrirModalEditar('${t.id}')" title="Editar turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Editar</button>`:'';
     const bdel=esAdmin?`<button class="btn btn-danger btn-admin-del" style="padding:6px 12px;font-size:12px;" onclick="eliminarTurno('${t.id}')" title="Eliminar turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Eliminar</button>`:'';
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div></div><div class="turno-actions">${bi}${bj}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bfirma}${bedit}${bdel}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bfirma}${bedit}${bdel}</div></div>`;
   }).join('');
 }
 
@@ -1611,6 +1635,9 @@ async function abrirModalEditar(id){
   }
   selTipo.value = t.tipo || 'Junta médica';
   document.getElementById('edit-t-motivo').value = t.motivo || '';
+  document.getElementById('edit-t-diagnostico').value = t.diagnosticoPrevio || '';
+  document.getElementById('edit-t-reposo-previo').value = t.diasReposoPrevio || '';
+  document.getElementById('edit-t-medico-tratante').value = t.medicoTratante || '';
 
   // Cargar empresas en el select del modal de edición
   await cargarEmpresasSelectEdit(t.empresa);
@@ -1662,6 +1689,9 @@ async function guardarEdicionTurno(){
   const tipo = document.getElementById('edit-t-tipo').value;
   const empresa = document.getElementById('edit-t-empresa').value;
   const motivo = document.getElementById('edit-t-motivo').value;
+  const diagnostico_previo = document.getElementById('edit-t-diagnostico')?.value?.trim()||'';
+  const dias_reposo_previo = parseInt(document.getElementById('edit-t-reposo-previo')?.value)||0;
+  const medico_tratante = document.getElementById('edit-t-medico-tratante')?.value?.trim()||'';
   const checks = document.querySelectorAll('#edit-medicos-check-list input[type=checkbox]:checked');
   const medicos = [...checks].map(c=>c.value);
   if(!medicos.length){ errEl.textContent='Seleccioná al menos un médico'; errEl.style.display='block'; return; }
@@ -1674,7 +1704,7 @@ async function guardarEdicionTurno(){
   try{
     const res = await fetch('/api/turnos/'+turnoEditandoId, {
       method:'PATCH', headers:apiHeaders(),
-      body: JSON.stringify({ paciente, fecha, hora, tipo, empresa, motivo, medicos })
+      body: JSON.stringify({ paciente, fecha, hora, tipo, empresa, motivo, medicos, diagnostico_previo, dias_reposo_previo, medico_tratante })
     });
     const data = await res.json();
     if(!data.ok){ errEl.textContent=data.error||'Error al guardar los cambios'; errEl.style.display='block'; return; }
@@ -1803,12 +1833,15 @@ async function guardarTurno(){
   const paciente=document.getElementById('t-paciente').value.trim();
   if(!paciente){alert('Ingresá el nombre del paciente');return;}
   const fecha=document.getElementById('t-fecha').value,hora=document.getElementById('t-hora').value,tipo=document.getElementById('t-tipo').value,empresa=document.getElementById('t-empresa').value,motivo=document.getElementById('t-motivo').value;
+  const diagnostico_previo=document.getElementById('t-diagnostico')?.value?.trim()||'';
+  const dias_reposo_previo=parseInt(document.getElementById('t-reposo-previo')?.value)||0;
+  const medico_tratante=document.getElementById('t-medico-tratante')?.value?.trim()||'';
   const checks=document.querySelectorAll('#medicos-check-list input[type=checkbox]:checked');
   const ms=[...checks].map(c=>c.value);
   if(!ms.length){alert('Seleccioná al menos un médico');return;}
   document.getElementById('btn-guardar-turno').style.display='none';document.getElementById('loading-turno').style.display='flex';
   try{
-    const res=await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,medicos:ms,tipo,fecha,hora,empresa,motivo})});
+    const res=await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,medicos:ms,tipo,fecha,hora,empresa,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante})});
     const data=await res.json();document.getElementById('loading-turno').style.display='none';
     if(!data.ok){alert('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
     await cargarTurnos();
@@ -2083,7 +2116,7 @@ async function abrirDictamenParaTurno(t, dur){
   document.getElementById('form-dictamen').style.display='block';
   document.getElementById('dict-paciente-input').value=t?.paciente||'';
   document.getElementById('dict-duracion').textContent=dur||t?.duracion||'—';
-  document.getElementById('dict-empresa').textContent=t?.empresa||'—';
+  document.getElementById('dict-empresa').textContent=(t?.empresa||'—') + (t?.diagnosticoPrevio ? ' · Dx previo: '+t.diagnosticoPrevio + (t.diasReposoPrevio>0?' ('+t.diasReposoPrevio+' días reposo)':'') + (t.medicoTratante?' — '+t.medicoTratante:'') : '');
 
   let dictamenes=[];
   try{
