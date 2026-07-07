@@ -1434,7 +1434,7 @@ async function cargarMedicos(){
 function renderMedicos(){
   if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
   document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
-    medicosData.map(m=>`<tr><td><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
+    medicosData.map(m=>`<tr><td><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
 }
 function renderMedicosCheck(){
   document.getElementById('medicos-check-list').innerHTML=medicosData.map(m=>
@@ -1452,6 +1452,28 @@ async function agregarMedico(){
   await cargarMedicos();
 }
 async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE',headers:apiHeaders()});await cargarMedicos();}
+
+async function editarMedicoModal(id){
+  const m = medicosData.find(x=>x.id===id);
+  if(!m) return;
+  const nombre = prompt('Nombre completo:', m.nombre);
+  if(nombre === null) return; // canceló
+  const matricula = prompt('Matrícula:', m.matricula || '');
+  if(matricula === null) return;
+  const especialidad = prompt('Especialidad:', m.especialidad || 'Medicina Laboral');
+  if(especialidad === null) return;
+  try{
+    const res = await fetch('/api/medicos/'+id, {
+      method:'PATCH', headers:apiHeaders(),
+      body: JSON.stringify({ nombre: nombre.trim()||m.nombre, matricula: matricula.trim(), especialidad: especialidad.trim()||m.especialidad })
+    });
+    const data = await res.json();
+    if(data.ok){
+      mostrarToast('✓ Médico actualizado','#1e6640');
+      await cargarMedicos();
+    } else { alert(data.error||'Error al guardar'); }
+  }catch(e){ alert('Error: '+e.message); }
+}
 
 let turnos=[],consultaActual=null,dictCount=0;
 async function cargarTurnos(){

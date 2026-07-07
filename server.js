@@ -114,13 +114,15 @@ async function initDB() {
 
     await client.query(`
       INSERT INTO medicos (nombre, matricula, especialidad)
-      SELECT 'Dr. Barboza, Raúl','MP 12.847','Medicina Laboral'
+      SELECT 'Dr. Barboza, Raúl','MN 102128 / MP 603','Psiquiatra Forense y Médico del Trabajo'
       WHERE NOT EXISTS (SELECT 1 FROM medicos WHERE nombre='Dr. Barboza, Raúl');
       INSERT INTO medicos (nombre, matricula, especialidad)
       SELECT 'Dr. Muroni, Esteban','MP 5558','Medicina Laboral'
       WHERE NOT EXISTS (SELECT 1 FROM medicos WHERE nombre='Dr. Muroni, Esteban');
     `);
     await client.query(`UPDATE medicos SET matricula='MP 5558' WHERE nombre='Dr. Muroni, Esteban' AND (matricula IS NULL OR matricula='')`).catch(()=>{});
+    // Fix matrículas correctas si fueron cargadas mal inicialmente
+    await client.query(`UPDATE medicos SET matricula='MN 102128 / MP 603', especialidad='Psiquiatra Forense y Médico del Trabajo' WHERE nombre='Dr. Barboza, Raúl' AND matricula='MP 12.847'`).catch(()=>{});
 
     // Columnas extendidas para informe IA (estructura 6 secciones)
     for (const q2 of [
@@ -268,6 +270,16 @@ app.post('/api/medicos', authMiddleware, async (req, res) => {
 app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
   try { await pool.query('UPDATE medicos SET activo=false WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
+});
+// Editar médico (nombre, matrícula, especialidad)
+app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
+  const { nombre, matricula, especialidad } = req.body;
+  try {
+    await pool.query(`UPDATE medicos SET
+      nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad)
+      WHERE id=$4`, [nombre||null, matricula||null, especialidad||null, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ===== TURNOS =====
