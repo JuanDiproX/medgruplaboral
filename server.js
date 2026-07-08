@@ -90,6 +90,18 @@ async function initDB() {
         id SERIAL PRIMARY KEY, turno_id VARCHAR(50) REFERENCES turnos(id),
         tipo VARCHAR(50) NOT NULL, participante VARCHAR(200), creado_en TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS firmas_dictamen (
+        id SERIAL PRIMARY KEY,
+        dictamen_id INTEGER REFERENCES dictamenes(id),
+        medico_nombre VARCHAR(200) NOT NULL,
+        matricula VARCHAR(100),
+        especialidad VARCHAR(200),
+        firma_base64 TEXT,
+        hash_contenido VARCHAR(100),
+        ip VARCHAR(100),
+        firmado_en TIMESTAMP DEFAULT NOW(),
+        UNIQUE (dictamen_id, medico_nombre)
+      );
       CREATE TABLE IF NOT EXISTS empresas_clientes (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(200) UNIQUE NOT NULL,
@@ -260,11 +272,102 @@ app.get('/api/medicos', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/medicos', authMiddleware, async (req, res) => {
-  const { nombre, matricula, especialidad } = req.body;
+  const { nombre, matricula, especialidad, email, password } = req.body;
   if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
   try {
     const r = await pool.query('INSERT INTO medicos (nombre,matricula,especialidad) VALUES ($1,$2,$3) RETURNING *', [nombre, matricula||'', especialidad||'Medicina Laboral']);
-    res.json({ ok: true, medico: r.rows[0] });
+    // Si mandaron email + password, crear también el usuario para que el médico
+    // pueda loguearse y firmar juntas médicas
+    let accesoCreado = false;
+    if (email && password) {
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      await pool.query(
+        `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'medico')
+         ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3`,
+        [nombre, email.toLowerCase().trim(), hash]);
+      accesoCreado = true;
+    }
+    res.json({ ok: true, medico: r.rows[0], accesoCreado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== FIRMA EXPRESS PARA JUNTAS MÉDICAS =====
+
+// Hash del contenido del dictamen al momento de firmar (integridad / trazabilidad)
+function hashDictamen(d){
+  const contenido = JSON.stringify({
+    numero: d.numero, paciente: d.paciente, apellido_nombre: d.apellido_nombre,
+    antecedentes: d.antecedentes, hallazgos: d.hallazgos, analisis: d.analisis,
+    conclusion: d.conclusion, aptitud: d.aptitud, dias_reposo: d.dias_reposo,
+    diagnostico_cie: d.diagnostico_cie, indicaciones: d.indicaciones
+  });
+  return crypto.createHash('sha256').update(contenido).digest('hex');
+}
+
+// Dictámenes que el médico logueado tiene pendientes de firma:
+// - está asignado al turno (turno_medicos)
+// - NO es el autor del dictamen
+// - todavía no firmó
+app.get('/api/firmas/pendientes', authMiddleware, async (req, res) => {
+  try {
+    const nombre = req.usuario.nombre;
+    const r = await pool.query(`
+      SELECT d.id, d.numero, d.paciente, d.apellido_nombre, d.empresa, d.medico AS autor,
+             d.conclusion, d.aptitud, d.dias_reposo, d.diagnostico_cie, d.creado_en,
+             t.fecha, t.hora, t.tipo
+      FROM dictamenes d
+      JOIN turnos t ON d.turno_id = t.id
+      JOIN turno_medicos tm ON tm.turno_id = t.id
+      WHERE tm.medico_nombre = $1
+        AND d.medico != $1
+        AND NOT EXISTS (SELECT 1 FROM firmas_dictamen f WHERE f.dictamen_id = d.id AND f.medico_nombre = $1)
+      ORDER BY d.creado_en DESC`, [nombre]);
+    res.json({ ok: true, pendientes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Firmar un dictamen (junta médica)
+app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
+  try {
+    const nombre = req.usuario.nombre;
+    const { firma } = req.body;
+    if (!firma) return res.status(400).json({ error: 'Falta la firma' });
+
+    const dRes = await pool.query('SELECT * FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!dRes.rows.length) return res.status(404).json({ error: 'Dictamen no encontrado' });
+    const d = dRes.rows[0];
+
+    // Verificar que el médico esté asignado al turno de este dictamen
+    const asignado = await pool.query(
+      'SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [d.turno_id, nombre]);
+    if (!asignado.rows.length) return res.status(403).json({ error: 'No estás asignado a este turno' });
+
+    // Evitar doble firma
+    const yaFirmo = await pool.query(
+      'SELECT 1 FROM firmas_dictamen WHERE dictamen_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    if (yaFirmo.rows.length) return res.status(409).json({ error: 'Ya firmaste este dictamen' });
+
+    // Tomar matrícula y especialidad del perfil del médico
+    const perfil = await pool.query(
+      'SELECT matricula, especialidad FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombre]);
+    const matricula = perfil.rows[0]?.matricula || '';
+    const especialidad = perfil.rows[0]?.especialidad || 'Medicina Laboral';
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '';
+
+    await pool.query(`INSERT INTO firmas_dictamen
+      (dictamen_id, medico_nombre, matricula, especialidad, firma_base64, hash_contenido, ip)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.params.id, nombre, matricula, especialidad, firma, hashDictamen(d), ip]);
+
+    // ¿Cuántas firmas faltan? (médicos del turno excepto el autor)
+    const faltan = await pool.query(`
+      SELECT tm.medico_nombre FROM turno_medicos tm
+      WHERE tm.turno_id = $1 AND tm.medico_nombre != $2
+        AND NOT EXISTS (SELECT 1 FROM firmas_dictamen f WHERE f.dictamen_id = $3 AND f.medico_nombre = tm.medico_nombre)`,
+      [d.turno_id, d.medico, req.params.id]);
+
+    res.json({ ok: true, firmasFaltantes: faltan.rows.map(x=>x.medico_nombre) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
@@ -575,18 +678,57 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const d = r.rows[0];
     const otros = d.turno_id ? (await pool.query('SELECT * FROM dictamenes WHERE turno_id=$1 AND id!=$2 ORDER BY creado_en ASC', [d.turno_id, d.id])).rows : [];
     const todos = [d, ...otros];
+
+    // Firmas de junta médica (médicos que firmaron este dictamen desde su propia sesión)
+    const firmasJunta = (await pool.query(
+      'SELECT * FROM firmas_dictamen WHERE dictamen_id=$1 ORDER BY firmado_en ASC', [d.id])).rows;
+
     const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
-    const firmasHtml = todos.map(m => {
-      // Si es el médico principal (el del dictamen) y tiene firma digital, mostrarla
-      const esDoctorFirmante = m.medico === d.medico && d.firma_doctor;
-      const firmaImg = esDoctorFirmante
-        ? `<img src="data:image/png;base64,${d.firma_doctor}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
+
+    // Bloque de firmas: autor + otros dictámenes + firmas de junta (sin duplicar)
+    const firmantesRender = [];
+    for (const m of todos) {
+      const esAutor = m.medico === d.medico;
+      firmantesRender.push({
+        nombre: m.medico,
+        especialidad: m.especialidad || 'Medicina Laboral',
+        matricula: m.matricula || '',
+        img: (esAutor && d.firma_doctor) ? d.firma_doctor : (m.firma_doctor || null)
+      });
+    }
+    for (const f of firmasJunta) {
+      if (!firmantesRender.some(x => x.nombre === f.medico_nombre)) {
+        firmantesRender.push({
+          nombre: f.medico_nombre,
+          especialidad: f.especialidad || 'Medicina Laboral',
+          matricula: f.matricula || '',
+          img: f.firma_base64 || null
+        });
+      } else {
+        // Ya está en la lista (p.ej. médico del turno sin dictamen propio): asignarle su firma
+        const idx = firmantesRender.findIndex(x => x.nombre === f.medico_nombre);
+        if (idx >= 0 && !firmantesRender[idx].img) firmantesRender[idx].img = f.firma_base64 || null;
+      }
+    }
+
+    const firmasHtml = firmantesRender.map(m => {
+      const firmaImg = m.img
+        ? `<img src="data:image/png;base64,${m.img}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>`;
-      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.medico}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad||'Medicina Laboral'}</div><div style="font-size:9.5px;color:#9a9790;">${m.matricula?'MN/MP '+m.matricula:''}</div></div>`;
+      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${m.matricula?'MN/MP '+m.matricula:''}</div></div>`;
     }).join('');
+
+    // Trazabilidad de firmas de junta para el pie del documento
+    const trazaFirmasHtml = firmasJunta.length
+      ? `<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:8px;color:#9a9790;text-align:right;">` +
+        firmasJunta.map(f => {
+          const fh = new Date(f.firmado_en).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
+          return `Firmado electrónicamente por ${f.medico_nombre} el ${fh} hs · hash ${String(f.hash_contenido).substring(0,12)}`;
+        }).join('<br/>') + `</div>`
+      : '';
     const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
@@ -715,6 +857,7 @@ ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indic
 </div>
 
 <div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
+${trazaFirmasHtml}
 <div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero} · medgruplaboral.com.ar</div>
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;

@@ -444,6 +444,10 @@ th{font-size:9px;}
       <div class="nav-item active" id="nav-agenda" onclick="showSection('agenda',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</div>
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
+      <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Firmas
+        <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
+      </div>
       <div class="nav-item" id="nav-perfil" onclick="showSection('perfil',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi perfil</div>
     </div>
     <div class="nav-section">
@@ -651,7 +655,13 @@ th{font-size:9px;}
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="new-nombre" placeholder="Dr. Apellido, Nombre"/></div>
               <div class="form-group"><label class="form-lbl">Matrícula</label><input type="text" id="new-matricula" placeholder="MP 00.000"/></div>
-              <div class="form-group"><label class="form-lbl">Especialidad</label><select id="new-esp"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Traumatología</option><option>Cardiología</option></select></div>
+              <div class="form-group"><label class="form-lbl">Especialidad</label><select id="new-esp"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Psiquiatra Forense y Médico del Trabajo</option><option>Traumatología</option><option>Cardiología</option></select></div>
+            </div>
+            <div class="divider">Acceso a la app (opcional — para firmar juntas)</div>
+            <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px;">Si el médico va a participar de juntas, dale un acceso: al loguearse verá directo lo que tiene para firmar.</div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-lbl">Email de acceso</label><input type="text" id="new-email" placeholder="medico@medgrup.com"/></div>
+              <div class="form-group"><label class="form-lbl">Contraseña</label><input type="text" id="new-password" placeholder="Contraseña inicial"/></div>
             </div>
             <button class="btn btn-primary btn-full" onclick="agregarMedico()">Guardar médico</button>
             <div id="medico-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--azul);">✓ Médico agregado</div>
@@ -819,6 +829,73 @@ th{font-size:9px;}
       <button class="btn btn-ghost" onclick="cerrarModalEditar()">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-edicion" onclick="guardarEdicionTurno()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar cambios</button>
     </div>
+  </div>
+</div>
+
+<!-- OVERLAY FIRMA EXPRESS (juntas médicas) — camino simple para firmar -->
+<div id="firma-express-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(8px);z-index:800;overflow-y:auto;padding:20px;">
+  <div style="max-width:640px;margin:30px auto;">
+
+    <!-- PASO 1: lista de pendientes -->
+    <div id="fe-paso-lista" style="background:white;border-radius:18px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);">
+      <div style="text-align:center;margin-bottom:1.5rem;">
+        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--azul)" stroke-width="2" style="width:30px;height:30px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.4px;" id="fe-titulo">Tenés dictámenes para firmar</div>
+        <div style="font-size:13.5px;color:var(--text3);margin-top:6px;">Como integrante de la junta médica, tu firma es necesaria para completar estos documentos.</div>
+      </div>
+      <div id="fe-lista" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <button class="btn btn-ghost btn-full" style="margin-top:1.25rem;padding:12px;" onclick="cerrarFirmaExpress()">Más tarde</button>
+    </div>
+
+    <!-- PASO 2: leer y firmar -->
+    <div id="fe-paso-firmar" style="display:none;background:white;border-radius:18px;padding:2rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
+        <button class="btn btn-ghost" style="padding:8px 12px;" onclick="feVolverALista()">← Volver</button>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;" id="fe-firmar-paciente">—</div>
+          <div style="font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;" id="fe-firmar-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Resumen del dictamen -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:1rem;max-height:280px;overflow-y:auto;">
+        <div style="font-size:10px;letter-spacing:1.2px;color:var(--azul);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:8px;">CONCLUSIONES DEL DICTAMEN</div>
+        <div id="fe-conclusion" style="font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;">—</div>
+        <div id="fe-datos-extra" style="margin-top:12px;font-size:12px;color:var(--text2);"></div>
+      </div>
+      <a id="fe-ver-pdf" href="#" target="_blank" class="btn btn-ghost" style="width:100%;justify-content:center;padding:10px;margin-bottom:1.25rem;text-decoration:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        Ver el informe completo (PDF)
+      </a>
+
+      <!-- Canvas de firma GRANDE -->
+      <div style="font-size:10px;letter-spacing:1.2px;color:var(--text3);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:8px;">DIBUJÁ TU FIRMA ACÁ ABAJO</div>
+      <div style="border:2px dashed var(--azul-mid);border-radius:12px;background:#fbfcfe;position:relative;">
+        <canvas id="fe-canvas" width="560" height="180" style="width:100%;height:180px;display:block;border-radius:12px;cursor:crosshair;touch-action:none;"></canvas>
+        <button onclick="feLimpiarFirma()" style="position:absolute;top:8px;right:8px;background:white;border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;">Borrar</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;" id="fe-firmante-info">—</div>
+
+      <div id="fe-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+
+      <button id="fe-btn-firmar" class="btn btn-primary btn-full" style="margin-top:1.25rem;padding:16px;font-size:15px;" onclick="feFirmarDictamen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        Firmar dictamen
+      </button>
+    </div>
+
+    <!-- PASO 3: éxito -->
+    <div id="fe-paso-ok" style="display:none;background:white;border-radius:18px;padding:3rem 2rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);text-align:center;">
+      <div style="width:72px;height:72px;border-radius:50%;background:var(--verde-light);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--verde)" stroke-width="2.5" style="width:36px;height:36px;"><polyline points="20,6 9,17 4,12"/></svg>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;">¡Firma registrada!</div>
+      <div style="font-size:13.5px;color:var(--text2);margin-top:8px;line-height:1.6;" id="fe-ok-msg">El dictamen quedó firmado correctamente.</div>
+      <button class="btn btn-primary btn-full" style="margin-top:1.5rem;padding:13px;" onclick="feContinuarDespuesDeFirmar()">Continuar</button>
+    </div>
+
   </div>
 </div>
 
@@ -1368,6 +1445,8 @@ function mostrarApp(){
   if(secAgenda) secAgenda.style.display='block';
   cargarMedicos();cargarTurnos();cargarEmpresasSelect();
   actualizarBotonMenu();
+  // Chequear si el médico tiene dictámenes de junta pendientes de firma (camino express)
+  chequearFirmasPendientes();
 }
 
 async function checkSession(){
@@ -1455,10 +1534,23 @@ async function agregarMedico(){
   const nombre=document.getElementById('new-nombre').value.trim();
   document.getElementById('medico-ok').style.display='none';document.getElementById('medico-err').style.display='none';
   if(!nombre){document.getElementById('medico-err').style.display='block';document.getElementById('medico-err').textContent='Ingresá el nombre';return;}
-  const res=await fetch('/api/medicos',{method:'POST',headers:apiHeaders(),body:JSON.stringify({nombre,matricula:document.getElementById('new-matricula').value,especialidad:document.getElementById('new-esp').value})});
-  const data=await res.json();if(!data.ok)return;
+  const email = document.getElementById('new-email')?.value?.trim()||'';
+  const password = document.getElementById('new-password')?.value||'';
+  if((email && !password) || (!email && password)){
+    document.getElementById('medico-err').style.display='block';
+    document.getElementById('medico-err').textContent='Para crear el acceso completá email Y contraseña (o dejá los dos vacíos)';
+    return;
+  }
+  const res=await fetch('/api/medicos',{method:'POST',headers:apiHeaders(),body:JSON.stringify({nombre,matricula:document.getElementById('new-matricula').value,especialidad:document.getElementById('new-esp').value,email,password})});
+  const data=await res.json();
+  if(!data.ok){document.getElementById('medico-err').style.display='block';document.getElementById('medico-err').textContent=data.error||'Error al guardar';return;}
   document.getElementById('new-nombre').value='';document.getElementById('new-matricula').value='';
+  if(document.getElementById('new-email')) document.getElementById('new-email').value='';
+  if(document.getElementById('new-password')) document.getElementById('new-password').value='';
   document.getElementById('medico-ok').style.display='block';
+  document.getElementById('medico-ok').textContent = data.accesoCreado
+    ? '✓ Médico agregado con acceso a la app — puede loguearse y firmar juntas'
+    : '✓ Médico agregado';
   await cargarMedicos();
 }
 async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE',headers:apiHeaders()});await cargarMedicos();}
@@ -2327,6 +2419,188 @@ function cerrarDictamen(){
   dictamenActualId=null;
   turnoDictamenActual=null;
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ===== FIRMA EXPRESS PARA JUNTAS MÉDICAS =====
+// Camino simple: el médico se loguea → ve lo pendiente → lee → firma → listo.
+
+let fePendientes = [];
+let feDictamenActual = null;
+let feCanvasCtx = null;
+let feFirmado = false;
+
+async function chequearFirmasPendientes(){
+  try{
+    const r = await fetch('/api/firmas/pendientes', {headers:apiHeaders()});
+    if(!r.ok) return;
+    const data = await r.json();
+    fePendientes = data.pendientes || [];
+    actualizarBadgeFirmas();
+    if(fePendientes.length > 0){
+      abrirFirmaExpress();
+    }
+  }catch(e){ console.error('Error chequeando firmas pendientes:', e); }
+}
+
+function abrirFirmaExpress(){
+  if(!fePendientes.length) return;
+  document.getElementById('fe-titulo').textContent = fePendientes.length === 1
+    ? 'Tenés 1 dictamen para firmar'
+    : `Tenés ${fePendientes.length} dictámenes para firmar`;
+
+  document.getElementById('fe-lista').innerHTML = fePendientes.map(p => {
+    const fecha = p.fecha ? new Date(String(p.fecha).split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '—';
+    return `
+    <div style="border:1.5px solid var(--border2);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;">
+      <div style="min-width:0;">
+        <div style="font-size:15px;font-weight:600;">${p.apellido_nombre || p.paciente}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px;">${p.empresa||'—'} · ${fecha} · Informe de ${p.autor}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${p.numero}</div>
+      </div>
+      <button class="btn btn-primary" style="padding:12px 20px;font-size:14px;flex-shrink:0;" onclick="feAbrirFirma(${p.id})">
+        Leer y firmar →
+      </button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fe-paso-lista').style.display='block';
+  document.getElementById('fe-paso-firmar').style.display='none';
+  document.getElementById('fe-paso-ok').style.display='none';
+  document.getElementById('firma-express-overlay').style.display='block';
+}
+
+function cerrarFirmaExpress(){
+  document.getElementById('firma-express-overlay').style.display='none';
+  actualizarBadgeFirmas();
+}
+
+function feVolverALista(){
+  document.getElementById('fe-paso-firmar').style.display='none';
+  document.getElementById('fe-paso-lista').style.display='block';
+}
+
+function feAbrirFirma(dictamenId){
+  feDictamenActual = fePendientes.find(p => p.id === dictamenId);
+  if(!feDictamenActual) return;
+  const p = feDictamenActual;
+
+  document.getElementById('fe-firmar-paciente').textContent = p.apellido_nombre || p.paciente;
+  const fecha = p.fecha ? new Date(String(p.fecha).split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+  document.getElementById('fe-firmar-sub').textContent = `${p.numero} · ${p.empresa||'—'} · ${fecha}`;
+  document.getElementById('fe-conclusion').textContent = p.conclusion || 'Sin conclusiones cargadas — revisá el PDF completo antes de firmar.';
+
+  const aptLabels = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
+  const extras = [];
+  if(p.aptitud) extras.push(`<strong>Aptitud:</strong> ${aptLabels[p.aptitud]||p.aptitud}`);
+  if(p.dias_reposo > 0) extras.push(`<strong>Reposo:</strong> ${p.dias_reposo} días`);
+  if(p.diagnostico_cie) extras.push(`<strong>CIE-10:</strong> ${p.diagnostico_cie}`);
+  document.getElementById('fe-datos-extra').innerHTML = extras.join(' &nbsp;·&nbsp; ');
+
+  document.getElementById('fe-ver-pdf').href = '/api/dictamenes/'+p.id+'/pdf';
+  document.getElementById('fe-firmante-info').textContent = `Firmás como: ${usuarioActual?.nombre||'—'} (matrícula y especialidad se toman de tu perfil)`;
+  document.getElementById('fe-error').style.display='none';
+
+  document.getElementById('fe-paso-lista').style.display='none';
+  document.getElementById('fe-paso-firmar').style.display='block';
+
+  setTimeout(feInicializarCanvas, 60);
+}
+
+function feInicializarCanvas(){
+  const canvas = document.getElementById('fe-canvas');
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = 180 * 2;
+  feCanvasCtx = canvas.getContext('2d');
+  feCanvasCtx.scale(2,2);
+  feCanvasCtx.lineWidth = 2.2;
+  feCanvasCtx.lineCap = 'round';
+  feCanvasCtx.lineJoin = 'round';
+  feCanvasCtx.strokeStyle = '#1a2b45';
+  feFirmado = false;
+
+  let dibujando = false;
+  const pos = e => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = e => { e.preventDefault(); dibujando = true; const p = pos(e); feCanvasCtx.beginPath(); feCanvasCtx.moveTo(p.x, p.y); };
+  const move = e => { if(!dibujando) return; e.preventDefault(); const p = pos(e); feCanvasCtx.lineTo(p.x, p.y); feCanvasCtx.stroke(); feFirmado = true; };
+  const end = () => { dibujando = false; };
+
+  canvas.onmousedown = start; canvas.onmousemove = move;
+  canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function feLimpiarFirma(){
+  if(!feCanvasCtx) return;
+  const canvas = document.getElementById('fe-canvas');
+  feCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  feFirmado = false;
+}
+
+async function feFirmarDictamen(){
+  const errEl = document.getElementById('fe-error');
+  errEl.style.display='none';
+  if(!feFirmado){
+    errEl.textContent = 'Dibujá tu firma en el recuadro antes de continuar.';
+    errEl.style.display='block';
+    return;
+  }
+  const canvas = document.getElementById('fe-canvas');
+  const firmaBase64 = canvas.toDataURL('image/png').split(',')[1];
+
+  const btn = document.getElementById('fe-btn-firmar');
+  btn.disabled = true; btn.textContent = 'Firmando...';
+
+  try{
+    const res = await fetch('/api/dictamenes/'+feDictamenActual.id+'/firmar', {
+      method:'POST', headers:apiHeaders(),
+      body: JSON.stringify({ firma: firmaBase64 })
+    });
+    const data = await res.json();
+    if(!data.ok){
+      errEl.textContent = data.error || 'No se pudo registrar la firma';
+      errEl.style.display='block';
+      return;
+    }
+    fePendientes = fePendientes.filter(p => p.id !== feDictamenActual.id);
+    actualizarBadgeFirmas();
+    const faltantes = data.firmasFaltantes || [];
+    document.getElementById('fe-ok-msg').innerHTML = faltantes.length
+      ? `Tu firma quedó registrada en el documento.<br/>Falta que firme: <strong>${faltantes.join(', ')}</strong>`
+      : `Tu firma quedó registrada.<br/><strong>El dictamen está completo con todas las firmas.</strong>`;
+    document.getElementById('fe-paso-firmar').style.display='none';
+    document.getElementById('fe-paso-ok').style.display='block';
+  }catch(e){
+    errEl.textContent = 'Error de conexión: ' + e.message;
+    errEl.style.display='block';
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Firmar dictamen`;
+  }
+}
+
+function feContinuarDespuesDeFirmar(){
+  if(fePendientes.length > 0){
+    abrirFirmaExpress();
+  } else {
+    cerrarFirmaExpress();
+    mostrarToast('✓ Todas tus firmas están al día','#1e6640');
+  }
+}
+
+function actualizarBadgeFirmas(){
+  const nav = document.getElementById('nav-firmas');
+  const badge = document.getElementById('nav-firmas-badge');
+  if(fePendientes.length > 0){
+    if(nav) nav.style.display='flex';
+    if(badge) badge.textContent = fePendientes.length;
+  } else {
+    if(nav) nav.style.display='none';
+  }
 }
 
 // ===== MODAL DE EDICIÓN DEL ACTA (admin) =====
