@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /$
+Allow: /empresa.html
+Disallow: /api/
+
+Sitemap: https://medicinalaboral.medgrup.com.ar/sitemap.xml
