@@ -155,6 +155,8 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
+      `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
+      `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
     ]) await client.query(q2).catch(()=>{});
 
     // Fix columnas
@@ -272,10 +274,10 @@ app.get('/api/medicos', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/medicos', authMiddleware, async (req, res) => {
-  const { nombre, matricula, especialidad, email, password } = req.body;
+  const { nombre, matricula, especialidad, email, password, telefono } = req.body;
   if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
   try {
-    const r = await pool.query('INSERT INTO medicos (nombre,matricula,especialidad) VALUES ($1,$2,$3) RETURNING *', [nombre, matricula||'', especialidad||'Medicina Laboral']);
+    const r = await pool.query('INSERT INTO medicos (nombre,matricula,especialidad,telefono) VALUES ($1,$2,$3,$4) RETURNING *', [nombre, matricula||'', especialidad||'Medicina Laboral', telefono||'']);
     // Si mandaron email + password, crear también el usuario para que el médico
     // pueda loguearse y firmar juntas médicas
     let accesoCreado = false;
@@ -376,11 +378,11 @@ app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
 });
 // Editar médico (nombre, matrícula, especialidad)
 app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
-  const { nombre, matricula, especialidad } = req.body;
+  const { nombre, matricula, especialidad, telefono } = req.body;
   try {
     await pool.query(`UPDATE medicos SET
-      nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad)
-      WHERE id=$4`, [nombre||null, matricula||null, especialidad||null, req.params.id]);
+      nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad), telefono=COALESCE($4,telefono)
+      WHERE id=$5`, [nombre||null, matricula||null, especialidad||null, telefono!==undefined?telefono:null, req.params.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -405,7 +407,7 @@ app.patch('/api/turnos/:id/estado', authMiddleware, async (req, res) => {
 // Actualiza paciente, fecha, hora, tipo, empresa, motivo y la lista de médicos.
 // La sala Daily y los links NO se tocan (se mantienen exactamente iguales).
 app.patch('/api/turnos/:id', adminMiddleware, async (req, res) => {
-  const { paciente, fecha, hora, tipo, empresa, motivo, medicos, diagnostico_previo, dias_reposo_previo, medico_tratante } = req.body;
+  const { paciente, fecha, hora, tipo, empresa, motivo, medicos, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono } = req.body;
   try {
     const chk = await pool.query('SELECT id FROM turnos WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
@@ -419,12 +421,14 @@ app.patch('/api/turnos/:id', adminMiddleware, async (req, res) => {
       motivo   = COALESCE($6, motivo),
       diagnostico_previo = COALESCE($7, diagnostico_previo),
       dias_reposo_previo = COALESCE($8, dias_reposo_previo),
-      medico_tratante    = COALESCE($9, medico_tratante)
-      WHERE id=$10`,
+      medico_tratante    = COALESCE($9, medico_tratante),
+      telefono           = COALESCE($10, telefono)
+      WHERE id=$11`,
       [paciente || null, fecha || null, hora || null, tipo || null, empresa || null, motivo || null,
        diagnostico_previo !== undefined ? diagnostico_previo : null,
        dias_reposo_previo !== undefined ? (parseInt(dias_reposo_previo)||0) : null,
        medico_tratante !== undefined ? medico_tratante : null,
+       telefono !== undefined ? telefono : null,
        req.params.id]);
 
     // Si vinieron médicos en el body, reemplazar la lista completa
@@ -462,7 +466,7 @@ app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
 // ===== CREAR SALA =====
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   try {
-    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante } = req.body;
+    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono } = req.body;
     const nombreSala = `medgrup-${Date.now()}`;
     const resp = await fetch('https://api.daily.co/v1/rooms', {
       method: 'POST',
@@ -490,11 +494,11 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
     const linkPaciente = `${sala.url}?userName=${encodeURIComponent(paciente)}`;
 
     const turnoId = `turno-${Date.now()}`;
-    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante)
-      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14)`,
+    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono)
+      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
        sala.name, linkPaciente, sala.url+'?t=owner', JSON.stringify(linksMedicos), motivo||'',
-       diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'']);
+       diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'']);
     for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
     res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: sala.url+'?t=owner', links_medicos: linksMedicos, turno_id: turnoId, paciente });
   } catch (err) { res.status(500).json({ error: err.message }); }
