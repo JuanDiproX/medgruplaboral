@@ -528,7 +528,7 @@ td.no-label::before{display:none;}
     <div class="hdr-right">
       <div class="date-chip" id="current-date"></div>
       <button class="btn btn-primary" onclick="abrirModalTurno()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Programar turno</button>
-      <button class="btn btn-rosa" onclick="consultaInmediata()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>Inmediata</button>
+      <button class="btn btn-rosa" onclick="abrirModalConsultaInmediata()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>Inmediata</button>
     </div>
   </div>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -926,6 +926,34 @@ td.no-label::before{display:none;}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalEditarMedico()">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-edicion-medico" onclick="guardarEdicionMedico()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONSULTA INMEDIATA -->
+<div class="modal-bg" id="modal-inmediata">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">Consulta inmediata</div>
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;">Se crea la sala de videoconsulta ahora mismo, con todos los médicos activos.</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="ci-paciente" placeholder="Apellido, Nombre del paciente" onkeydown="if(event.key==='Enter')crearConsultaInmediata()"/></div>
+      <div class="form-group full"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="ci-telefono" placeholder="Ej: 5492901123456"/></div>
+    </div>
+    <div id="ci-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="loading" id="ci-loading" style="margin-top:12px;"><div class="spinner"></div>Creando sala de videoconsulta...</div>
+    <div id="ci-resultado" style="display:none;margin-top:14px;">
+      <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:1rem;">
+        <div style="font-size:13px;font-weight:600;color:var(--azul);">✓ Consulta creada — <span id="ci-resumen">—</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px;">¿Iniciás la videoconsulta ahora?</div>
+      </div>
+    </div>
+    <div class="modal-footer" id="ci-footer-crear">
+      <button class="btn btn-ghost" onclick="cerrarModalInmediata()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-crear-inmediata" onclick="crearConsultaInmediata()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>Crear consulta</button>
+    </div>
+    <div class="modal-footer" id="ci-footer-ok" style="display:none;">
+      <button class="btn btn-ghost" onclick="cerrarModalInmediata()">Más tarde</button>
+      <button class="btn btn-rosa" id="btn-iniciar-inmediata" onclick="iniciarDesdeModalInmediata()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>Iniciar ahora</button>
     </div>
   </div>
 </div>
@@ -2204,18 +2232,64 @@ async function guardarTurno(){
   }catch(e){document.getElementById('loading-turno').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';alert('Error: '+e.message);}
 }
 
-async function consultaInmediata(){
-  const paciente=prompt('Nombre del paciente:');if(!paciente)return;
-  await cargarMedicos();
+function abrirModalConsultaInmediata(){
+  document.getElementById('ci-paciente').value='';
+  document.getElementById('ci-telefono').value='';
+  document.getElementById('ci-err').style.display='none';
+  document.getElementById('ci-resultado').style.display='none';
+  document.getElementById('ci-loading').style.display='none';
+  document.getElementById('ci-footer-crear').style.display='flex';
+  document.getElementById('ci-footer-ok').style.display='none';
+  document.getElementById('btn-crear-inmediata').style.display='inline-flex';
+  document.getElementById('modal-inmediata').classList.add('open');
+  setTimeout(()=>document.getElementById('ci-paciente').focus(),50);
+}
+function cerrarModalInmediata(){
+  document.getElementById('modal-inmediata').classList.remove('open');
+}
+let _turnoInmediatoCreado = null;
+async function crearConsultaInmediata(){
+  const paciente = document.getElementById('ci-paciente').value.trim();
+  const telefono = document.getElementById('ci-telefono').value.trim();
+  const errEl = document.getElementById('ci-err');
+  errEl.style.display='none';
+  if(!paciente){ errEl.textContent='Ingresá el nombre del paciente'; errEl.style.display='block'; return; }
+  document.getElementById('btn-crear-inmediata').style.display='none';
+  document.getElementById('ci-loading').style.display='flex';
   try{
-    const res=await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,medicos:medicosData.map(m=>m.nombre),tipo:'Consulta inmediata'})});
-    const data=await res.json();if(!data.ok){alert('Error: '+data.error);return;}
+    await cargarMedicos();
+    const res = await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,telefono,medicos:medicosData.map(m=>m.nombre),tipo:'Consulta inmediata'})});
+    const data = await res.json();
+    document.getElementById('ci-loading').style.display='none';
+    if(!data.ok){
+      errEl.textContent = data.error||'Error al crear la consulta';
+      errEl.style.display='block';
+      document.getElementById('btn-crear-inmediata').style.display='inline-flex';
+      return;
+    }
     await cargarTurnos();
-    const tg=turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
-    if(tg){document.getElementById('links-body').innerHTML=buildLinksHtml(tg);document.getElementById('links-box').style.display='block';}
+    const tg = turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
+    _turnoInmediatoCreado = tg;
+    if(tg){
+      document.getElementById('links-body').innerHTML=buildLinksHtml(tg);
+      document.getElementById('links-box').style.display='block';
+    }
+    document.getElementById('ci-resumen').textContent = paciente;
+    document.getElementById('ci-resultado').style.display='block';
+    document.getElementById('ci-footer-crear').style.display='none';
+    document.getElementById('ci-footer-ok').style.display='flex';
     addLog('rosa','Consulta inmediata creada',paciente);
-    if(confirm('¿Iniciás la consulta ahora?')&&tg)iniciarTurno(tg.id);
-  }catch(e){alert('Error: '+e.message);}
+  }catch(e){
+    document.getElementById('ci-loading').style.display='none';
+    document.getElementById('btn-crear-inmediata').style.display='inline-flex';
+    errEl.textContent = 'Error de conexión: '+e.message;
+    errEl.style.display='block';
+  }
+}
+function iniciarDesdeModalInmediata(){
+  const t = _turnoInmediatoCreado;
+  cerrarModalInmediata();
+  if(t) iniciarTurno(t.id);
 }
 
 // ===== SUBIR PDF FIRMADO (una sola versión, limpia) =====
