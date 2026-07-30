@@ -528,7 +528,8 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
           enable_chat: true,
           exp: Math.floor(Date.now()/1000)+(60*60*24*30),
           max_participants: 10,
-          enable_prejoin_ui: false // salta la pantalla que pide el nombre
+          enable_prejoin_ui: false, // salta la pantalla que pide el nombre
+          lang: 'es' // interfaz de la videollamada (botones, chat, config) en español
         }
       })
     });
