@@ -143,7 +143,7 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 .metric-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;line-height:1.1;}
 .mc-blue .metric-val{color:var(--azul);}.mc-rosa .metric-val{color:var(--rosa);}.mc-green .metric-val{color:#1e6640;}
 .metric-hint{font-size:11px;color:var(--text3);margin-top:4px;}
-.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;white-space:nowrap;}
 .b-blue{background:var(--azul-light);color:var(--azul);}.b-rosa{background:var(--grad-rosa);color:white;}.b-green{background:#e0f2e9;color:#1e6640;}.b-gray{background:var(--surface3);color:var(--text2);}.b-amber{background:#fdf0d8;color:#8f5000;}
 .empresa-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;font-family:'DM Mono',monospace;letter-spacing:0.2px;}
 .emp-logant{background:var(--azul-light);color:var(--azul);}.emp-huinoil{background:#e5f4f4;color:#0d6e6e;}.emp-cemep{background:var(--rosa-light);color:var(--rosa-dark);}.emp-grupol{background:#fdf5e8;color:#8f5000;}.emp-otra{background:var(--surface3);color:var(--text2);}
@@ -198,6 +198,14 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 }
 /* Si el turno no tiene acciones, no dejar hueco */
 .turno-actions:empty{display:none;}
+.actions-menu{position:relative;display:inline-flex;}
+.actions-menu-btn{padding:6px 9px !important;}
+.actions-menu-list{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:6px;z-index:50;}
+.actions-menu-list.open{display:block;}
+.actions-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:none;background:none;border-radius:var(--r-xs);font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--text2);cursor:pointer;text-align:left;transition:all 0.1s;white-space:nowrap;}
+.actions-menu-item:hover{background:var(--azul-light);color:var(--azul);}
+.actions-menu-item.danger:hover{background:var(--rosa-light);color:var(--rosa-dark);}
+.actions-menu-item svg{width:13px;height:13px;flex-shrink:0;pointer-events:none;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .form-group{display:flex;flex-direction:column;gap:5px;}
 .form-group.full{grid-column:1/-1;}
@@ -244,6 +252,12 @@ table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text3);padding:0 1.25rem 9px;font-weight:500;}
 td{padding:11px 1.25rem;border-top:1px solid var(--border);color:var(--text);vertical-align:middle;}
 tr:hover td{background:var(--azul-light);}
+.row-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:white;}
+.form-section{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 15px;margin:14px 0;}
+.form-section-hdr{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--azul);font-family:'DM Mono',monospace;}
+.form-section-hdr svg{width:14px;height:14px;stroke:var(--azul);flex-shrink:0;}
+.form-section-hint{font-size:11.5px;color:var(--text3);margin:5px 0 10px;line-height:1.5;}
+.form-section .form-grid,.form-section .medicos-check-list{margin-top:0;}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:fadeUp 0.2s ease both;}
@@ -298,7 +312,6 @@ tr:hover td{background:var(--azul-light);}
 .btn:active{transform:scale(0.96) !important;}
 .turno-actions .btn{transition:all 0.15s cubic-bezier(0.22,1,0.36,1);}
 .turno-actions .btn:hover{transform:translateY(-2px);}
-.btn-admin-edit:hover{background:var(--azul-light) !important;color:var(--azul) !important;border-color:var(--azul-mid) !important;}
 .modal{animation:popIn 0.28s cubic-bezier(0.34,1.56,0.64,1) both;}
 .badge{transition:transform 0.15s;}
 tr{transition:background 0.15s;}
@@ -397,9 +410,16 @@ input[type=text],input[type=date],input[type=password],select,textarea{font-size
 .modal-title{font-size:16px;}
 .modal-footer{flex-direction:column-reverse;gap:8px;}
 .modal-footer .btn{width:100%;justify-content:center;}
-table{font-size:12px;}
-th,td{padding:8px 0.75rem;}
-th{font-size:9px;}
+/* Tablas → tarjetas apiladas (médicos, empresas, pacientes por empresa): con 4-5 columnas
+   angostas + botones sin wrap, un <table> tradicional desborda el ancho en mobile. */
+table,thead,tbody,tr{display:block;width:100%;}
+thead{display:none;}
+tbody tr{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;padding:12px;background:var(--surface);}
+tbody tr:hover td{background:none;}
+td{display:block;border:none;padding:5px 0;font-size:13px;}
+td::before{content:attr(data-label);display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;color:var(--text3);font-weight:600;margin-right:8px;min-width:76px;}
+td.no-label{padding-top:2px;}
+td.no-label::before{display:none;}
 .sidebar-footer{padding:0.75rem;}
 .user-card{padding:9px 11px;}
 .user-nombre{font-size:12px;}
@@ -806,7 +826,6 @@ th{font-size:9px;}
     <div class="modal-title">Programar turno</div>
     <div class="form-grid">
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" list="pacientes-datalist" oninput="onPacienteTurnoInput()" placeholder="Apellido, Nombre del paciente"/><datalist id="pacientes-datalist"></datalist></div>
-      <div class="form-group full"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="t-telefono" placeholder="Ej: 5492901123456"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
         <select id="t-hora"><option>08:00</option><option>08:30</option><option>09:00</option><option>09:30</option><option>10:00</option><option>10:30</option><option>11:00</option><option>11:30</option><option>12:00</option><option>14:00</option><option>14:30</option><option>15:00</option><option>15:30</option><option selected>16:00</option><option>16:30</option><option>17:00</option></select>
@@ -814,21 +833,26 @@ th{font-size:9px;}
       <div class="form-group"><label class="form-lbl">Tipo de consulta</label>
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option></select>
       </div>
+      <div class="form-group"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="t-telefono" placeholder="Ej: 5492901123456"/></div>
       <div class="form-group full"><label class="form-lbl">Empresa</label>
         <select id="t-empresa" onchange="onEmpresaTurnoChange()"><option value="">Cargando empresas...</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
-    <div class="divider">Diagnóstico previo (opcional)</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Si el paciente ya viene con un diagnóstico, cargalo acá — la IA lo usa automáticamente al generar el informe.</div>
-    <div class="form-grid">
-      <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
-      <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="t-reposo-previo" placeholder="30"/></div>
-      <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
+    <div class="form-section">
+      <div class="form-section-hdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>Diagnóstico previo (opcional)</div>
+      <div class="form-section-hint">Si el paciente ya viene con un diagnóstico, cargalo acá — la IA lo usa automáticamente al generar el informe.</div>
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
+        <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="t-reposo-previo" placeholder="30"/></div>
+        <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
+      </div>
     </div>
-    <div class="divider">Médicos participantes</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Cada uno recibe su propio link de moderador.</div>
-    <div class="medicos-check-list" id="medicos-check-list"></div>
+    <div class="form-section">
+      <div class="form-section-hdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos participantes</div>
+      <div class="form-section-hint">Cada uno recibe su propio link de moderador.</div>
+      <div class="medicos-check-list" id="medicos-check-list"></div>
+    </div>
     <div class="loading" id="loading-turno" style="margin-top:12px;"><div class="spinner"></div>Creando sala de videoconsulta...</div>
     <div id="turno-resultado" style="display:none;margin-top:14px;">
       <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:1rem;margin-bottom:10px;">
@@ -850,7 +874,6 @@ th{font-size:9px;}
     <div class="modal-title">Editar turno</div>
     <div class="form-grid">
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="edit-t-paciente" placeholder="Apellido, Nombre del paciente"/></div>
-      <div class="form-group full"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="edit-t-telefono" placeholder="Ej: 5492901123456"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="edit-t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
         <select id="edit-t-hora"><option>08:00</option><option>08:30</option><option>09:00</option><option>09:30</option><option>10:00</option><option>10:30</option><option>11:00</option><option>11:30</option><option>12:00</option><option>14:00</option><option>14:30</option><option>15:00</option><option>15:30</option><option>16:00</option><option>16:30</option><option>17:00</option></select>
@@ -858,23 +881,28 @@ th{font-size:9px;}
       <div class="form-group"><label class="form-lbl">Tipo de consulta</label>
         <select id="edit-t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option><option>Seguimiento Medico</option><option>Consulta</option></select>
       </div>
+      <div class="form-group"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="edit-t-telefono" placeholder="Ej: 5492901123456"/></div>
       <div class="form-group full"><label class="form-lbl">Empresa</label>
         <select id="edit-t-empresa"><option value="">Cargando empresas...</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="edit-t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
-    <div class="divider">Diagnóstico previo (opcional)</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">La IA usa estos datos como contexto al generar el informe del turno.</div>
-    <div class="form-grid">
-      <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="edit-t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
-      <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="edit-t-reposo-previo" placeholder="30"/></div>
-      <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="edit-t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
+    <div class="form-section">
+      <div class="form-section-hdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg>Diagnóstico previo (opcional)</div>
+      <div class="form-section-hint">La IA usa estos datos como contexto al generar el informe del turno.</div>
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-lbl">Diagnóstico</label><input type="text" id="edit-t-diagnostico" placeholder="Ej: ansiedad y depresión"/></div>
+        <div class="form-group"><label class="form-lbl">Días de reposo indicados</label><input type="text" id="edit-t-reposo-previo" placeholder="30"/></div>
+        <div class="form-group"><label class="form-lbl">Médico tratante</label><input type="text" id="edit-t-medico-tratante" placeholder="Dr. Germán Dhomen, psiquiatra"/></div>
+      </div>
     </div>
-    <div class="divider">Médicos participantes</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Podés agregar o quitar médicos. Los links de Daily se mantienen iguales.</div>
-    <div class="medicos-check-list" id="edit-medicos-check-list"></div>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 13px;margin-top:14px;font-size:12px;color:var(--text2);line-height:1.5;">
-      <strong style="color:var(--text);">ⓘ Nota:</strong> la sala de Daily y los links no cambian — se mantiene la misma videollamada.
+    <div class="form-section">
+      <div class="form-section-hdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos participantes</div>
+      <div class="form-section-hint">Podés agregar o quitar médicos. Los links de Daily se mantienen iguales.</div>
+      <div class="medicos-check-list" id="edit-medicos-check-list"></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 13px;margin-top:12px;font-size:12px;color:var(--text2);line-height:1.5;">
+        <strong style="color:var(--text);">ⓘ Nota:</strong> la sala de Daily y los links no cambian — se mantiene la misma videollamada.
+      </div>
     </div>
     <div id="edit-turno-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
     <div class="modal-footer">
@@ -1590,10 +1618,21 @@ async function cargarMedicos(){
     if(lista) lista.innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error de conexión al cargar los médicos. Recargá la página.</div>';
   }
 }
+// Avatar circular con iniciales para filas de tabla (médicos, empresas, pacientes)
+function iniciales(nombre){
+  const limpio=(nombre||'').replace(/^(Dr\.|Dra\.)\s*/i,'');
+  const partes=limpio.split(/[ ,]+/).filter(Boolean);
+  return (partes.slice(0,2).map(p=>p[0]).join('')||'?').toUpperCase();
+}
+function avatarChip(nombre){
+  const grads=['var(--grad-azul)','var(--grad-rosa)','var(--grad-celeste)'];
+  let h=0; for(const c of (nombre||'')) h=(h*31+c.charCodeAt(0))>>>0;
+  return `<div class="row-avatar" style="background:${grads[h%grads.length]};">${iniciales(nombre)}</div>`;
+}
 function renderMedicos(){
   if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
   document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
-    medicosData.map(m=>`<tr><td><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
+    medicosData.map(m=>`<tr><td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(m.nombre)}<div><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado'}</div></div></div></td><td data-label="Especialidad"><span style="color:var(--azul-dark);font-weight:600;font-size:12.5px;line-height:1.4;">${m.especialidad}</span></td><td data-label="Estado"><span class="badge b-green">● Activo</span></td><td class="no-label" style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
 }
 function renderMedicosCheck(){
   document.getElementById('medicos-check-list').innerHTML=medicosData.map(m=>
@@ -1728,6 +1767,8 @@ function cambiarTabTurnos(tab){
 
 function renderAgenda(){
  try{
+  // Limpiar menús "⋮" que hayan quedado teletransportados a <body> en el render anterior
+  document.querySelectorAll('body > .actions-menu-list').forEach(el=>el.remove());
   const hoy=new Date().toISOString().split('T')[0];
   const ord=[...turnos].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora));
   document.getElementById('cnt-total').textContent=turnos.length;
@@ -1813,18 +1854,24 @@ function renderAgenda(){
         // Médico: va al formulario inline
         : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`
       :'';
-    const ba=t.estado==='completado'
-      ? esAdmin
-        ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirModalEditarActa('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</button>`
-        : `<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`
-      :'';
+    // Acta: el médico la ve como link directo; al admin se le ofrece en el menú de más acciones (abre el modal de edición)
+    const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
-    const bfirma=t.estado==='completado'&&esAdmin?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;border-color:var(--rosa-mid);color:var(--rosa);" onclick="subirPDFFirmado('${t.id}')" title="Subir informe firmado por el doctor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir firmado</button>`:'';
-    // Botones de admin: editar y eliminar cualquier turno
-    const bedit=esAdmin?`<button class="btn btn-ghost btn-admin-edit" style="padding:6px 12px;font-size:12px;" onclick="abrirModalEditar('${t.id}')" title="Editar turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Editar</button>`:'';
-    const bdel=esAdmin?`<button class="btn btn-danger btn-admin-del" style="padding:6px 12px;font-size:12px;" onclick="eliminarTurno('${t.id}')" title="Eliminar turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Eliminar</button>`:'';
     const brecordar=t.estado!=='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e9d5a;" onclick="recordarTurnoWA('${t.id}')" title="Enviar recordatorio por WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;pointer-events:none;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>Recordar</button>`:'';
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${brecordar}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bfirma}${bedit}${bdel}</div></div>`;
+
+    // Acciones de admin (Acta, Subir firmado, Editar, Eliminar) se agrupan en un menú "⋮" para no saturar la fila
+    let menuItems='';
+    if(esAdmin){
+      if(t.estado==='completado'){
+        menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');abrirModalEditarActa('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta de asistencia</button>`;
+        menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');subirPDFFirmado('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir informe firmado</button>`;
+      }
+      menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');abrirModalEditar('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Editar turno</button>`;
+      menuItems+=`<button class="actions-menu-item danger" onclick="cerrarMenuAcciones('${t.id}');eliminarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Eliminar turno</button>`;
+    }
+    const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
+
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${brecordar}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
  }catch(err){
   console.error('Error en renderAgenda:', err);
@@ -2039,6 +2086,41 @@ function abrirWANumero(telefono, mensaje){
   const base = digitos ? `https://wa.me/${digitos}` : 'https://wa.me/';
   window.open(base+'?text='+encodeURIComponent(mensaje||''),'_blank');
 }
+
+// Menú "⋮ Más acciones" de cada turno (agrupa Acta/Subir firmado/Editar/Eliminar)
+function toggleMenuAcciones(id, event){
+  event.stopPropagation();
+  const list = document.getElementById('menu-list-'+id);
+  if(!list) return;
+  const abierto = list.classList.contains('open');
+  cerrarTodosLosMenusAcciones();
+  if(abierto) return; // ya estaba abierto: con cerrarlo alcanza (toggle)
+
+  // Lo "teletransportamos" a <body> con position:fixed: los .card animados generan su propio
+  // stacking context (animation + transform), así que un z-index interno nunca alcanza para
+  // dibujarse por encima de la card siguiente. Solo así queda siempre visible y sin recortes.
+  const btnRect = event.currentTarget.getBoundingClientRect();
+  document.body.appendChild(list);
+  list.style.position = 'fixed';
+  list.style.zIndex = 9999;
+  list.style.right = 'auto'; // la clase CSS trae right:0; si queda junto con left, el navegador estira el ancho entre los dos
+  list.style.top = (btnRect.bottom + 6) + 'px';
+  list.style.left = '-9999px'; // posición provisoria, solo para medir el ancho real
+  list.classList.add('open');
+  const menuWidth = list.offsetWidth;
+  const margen = 8;
+  let left = btnRect.right - menuWidth;
+  left = Math.min(Math.max(left, margen), window.innerWidth - menuWidth - margen);
+  list.style.left = left + 'px';
+}
+function cerrarTodosLosMenusAcciones(){
+  document.querySelectorAll('.actions-menu-list.open').forEach(el=>el.classList.remove('open'));
+}
+function cerrarMenuAcciones(id){
+  const list = document.getElementById('menu-list-'+id);
+  if(list) list.classList.remove('open');
+}
+document.addEventListener('click', cerrarTodosLosMenusAcciones);
 
 function recordarTurnoWA(id){
   const t = turnos.find(x=>x.id===id);
@@ -3207,11 +3289,11 @@ function renderEmpresas() {
   }
   document.getElementById('empresas-lista').innerHTML = `<table><thead><tr><th>Empresa</th><th>Email de acceso</th><th>Contacto</th><th>Estado</th><th></th></tr></thead><tbody>` +
     empresasData.map(e => `<tr>
-      <td><div style="font-weight:600;">${e.nombre}</div></td>
-      <td><div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${e.email}</div></td>
-      <td><div style="font-size:12.5px;color:var(--text2);">${e.contacto||'—'}</div></td>
-      <td>${e.activo ? '<span class="badge b-green">● Activa</span>' : '<span class="badge b-gray">Inactiva</span>'}</td>
-      <td style="display:flex;gap:6px;">
+      <td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(e.nombre)}<div style="font-weight:600;">${e.nombre}</div></div></td>
+      <td data-label="Email"><div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${e.email}</div></td>
+      <td data-label="Contacto"><div style="font-size:12.5px;color:var(--text2);">${e.contacto||'—'}</div></td>
+      <td data-label="Estado">${e.activo ? '<span class="badge b-green">● Activa</span>' : '<span class="badge b-gray">Inactiva</span>'}</td>
+      <td class="no-label" style="display:flex;gap:6px;">
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="resetPasswordEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')" title="Cambiar contraseña">Contraseña</button>
         <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="desactivarEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')">Desactivar</button>
       </td>
@@ -3319,9 +3401,9 @@ function renderPacientesEmpresa(){
   }
   lista.innerHTML = `<table><thead><tr><th>Nombre</th><th>WhatsApp</th><th></th></tr></thead><tbody>` +
     pacientesEmpresaData.map(p=>`<tr>
-      <td>${p.nombre}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px;">${p.telefono||'—'}</td>
-      <td style="display:flex;gap:6px;">
+      <td class="no-label"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.nombre)}<span>${p.nombre}</span></div></td>
+      <td data-label="WhatsApp" style="font-family:'DM Mono',monospace;font-size:12px;">${p.telefono||'—'}</td>
+      <td class="no-label" style="display:flex;gap:6px;">
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarPacienteEmpresa(${p.id})">Editar</button>
         <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarPacienteEmpresa(${p.id})">Eliminar</button>
       </td>
