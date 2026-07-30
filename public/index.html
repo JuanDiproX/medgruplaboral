@@ -779,6 +779,22 @@ th{font-size:9px;}
         </div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:1rem;">
+      <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Pacientes / trabajadores por empresa</div></div>
+      <div class="card-body">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Cargá acá el nombre y WhatsApp de los trabajadores de cada empresa. Después, al programar un turno, vas a poder elegirlos de una lista en vez de tipearlos.</div>
+        <div class="form-group full" style="margin-bottom:14px;"><label class="form-lbl">Empresa</label><select id="pe-empresa" onchange="cargarPacientesEmpresa()"><option value="">Elegí una empresa...</option></select></div>
+        <div id="pe-lista"><div style="text-align:center;padding:1rem;color:var(--text3);font-size:12.5px;">Elegí una empresa para ver sus trabajadores.</div></div>
+        <div class="divider" id="pe-form-divider" style="display:none;">Agregar trabajador</div>
+        <div class="form-grid" id="pe-form" style="display:none;">
+          <div class="form-group"><label class="form-lbl">Nombre completo</label><input type="text" id="pe-nombre" placeholder="Apellido, Nombre"/></div>
+          <div class="form-group"><label class="form-lbl">WhatsApp (opcional)</label><input type="text" id="pe-telefono" placeholder="Ej: 5492901123456"/></div>
+        </div>
+        <button class="btn btn-primary" id="pe-btn-agregar" style="display:none;margin-top:10px;" onclick="agregarPacienteEmpresa()">Agregar trabajador</button>
+        <div id="pe-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+      </div>
+    </div>
   </div>
 </main>
 </div>
@@ -789,7 +805,7 @@ th{font-size:9px;}
   <div class="modal">
     <div class="modal-title">Programar turno</div>
     <div class="form-grid">
-      <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" placeholder="Apellido, Nombre del paciente"/></div>
+      <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" list="pacientes-datalist" oninput="onPacienteTurnoInput()" placeholder="Apellido, Nombre del paciente"/><datalist id="pacientes-datalist"></datalist></div>
       <div class="form-group full"><label class="form-lbl">WhatsApp del paciente (opcional)</label><input type="text" id="t-telefono" placeholder="Ej: 5492901123456"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
@@ -799,7 +815,7 @@ th{font-size:9px;}
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Empresa</label>
-        <select id="t-empresa"><option value="">Cargando empresas...</option></select>
+        <select id="t-empresa" onchange="onEmpresaTurnoChange()"><option value="">Cargando empresas...</option></select>
       </div>
       <div class="form-group full"><label class="form-lbl">Motivo (opcional)</label><textarea id="t-motivo" placeholder="Descripción breve..."></textarea></div>
     </div>
@@ -864,6 +880,24 @@ th{font-size:9px;}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalEditar()">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-edicion" onclick="guardarEdicionTurno()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MÉDICO -->
+<div class="modal-bg" id="modal-editar-medico">
+  <div class="modal">
+    <div class="modal-title">Editar médico</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="edit-med-nombre" placeholder="Dr. Apellido, Nombre"/></div>
+      <div class="form-group"><label class="form-lbl">Matrícula</label><input type="text" id="edit-med-matricula" placeholder="MP 00.000"/></div>
+      <div class="form-group"><label class="form-lbl">Especialidad</label><input type="text" id="edit-med-especialidad" placeholder="Medicina Laboral"/></div>
+      <div class="form-group full"><label class="form-lbl">WhatsApp (opcional)</label><input type="text" id="edit-med-telefono" placeholder="Ej: 5492901123456"/></div>
+    </div>
+    <div id="edit-medico-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalEditarMedico()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-edicion-medico" onclick="guardarEdicionMedico()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -1526,7 +1560,7 @@ function showSection(id,el){
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
-  if(id==='empresas')cargarEmpresas();
+  if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
   window.scrollTo({top:0,behavior:'smooth'});
   if(esMobile()){
     const sb = document.querySelector('.sidebar');
@@ -1559,7 +1593,7 @@ async function cargarMedicos(){
 function renderMedicos(){
   if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
   document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
-    medicosData.map(m=>`<tr><td><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
+    medicosData.map(m=>`<tr><td><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado'}</div></td><td><span class="badge b-blue">${m.especialidad}</span></td><td><span class="badge b-green">● Activo</span></td><td style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
 }
 function renderMedicosCheck(){
   document.getElementById('medicos-check-list').innerHTML=medicosData.map(m=>
@@ -1593,28 +1627,41 @@ async function agregarMedico(){
 }
 async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE',headers:apiHeaders()});await cargarMedicos();}
 
-async function editarMedicoModal(id){
+let medicoEditandoId = null;
+
+function editarMedicoModal(id){
   const m = medicosData.find(x=>x.id===id);
   if(!m) return;
-  const nombre = prompt('Nombre completo:', m.nombre);
-  if(nombre === null) return; // canceló
-  const matricula = prompt('Matrícula:', m.matricula || '');
-  if(matricula === null) return;
-  const especialidad = prompt('Especialidad:', m.especialidad || 'Medicina Laboral');
-  if(especialidad === null) return;
-  const telefono = prompt('WhatsApp (ej: 5492901123456):', m.telefono || '');
-  if(telefono === null) return;
+  medicoEditandoId = id;
+  document.getElementById('edit-med-nombre').value = m.nombre || '';
+  document.getElementById('edit-med-matricula').value = m.matricula || '';
+  document.getElementById('edit-med-especialidad').value = m.especialidad || 'Medicina Laboral';
+  document.getElementById('edit-med-telefono').value = m.telefono || '';
+  document.getElementById('edit-medico-err').style.display='none';
+  document.getElementById('modal-editar-medico').classList.add('open');
+}
+function cerrarModalEditarMedico(){ document.getElementById('modal-editar-medico').classList.remove('open'); }
+
+async function guardarEdicionMedico(){
+  if(!medicoEditandoId) return;
+  const errEl = document.getElementById('edit-medico-err');
+  errEl.style.display='none';
+  const nombre = document.getElementById('edit-med-nombre').value.trim();
+  if(!nombre){ errEl.textContent='El nombre no puede quedar vacío'; errEl.style.display='block'; return; }
+  const matricula = document.getElementById('edit-med-matricula').value.trim();
+  const especialidad = document.getElementById('edit-med-especialidad').value.trim();
+  const telefono = document.getElementById('edit-med-telefono').value.trim();
   try{
-    const res = await fetch('/api/medicos/'+id, {
+    const res = await fetch('/api/medicos/'+medicoEditandoId, {
       method:'PATCH', headers:apiHeaders(),
-      body: JSON.stringify({ nombre: nombre.trim()||m.nombre, matricula: matricula.trim(), especialidad: especialidad.trim()||m.especialidad, telefono: telefono.trim() })
+      body: JSON.stringify({ nombre, matricula, especialidad: especialidad||'Medicina Laboral', telefono })
     });
     const data = await res.json();
-    if(data.ok){
-      mostrarToast('✓ Médico actualizado','#1e6640');
-      await cargarMedicos();
-    } else { alert(data.error||'Error al guardar'); }
-  }catch(e){ alert('Error: '+e.message); }
+    if(!data.ok){ errEl.textContent=data.error||'Error al guardar'; errEl.style.display='block'; return; }
+    cerrarModalEditarMedico();
+    mostrarToast('✓ Médico actualizado','#1e6640');
+    await cargarMedicos();
+  }catch(e){ errEl.textContent='Error de conexión: '+e.message; errEl.style.display='block'; }
 }
 
 let turnos=[],consultaActual=null,dictCount=0;
@@ -2008,7 +2055,7 @@ function verLinks(id){
   document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
 }
 
-function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';cargarMedicos();cargarEmpresasSelect();}
+function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';pacientesTurnoActual=[];document.getElementById('pacientes-datalist').innerHTML='';cargarMedicos();cargarEmpresasSelect();}
 
 const EMPRESAS_HISTORICAS=['LOGANT S.A.','Gloker Trucks S.A.','Huinoil S.A.','CEMEP','Grupo L'];
 
@@ -2021,12 +2068,33 @@ async function cargarEmpresasSelect(){
     const delPortal=data.empresas||[];
     const todas=[...new Set([...delPortal,...EMPRESAS_HISTORICAS])].sort((a,b)=>a.localeCompare(b));
     sel.innerHTML=todas.map(e=>`<option value="${e}">${e}</option>`).join('')+`<option value="Otra">Otra empresa</option>`;
-    if(valorPrevio&&todas.includes(valorPrevio))sel.value=valorPrevio;
+    if(valorPrevio&&todas.includes(valorPrevio)){sel.value=valorPrevio;onEmpresaTurnoChange();}
   }catch(e){
     sel.innerHTML=EMPRESAS_HISTORICAS.map(e=>`<option value="${e}">${e}</option>`).join('')+`<option value="Otra">Otra empresa</option>`;
   }
 }
 function cerrarModal(){document.getElementById('modal-turno').classList.remove('open');}
+
+// Autocompletado de paciente al elegir empresa: trae su lista de trabajadores cargados
+let pacientesTurnoActual = [];
+async function onEmpresaTurnoChange(){
+  const empresa = document.getElementById('t-empresa').value;
+  const datalist = document.getElementById('pacientes-datalist');
+  pacientesTurnoActual = [];
+  if(!empresa || empresa==='Otra'){ datalist.innerHTML=''; return; }
+  try{
+    const res = await fetch('/api/pacientes-empresa?empresa='+encodeURIComponent(empresa), {headers:apiHeaders()});
+    const data = await res.json();
+    pacientesTurnoActual = data.pacientes || [];
+    datalist.innerHTML = pacientesTurnoActual.map(p=>`<option value="${p.nombre}">`).join('');
+  }catch(e){ datalist.innerHTML=''; }
+}
+
+function onPacienteTurnoInput(){
+  const nombre = document.getElementById('t-paciente').value.trim().toLowerCase();
+  const match = pacientesTurnoActual.find(p=>p.nombre.toLowerCase()===nombre);
+  if(match) document.getElementById('t-telefono').value = match.telefono || '';
+}
 
 async function guardarTurno(){
   const paciente=document.getElementById('t-paciente').value.trim();
@@ -3199,6 +3267,107 @@ async function desactivarEmpresa(id, nombre) {
   const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ activo: false }) });
   const data = await res.json();
   if (data.ok) { await cargarEmpresas(); }
+}
+
+// ===== PACIENTES / TRABAJADORES POR EMPRESA (admin) =====
+let pacientesEmpresaData = [];
+
+async function cargarPacientesEmpresaSelectOptions(){
+  const sel = document.getElementById('pe-empresa');
+  if(!sel) return;
+  const valorPrevio = sel.value;
+  try{
+    const res = await fetch('/api/empresas-nombres', { headers: apiHeaders() });
+    const data = await res.json();
+    const delPortal = data.empresas || [];
+    const todas = [...new Set([...delPortal, ...EMPRESAS_HISTORICAS])].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML = `<option value="">Elegí una empresa...</option>` + todas.map(e=>`<option value="${e}">${e}</option>`).join('');
+    if(valorPrevio && todas.includes(valorPrevio)) sel.value = valorPrevio;
+  }catch(e){
+    sel.innerHTML = `<option value="">Elegí una empresa...</option>` + EMPRESAS_HISTORICAS.map(e=>`<option value="${e}">${e}</option>`).join('');
+  }
+}
+
+async function cargarPacientesEmpresa(){
+  const empresa = document.getElementById('pe-empresa').value;
+  const lista = document.getElementById('pe-lista');
+  const form = document.getElementById('pe-form');
+  const btn = document.getElementById('pe-btn-agregar');
+  const divider = document.getElementById('pe-form-divider');
+  if(!empresa){
+    lista.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12.5px;">Elegí una empresa para ver sus trabajadores.</div>';
+    form.style.display='none'; btn.style.display='none'; divider.style.display='none';
+    return;
+  }
+  form.style.display='grid'; btn.style.display='inline-flex'; divider.style.display='block';
+  lista.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12.5px;">Cargando...</div>';
+  try{
+    const res = await fetch('/api/pacientes-empresa?empresa='+encodeURIComponent(empresa), { headers: apiHeaders() });
+    const data = await res.json();
+    pacientesEmpresaData = data.pacientes || [];
+    renderPacientesEmpresa();
+  }catch(e){
+    lista.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--rosa-dark);font-size:12.5px;">Error al cargar.</div>';
+  }
+}
+
+function renderPacientesEmpresa(){
+  const lista = document.getElementById('pe-lista');
+  if(!pacientesEmpresaData.length){
+    lista.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12.5px;">Todavía no hay trabajadores cargados para esta empresa.</div>';
+    return;
+  }
+  lista.innerHTML = `<table><thead><tr><th>Nombre</th><th>WhatsApp</th><th></th></tr></thead><tbody>` +
+    pacientesEmpresaData.map(p=>`<tr>
+      <td>${p.nombre}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;">${p.telefono||'—'}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarPacienteEmpresa(${p.id})">Editar</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarPacienteEmpresa(${p.id})">Eliminar</button>
+      </td>
+    </tr>`).join('') + `</tbody></table>`;
+}
+
+async function agregarPacienteEmpresa(){
+  const empresa = document.getElementById('pe-empresa').value;
+  const nombre = document.getElementById('pe-nombre').value.trim();
+  const telefono = document.getElementById('pe-telefono').value.trim();
+  const errEl = document.getElementById('pe-err');
+  errEl.style.display='none';
+  if(!empresa){ errEl.textContent='Elegí una empresa primero'; errEl.style.display='block'; return; }
+  if(!nombre){ errEl.textContent='Ingresá el nombre del trabajador'; errEl.style.display='block'; return; }
+  try{
+    const res = await fetch('/api/admin/pacientes-empresa', { method:'POST', headers:apiHeaders(), body:JSON.stringify({ empresa, nombre, telefono }) });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent=data.error||'Error al guardar'; errEl.style.display='block'; return; }
+    document.getElementById('pe-nombre').value=''; document.getElementById('pe-telefono').value='';
+    mostrarToast('✓ Trabajador agregado','#1e6640');
+    await cargarPacientesEmpresa();
+  }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
+
+async function editarPacienteEmpresa(id){
+  const p = pacientesEmpresaData.find(x=>x.id===id);
+  if(!p) return;
+  const nombre = prompt('Nombre completo:', p.nombre);
+  if(nombre===null) return;
+  const telefono = prompt('WhatsApp (ej: 5492901123456):', p.telefono||'');
+  if(telefono===null) return;
+  try{
+    const res = await fetch('/api/admin/pacientes-empresa/'+id, { method:'PATCH', headers:apiHeaders(), body:JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim() }) });
+    const data = await res.json();
+    if(!data.ok){ alert(data.error||'Error al guardar'); return; }
+    mostrarToast('✓ Trabajador actualizado','#1e6640');
+    await cargarPacientesEmpresa();
+  }catch(e){ alert('Error de conexión'); }
+}
+
+async function eliminarPacienteEmpresa(id){
+  if(!confirm('¿Eliminar este trabajador de la lista?')) return;
+  try{
+    await fetch('/api/admin/pacientes-empresa/'+id, { method:'DELETE', headers:apiHeaders() });
+    await cargarPacientesEmpresa();
+  }catch(e){ alert('Error de conexión'); }
 }
 
 checkSession();

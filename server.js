@@ -111,6 +111,14 @@ async function initDB() {
         activo BOOLEAN DEFAULT true,
         creado_en TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS pacientes_empresa (
+        id SERIAL PRIMARY KEY,
+        empresa VARCHAR(200) NOT NULL,
+        nombre VARCHAR(200) NOT NULL,
+        telefono VARCHAR(50),
+        activo BOOLEAN DEFAULT true,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -225,6 +233,48 @@ app.get('/api/empresas-nombres', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT nombre FROM empresas_clientes WHERE activo=true ORDER BY nombre');
     res.json({ ok: true, empresas: r.rows.map(x => x.nombre) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== PACIENTES / TRABAJADORES POR EMPRESA =====
+// Lectura: cualquier usuario logueado (se usa para autocompletar al crear un turno).
+// Escritura: solo admin.
+app.get('/api/pacientes-empresa', authMiddleware, async (req, res) => {
+  const empresa = (req.query.empresa || '').trim();
+  if (!empresa) return res.status(400).json({ error: 'Falta la empresa' });
+  try {
+    const r = await pool.query('SELECT * FROM pacientes_empresa WHERE empresa=$1 AND activo=true ORDER BY nombre', [empresa]);
+    res.json({ ok: true, pacientes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/pacientes-empresa', adminMiddleware, async (req, res) => {
+  const { empresa, nombre, telefono } = req.body;
+  if (!empresa || !nombre) return res.status(400).json({ error: 'Empresa y nombre son obligatorios' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO pacientes_empresa (empresa,nombre,telefono) VALUES ($1,$2,$3) RETURNING *',
+      [empresa.trim(), nombre.trim(), (telefono||'').trim()]
+    );
+    res.json({ ok: true, paciente: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res) => {
+  const { nombre, telefono } = req.body;
+  try {
+    await pool.query(
+      'UPDATE pacientes_empresa SET nombre=COALESCE($1,nombre), telefono=COALESCE($2,telefono) WHERE id=$3',
+      [nombre||null, telefono!==undefined?telefono:null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('UPDATE pacientes_empresa SET activo=false WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
