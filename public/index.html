@@ -758,14 +758,6 @@ td.no-label::before{display:none;}
             </div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Recordatorio 19/6</div><span class="badge b-rosa">vie · 16:00</span></div>
-          <div class="card-body">
-            <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.65;">Enviá el recordatorio con el link a los médicos antes de la junta con Jorge Álvarez.</div>
-            <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:12px;color:var(--azul);margin-bottom:12px;">✓ Jorge Álvarez — vie 19/jun 16:00 — links activos</div>
-            <button class="btn btn-rosa btn-full" style="margin-top:0;" onclick="enviarRecordatorioManual()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.05 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.22 16z"/></svg>Enviar recordatorio por WhatsApp</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -954,6 +946,50 @@ td.no-label::before{display:none;}
     <div class="modal-footer" id="ci-footer-ok" style="display:none;">
       <button class="btn btn-ghost" onclick="cerrarModalInmediata()">Más tarde</button>
       <button class="btn btn-rosa" id="btn-iniciar-inmediata" onclick="iniciarDesdeModalInmediata()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>Iniciar ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMACIÓN GENÉRICO (reemplaza confirm() nativo) -->
+<div class="modal-bg" id="modal-confirm">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="confirm-titulo">Confirmar acción</div>
+    <div id="confirm-mensaje" style="font-size:13.5px;color:var(--text2);line-height:1.65;white-space:pre-line;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="confirm-btn-cancelar">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-btn-aceptar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROMPT GENÉRICO DE TEXTO (reemplaza prompt() nativo para un solo campo) -->
+<div class="modal-bg" id="modal-prompt">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="prompt-titulo">Ingresá un dato</div>
+    <div class="form-group full">
+      <label class="form-lbl" id="prompt-label">Valor</label>
+      <input type="text" id="prompt-input" onkeydown="if(event.key==='Enter')_promptResolver&&_promptResolver.aceptar()"/>
+    </div>
+    <div id="prompt-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="prompt-btn-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="prompt-btn-aceptar">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PACIENTE/TRABAJADOR DE EMPRESA (reemplaza los dos prompt() de editarPacienteEmpresa) -->
+<div class="modal-bg" id="modal-editar-paciente-empresa">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">Editar trabajador</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="edit-pe-nombre" placeholder="Apellido, Nombre"/></div>
+      <div class="form-group full"><label class="form-lbl">WhatsApp (opcional)</label><input type="text" id="edit-pe-telefono" placeholder="Ej: 5492901123456"/></div>
+    </div>
+    <div id="edit-pe-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalEditarPacienteEmpresa()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEdicionPacienteEmpresa()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -1183,7 +1219,7 @@ async function generarInformeIA(){
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
   const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
   const texto = textoEl?.value?.trim();
-  if(!texto){ alert('Escribí los datos del paciente antes de generar el informe.'); return; }
+  if(!texto){ mostrarError('Escribí los datos del paciente antes de generar el informe.'); return; }
 
   const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
   const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
@@ -1392,7 +1428,7 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
     addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
 
   }catch(err){
-    alert('Error: '+err.message);
+    mostrarError('Error: '+err.message);
     if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
   } finally {
     btn.disabled=false;
@@ -1692,7 +1728,14 @@ async function agregarMedico(){
     : '✓ Médico agregado';
   await cargarMedicos();
 }
-async function eliminarMedico(id){if(!confirm('¿Eliminar?'))return;await fetch('/api/medicos/'+id,{method:'DELETE',headers:apiHeaders()});await cargarMedicos();}
+async function eliminarMedico(id){
+  if(!(await confirmar('¿Eliminar este médico del equipo?', { titulo: 'Eliminar médico' }))) return;
+  try{
+    await fetch('/api/medicos/'+id,{method:'DELETE',headers:apiHeaders()});
+    await cargarMedicos();
+    mostrarToast('✓ Médico eliminado','#9a2847');
+  }catch(e){ mostrarError('Error de conexión'); }
+}
 
 let medicoEditandoId = null;
 
@@ -1919,7 +1962,7 @@ let turnoEditandoId = null;
 
 async function abrirModalEditar(id){
   const t = turnos.find(x=>x.id===id);
-  if(!t){ alert('Turno no encontrado'); return; }
+  if(!t){ mostrarError('Turno no encontrado'); return; }
   turnoEditandoId = id;
   document.getElementById('edit-turno-err').style.display='none';
 
@@ -2044,18 +2087,18 @@ async function eliminarTurno(id){
   if(tieneDictamenes){
     msg = `⚠ ATENCIÓN: el turno de ${t.paciente} tiene DICTÁMENES GUARDADOS.\n\nAl eliminarlo se borrarán también los dictámenes, el acta y todo el historial de este turno. Esta acción NO se puede deshacer.\n\n¿Eliminar de todas formas?`;
   }
-  if(!confirm(msg)) return;
+  if(!(await confirmar(msg, { titulo: 'Eliminar turno' }))) return;
   // Doble confirmación si tiene dictámenes
-  if(tieneDictamenes && !confirm(`Última confirmación: ¿borrar definitivamente el turno y los dictámenes de ${t.paciente}?`)) return;
+  if(tieneDictamenes && !(await confirmar(`Última confirmación: ¿borrar definitivamente el turno y los dictámenes de ${t.paciente}?`, { titulo: 'Confirmá de nuevo', textoConfirmar: 'Sí, borrar definitivamente' }))) return;
 
   try{
     const res = await fetch('/api/turnos/'+id, { method:'DELETE', headers:apiHeaders() });
     const data = await res.json();
-    if(!data.ok){ alert('Error al eliminar: '+(data.error||'—')); return; }
+    if(!data.ok){ mostrarError('Error al eliminar: '+(data.error||'—')); return; }
     await cargarTurnos();
     addLog('rosa','Turno eliminado',t.paciente);
     mostrarToast('✓ Turno eliminado','#9a2847');
-  }catch(e){ alert('Error de conexión: '+e.message); }
+  }catch(e){ mostrarError('Error de conexión: '+e.message); }
 }
 
 // Toast reutilizable
@@ -2070,6 +2113,72 @@ function mostrarToast(texto, color){
     toast.style.transform='translateX(-50%) translateY(20px)';
     setTimeout(()=>toast.remove(), 350);
   }, 3200);
+}
+
+// Atajo para errores: mismo toast, color rosa y con ícono de advertencia
+function mostrarError(texto){ mostrarToast('⚠ '+texto, '#9a2847'); }
+
+// ===== MODAL DE CONFIRMACIÓN GENÉRICO (reemplaza confirm() nativo) =====
+// Uso: if(await confirmar('¿Eliminar?')) { ... }
+function confirmar(mensaje, opts={}){
+  return new Promise(resolve=>{
+    document.getElementById('confirm-titulo').textContent = opts.titulo || 'Confirmar acción';
+    document.getElementById('confirm-mensaje').textContent = mensaje;
+    const btnOk = document.getElementById('confirm-btn-aceptar');
+    const btnCancel = document.getElementById('confirm-btn-cancelar');
+    btnOk.textContent = opts.textoConfirmar || 'Confirmar';
+    btnOk.className = 'btn ' + (opts.danger===false ? 'btn-primary' : 'btn-danger');
+    btnCancel.textContent = opts.textoCancelar || 'Cancelar';
+    const modal = document.getElementById('modal-confirm');
+    modal.classList.add('open');
+    function limpiar(){
+      modal.classList.remove('open');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+    }
+    function onOk(){ limpiar(); resolve(true); }
+    function onCancel(){ limpiar(); resolve(false); }
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+  });
+}
+
+// ===== MODAL DE TEXTO GENÉRICO (reemplaza prompt() nativo para un solo campo) =====
+// Uso: const valor = await promptTexto('Nueva contraseña:', {valorInicial:'', validar: v => v.length>=6 ? null : 'Mínimo 6 caracteres'});
+// Devuelve el texto ingresado, o null si se canceló.
+let _promptResolver = null;
+function promptTexto(label, opts={}){
+  return new Promise(resolve=>{
+    document.getElementById('prompt-titulo').textContent = opts.titulo || 'Ingresá un dato';
+    document.getElementById('prompt-label').textContent = label;
+    const input = document.getElementById('prompt-input');
+    input.type = opts.password ? 'password' : 'text';
+    input.value = opts.valorInicial || '';
+    const errEl = document.getElementById('prompt-err');
+    errEl.style.display = 'none';
+    const btnOk = document.getElementById('prompt-btn-aceptar');
+    const btnCancel = document.getElementById('prompt-btn-cancelar');
+    btnOk.textContent = opts.textoConfirmar || 'Aceptar';
+    const modal = document.getElementById('modal-prompt');
+    modal.classList.add('open');
+    setTimeout(()=>{ input.focus(); input.select(); }, 50);
+    function limpiar(){
+      modal.classList.remove('open');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+      _promptResolver = null;
+    }
+    function onOk(){
+      const valor = input.value.trim();
+      const error = opts.validar ? opts.validar(valor) : null;
+      if(error){ errEl.textContent = error; errEl.style.display='block'; return; }
+      limpiar(); resolve(valor);
+    }
+    function onCancel(){ limpiar(); resolve(null); }
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+    _promptResolver = { aceptar: onOk };
+  });
 }
 
 const mensajesLinks = {};
@@ -2208,7 +2317,7 @@ function onPacienteTurnoInput(){
 
 async function guardarTurno(){
   const paciente=document.getElementById('t-paciente').value.trim();
-  if(!paciente){alert('Ingresá el nombre del paciente');return;}
+  if(!paciente){mostrarError('Ingresá el nombre del paciente');return;}
   const telefono=document.getElementById('t-telefono')?.value?.trim()||'';
   const fecha=document.getElementById('t-fecha').value,hora=document.getElementById('t-hora').value,tipo=document.getElementById('t-tipo').value,empresa=document.getElementById('t-empresa').value,motivo=document.getElementById('t-motivo').value;
   const diagnostico_previo=document.getElementById('t-diagnostico')?.value?.trim()||'';
@@ -2216,12 +2325,12 @@ async function guardarTurno(){
   const medico_tratante=document.getElementById('t-medico-tratante')?.value?.trim()||'';
   const checks=document.querySelectorAll('#medicos-check-list input[type=checkbox]:checked');
   const ms=[...checks].map(c=>c.value);
-  if(!ms.length){alert('Seleccioná al menos un médico');return;}
+  if(!ms.length){mostrarError('Seleccioná al menos un médico');return;}
   document.getElementById('btn-guardar-turno').style.display='none';document.getElementById('loading-turno').style.display='flex';
   try{
     const res=await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,telefono,medicos:ms,tipo,fecha,hora,empresa,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante})});
     const data=await res.json();document.getElementById('loading-turno').style.display='none';
-    if(!data.ok){alert('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
+    if(!data.ok){mostrarError('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
     await cargarTurnos();
     const tg=turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
     const fl=new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
@@ -2229,7 +2338,7 @@ async function guardarTurno(){
     document.getElementById('links-modal').innerHTML=tg?buildLinksHtml(tg):'';
     document.getElementById('turno-resultado').style.display='block';
     addLog('blue','Turno programado',`${paciente} — ${empresa} — ${fl} ${hora}`);
-  }catch(e){document.getElementById('loading-turno').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';alert('Error: '+e.message);}
+  }catch(e){document.getElementById('loading-turno').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';mostrarError('Error: '+e.message);}
 }
 
 function abrirModalConsultaInmediata(){
@@ -2305,11 +2414,11 @@ function subirPDFFirmado(turnoId){
   _pdfInputEl.onchange = async () => {
     const file = _pdfInputEl.files[0];
     if(!file) return;
-    if(file.size > 5*1024*1024){ alert('El PDF no puede superar 5MB'); _pdfInputEl.value=''; return; }
+    if(file.size > 5*1024*1024){ mostrarError('El PDF no puede superar 5MB'); _pdfInputEl.value=''; return; }
     const res = await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
     const data = await res.json();
     const dicts = data.dictamenes||[];
-    if(!dicts.length){ alert('No hay dictamen guardado para este turno todavía'); _pdfInputEl.value=''; return; }
+    if(!dicts.length){ mostrarError('No hay dictamen guardado para este turno todavía'); _pdfInputEl.value=''; return; }
     const dict = dicts[0];
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -2340,7 +2449,7 @@ async function verInformePDF(turnoId){
     const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
     const data=await res.json();
     const dictamenes=data.dictamenes||[];
-    if(!dictamenes.length){alert('Todavía no hay ningún dictamen cargado para este turno.');return;}
+    if(!dictamenes.length){mostrarError('Todavía no hay ningún dictamen cargado para este turno.');return;}
     const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
     const elegido=propio||dictamenes[0];
     if(elegido.pdf_firmado){
@@ -2348,7 +2457,7 @@ async function verInformePDF(turnoId){
     } else {
       window.open('/api/dictamenes/'+elegido.id+'/pdf','_blank');
     }
-  }catch(e){alert('Error al buscar el informe: '+e.message);}
+  }catch(e){mostrarError('Error al buscar el informe: '+e.message);}
 }
 
 function unirseTurno(id){
@@ -2515,7 +2624,7 @@ async function abrirDictamenCompletado(turnoId){
 }
 
 async function finalizarConsulta(){
-  if(!confirm('¿Finalizar la consulta?'))return;
+  if(!(await confirmar('¿Finalizar la consulta?', { titulo: 'Finalizar consulta', textoConfirmar: 'Finalizar', danger: false }))) return;
   const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
   document.getElementById('daily-frame').src='';
@@ -2999,7 +3108,7 @@ async function guardarEventoActa(eventoId){
 async function eliminarEventoActa(eventoId){
   const ev = actaEventos.find(e=>e.id===eventoId);
   const desc = ev ? (TIPO_LABEL[ev.tipo]||ev.tipo) + (ev.participante ? ' — '+ev.participante : '') : 'este evento';
-  if(!confirm(`¿Eliminar "${desc}"?\nEsta acción no se puede deshacer.`)) return;
+  if(!(await confirmar(`¿Eliminar "${desc}"?\nEsta acción no se puede deshacer.`, { titulo: 'Eliminar evento del acta' }))) return;
   const errEl = document.getElementById('acta-error');
   errEl.style.display='none';
   try{
@@ -3134,7 +3243,7 @@ async function editarDictamen(turnoId){
   document.getElementById('links-box').style.display='none';
 
   const t=turnos.find(x=>x.id===turnoId);
-  if(!t){alert('Turno no encontrado');return;}
+  if(!t){mostrarError('Turno no encontrado');return;}
 
   let dur='—';
   try{
@@ -3148,7 +3257,7 @@ async function editarDictamen(turnoId){
 
 async function guardarDictamen(){
   const pacienteNombre=document.getElementById('dict-paciente-input').value.trim();
-  if(!pacienteNombre){alert('Completá el nombre y apellido del paciente');return;}
+  if(!pacienteNombre){mostrarError('Completá el nombre y apellido del paciente');return;}
   const dni=document.getElementById('dict-dni').value.trim();
   const edad=document.getElementById('dict-edad').value.trim();
   const obraSocial=document.getElementById('dict-obrasocial').value.trim();
@@ -3173,7 +3282,7 @@ async function guardarDictamen(){
         })
       });
       data=await res.json();
-      if(!data.ok){alert(data.error||'Error al actualizar');return;}
+      if(!data.ok){mostrarError(data.error||'Error al actualizar');return;}
       addLog('blue','Dictamen actualizado','Cambios guardados');
       if(turnoDictamenActual){
         const resD=await fetch('/api/dictamenes/turno/'+turnoDictamenActual.id,{headers:apiHeaders()});
@@ -3217,7 +3326,7 @@ async function guardarDictamen(){
       })
     });
     data=await res.json();
-    if(!data.ok){alert('Error al guardar el dictamen');return;}
+    if(!data.ok){mostrarError('Error al guardar el dictamen');return;}
 
     dictamenActualId=data.dictamen.id;
     const num=data.numero;
@@ -3289,7 +3398,7 @@ async function guardarDictamen(){
       renderDictamenesExistentes(dataD.dictamenes||[]);
     }
     cargarTurnos();
-  }catch(e){alert('Error: '+e.message);}
+  }catch(e){mostrarError('Error: '+e.message);}
 }
 
 function setupPerfil(){
@@ -3316,14 +3425,6 @@ async function cambiarPassword(){
     document.getElementById('pwd-ok').style.display='block';
     document.getElementById('pwd-actual').value='';document.getElementById('pwd-nueva').value='';document.getElementById('pwd-confirmar').value='';
   }catch(e){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Error de conexión';}
-}
-
-function enviarRecordatorioManual(){
-  const lb='https://medgruplaboral.daily.co/medgrup-1781195880513?t=owner';
-  const mb=`Recordatorio MEDGRUP 🏥\n\nDr. Barboza, en 30 minutos tiene la junta médica con Jorge Álvarez.\n\n📅 Viernes 19/06 a las 16:00 hs\n🎥 Su link: ${lb}\n\nSaludes,\nMEDGRUP Servicio Médico`;
-  const mm=`Recordatorio MEDGRUP 🏥\n\nDr. Muroni, en 30 minutos tiene la junta médica con Jorge Álvarez.\n\n📅 Viernes 19/06 a las 16:00 hs\n🎥 Su link: ${lb}\n\nSaludes,\nMEDGRUP Servicio Médico`;
-  if(confirm('¿Enviar recordatorio al Dr. Barboza?'))window.open('https://wa.me/?text='+encodeURIComponent(mb),'_blank');
-  setTimeout(()=>{if(confirm('¿Enviar recordatorio al Dr. Muroni?'))window.open('https://wa.me/?text='+encodeURIComponent(mm),'_blank');},500);
 }
 
 let timerInterval=null,timerStart=null;
@@ -3410,19 +3511,28 @@ async function crearEmpresa() {
 }
 
 async function resetPasswordEmpresa(id, nombre) {
-  const nueva = prompt(`Nueva contraseña para ${nombre}:`);
-  if (!nueva || nueva.length < 6) { alert('Contraseña de al menos 6 caracteres'); return; }
-  const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ password: nueva }) });
-  const data = await res.json();
-  if (data.ok) alert(`✓ Contraseña actualizada para ${nombre}\nNueva: ${nueva}`);
-  else alert('Error: ' + (data.error||'—'));
+  const nueva = await promptTexto(`Nueva contraseña para ${nombre}:`, {
+    titulo: 'Restablecer contraseña',
+    validar: v => v.length >= 6 ? null : 'Mínimo 6 caracteres'
+  });
+  if (nueva === null) return;
+  try{
+    const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ password: nueva }) });
+    const data = await res.json();
+    if (!data.ok) { mostrarError(data.error || 'Error al actualizar la contraseña'); return; }
+    document.getElementById('emp-ok').innerHTML = `✓ Contraseña actualizada para <strong>${nombre}</strong>.<br>Nueva contraseña: ${nueva}`;
+    document.getElementById('emp-ok').style.display = 'block';
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 async function desactivarEmpresa(id, nombre) {
-  if (!confirm(`¿Desactivar el acceso de ${nombre}?`)) return;
-  const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ activo: false }) });
-  const data = await res.json();
-  if (data.ok) { await cargarEmpresas(); }
+  if (!(await confirmar(`¿Desactivar el acceso de ${nombre}?`, { titulo: 'Desactivar empresa' }))) return;
+  try{
+    const res = await fetch('/api/admin/empresas/'+id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ activo: false }) });
+    const data = await res.json();
+    if (data.ok) { await cargarEmpresas(); mostrarToast('✓ Acceso desactivado','#9a2847'); }
+    else mostrarError(data.error || 'Error al desactivar');
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 // ===== PACIENTES / TRABAJADORES POR EMPRESA (admin) =====
@@ -3502,28 +3612,44 @@ async function agregarPacienteEmpresa(){
   }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
-async function editarPacienteEmpresa(id){
+let pacienteEmpresaEditandoId = null;
+function editarPacienteEmpresa(id){
   const p = pacientesEmpresaData.find(x=>x.id===id);
   if(!p) return;
-  const nombre = prompt('Nombre completo:', p.nombre);
-  if(nombre===null) return;
-  const telefono = prompt('WhatsApp (ej: 5492901123456):', p.telefono||'');
-  if(telefono===null) return;
+  pacienteEmpresaEditandoId = id;
+  document.getElementById('edit-pe-nombre').value = p.nombre || '';
+  document.getElementById('edit-pe-telefono').value = p.telefono || '';
+  document.getElementById('edit-pe-err').style.display = 'none';
+  document.getElementById('modal-editar-paciente-empresa').classList.add('open');
+}
+function cerrarModalEditarPacienteEmpresa(){
+  document.getElementById('modal-editar-paciente-empresa').classList.remove('open');
+}
+async function guardarEdicionPacienteEmpresa(){
+  const id = pacienteEmpresaEditandoId;
+  if(!id) return;
+  const errEl = document.getElementById('edit-pe-err');
+  errEl.style.display = 'none';
+  const nombre = document.getElementById('edit-pe-nombre').value.trim();
+  const telefono = document.getElementById('edit-pe-telefono').value.trim();
+  if(!nombre){ errEl.textContent='El nombre no puede quedar vacío'; errEl.style.display='block'; return; }
   try{
-    const res = await fetch('/api/admin/pacientes-empresa/'+id, { method:'PATCH', headers:apiHeaders(), body:JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim() }) });
+    const res = await fetch('/api/admin/pacientes-empresa/'+id, { method:'PATCH', headers:apiHeaders(), body:JSON.stringify({ nombre, telefono }) });
     const data = await res.json();
-    if(!data.ok){ alert(data.error||'Error al guardar'); return; }
+    if(!data.ok){ errEl.textContent=data.error||'Error al guardar'; errEl.style.display='block'; return; }
+    cerrarModalEditarPacienteEmpresa();
     mostrarToast('✓ Trabajador actualizado','#1e6640');
     await cargarPacientesEmpresa();
-  }catch(e){ alert('Error de conexión'); }
+  }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
 async function eliminarPacienteEmpresa(id){
-  if(!confirm('¿Eliminar este trabajador de la lista?')) return;
+  if(!(await confirmar('¿Eliminar este trabajador de la lista?', { titulo: 'Eliminar trabajador' }))) return;
   try{
     await fetch('/api/admin/pacientes-empresa/'+id, { method:'DELETE', headers:apiHeaders() });
     await cargarPacientesEmpresa();
-  }catch(e){ alert('Error de conexión'); }
+    mostrarToast('✓ Trabajador eliminado','#9a2847');
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 checkSession();
