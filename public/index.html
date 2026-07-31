@@ -1243,6 +1243,7 @@ td.no-label::before{display:none;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="20,6 9,17 4,12"/></svg>
         <span id="fp-btn-texto">Confirmar firma</span>
       </button>
+      <button id="fp-btn-omitir" class="btn btn-ghost btn-full" style="display:none;margin-top:9px;padding:11px;font-size:12.5px;" onclick="fpOmitirFirmante()">No está presente — firma desde su cuenta</button>
       <div style="font-size:11px;color:var(--text3);margin-top:9px;text-align:center;line-height:1.5;">Cada firma queda registrada con el nombre de quien firma y con la constancia de que fue tomada presencialmente desde tu cuenta.</div>
     </div>
 
@@ -1250,8 +1251,9 @@ td.no-label::before{display:none;}
       <div style="width:72px;height:72px;border-radius:50%;background:var(--verde-light);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="var(--verde)" stroke-width="2.5" style="width:36px;height:36px;"><polyline points="20,6 9,17 4,12"/></svg>
       </div>
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;">Acta firmada</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;" id="fp-ok-titulo">Acta firmada</div>
       <div style="font-size:13.5px;color:var(--text2);margin-top:8px;line-height:1.6;" id="fp-ok-msg">—</div>
+      <div id="fp-ok-pendientes" style="display:none;margin-top:12px;background:var(--amber-light,#fdf6e3);border:1px solid #e8d59a;border-radius:10px;padding:10px 13px;font-size:12.5px;color:#8a6d1f;line-height:1.55;"></div>
       <a id="fp-ok-acta" href="#" target="_blank" rel="noopener" class="btn btn-ghost btn-full" style="margin-top:1.25rem;padding:12px;text-decoration:none;justify-content:center;">Ver el acta</a>
       <button class="btn btn-primary btn-full" style="margin-top:10px;padding:13px;" onclick="cerrarFirmaPresencial()">Listo</button>
     </div>
@@ -3468,6 +3470,7 @@ let fpTurnoId = null;
 let fpPendientes = [];
 let fpIndex = 0;
 let fpFirmados = [];
+let fpOmitidos = [];
 let fpCanvasCtx = null;
 let fpDibujada = false;
 
@@ -3483,6 +3486,7 @@ async function abrirFirmaPresencial(turnoId){
     fpPendientes = data.pendientes;
     fpIndex = 0;
     fpFirmados = [];
+    fpOmitidos = [];
     document.getElementById('fp-turno-info').textContent = `${t.paciente} · ${t.empresa||'—'} · ${t.fecha.split('T')[0]} ${t.hora}`;
     document.getElementById('fp-paso-firmar').style.display = 'block';
     document.getElementById('fp-paso-ok').style.display = 'none';
@@ -3493,7 +3497,7 @@ async function abrirFirmaPresencial(turnoId){
 
 function cerrarFirmaPresencial(){
   document.getElementById('fp-overlay').style.display = 'none';
-  fpTurnoId = null; fpPendientes = []; fpIndex = 0; fpFirmados = [];
+  fpTurnoId = null; fpPendientes = []; fpIndex = 0; fpFirmados = []; fpOmitidos = [];
 }
 
 function fpRenderPaso(){
@@ -3501,12 +3505,13 @@ function fpRenderPaso(){
   const esYo = !actual.es_paciente && actual.nombre === usuarioActual?.nombre;
 
   document.getElementById('fp-progreso').innerHTML = fpPendientes.map((p, i) => {
-    const hecho = i < fpIndex;
+    const omitido = fpOmitidos.includes(p.nombre);
+    const hecho = i < fpIndex && !omitido;
     const esActual = i === fpIndex;
-    const icono = hecho ? '✓' : (i+1);
-    const color = hecho ? 'var(--verde)' : esActual ? 'var(--azul)' : 'var(--text3)';
+    const icono = hecho ? '✓' : omitido ? '–' : (i+1);
+    const color = hecho ? 'var(--verde)' : omitido ? '#c8a800' : esActual ? 'var(--azul)' : 'var(--text3)';
     const peso = esActual ? '600' : '400';
-    const rol = p.es_paciente ? 'Paciente evaluado/a' : 'Médico interviniente';
+    const rol = omitido ? 'Firma desde su cuenta' : p.es_paciente ? 'Paciente evaluado/a' : 'Médico interviniente';
     return `<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:${color};font-weight:${peso};">
       <span style="width:19px;height:19px;flex:none;border-radius:50%;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'DM Mono',monospace;">${icono}</span>
       <span>${p.nombre}</span><span style="color:var(--text3);font-weight:400;font-size:11px;">· ${rol}</span>
@@ -3519,9 +3524,11 @@ function fpRenderPaso(){
     ? 'Es tu propia firma. Podés dibujarla o usar la que tenés guardada en tu perfil.'
     : actual.es_paciente
       ? 'Entregale el dispositivo a la paciente para que firme. La firma queda registrada a su nombre.'
-      : 'Entregale el dispositivo a este médico para que firme. La firma queda registrada a su nombre.';
+      : 'Entregale el dispositivo a este médico solo si está presente. Si participó a distancia, salteálo: va a firmar desde su propia cuenta.';
   document.getElementById('fp-btn-texto').textContent = 'Confirmar firma de ' + actual.nombre;
   document.getElementById('fp-btn-mi-firma').style.display = (esYo && miFirmaGuardadaBase64) ? 'block' : 'none';
+  // Solo se saltea a otra persona: la firma propia se toma acá o no se toma
+  document.getElementById('fp-btn-omitir').style.display = esYo ? 'none' : 'block';
   document.getElementById('fp-error').style.display = 'none';
   const btn = document.getElementById('fp-btn-confirmar');
   btn.disabled = false;
@@ -3601,20 +3608,41 @@ async function fpConfirmarFirma(){
     if(!data.ok){ errEl.textContent = data.error || 'No se pudo registrar la firma'; errEl.style.display='block'; btn.disabled=false; return; }
     fpFirmados.push(actual.nombre);
     addLog('green','Firma presencial registrada', `${actual.nombre} firmó el acta`);
-    fpIndex++;
-    if(fpIndex >= fpPendientes.length) fpFinalizar();
-    else { fpLimpiarFirma(); fpRenderPaso(); }
+    fpAvanzar();
   }catch(e){ errEl.textContent = 'Error de conexión'; errEl.style.display='block'; btn.disabled=false; }
+}
+
+// El médico que participó a distancia no firma acá: se lo saltea y le queda
+// pendiente el aviso en su propia cuenta.
+function fpOmitirFirmante(){
+  fpOmitidos.push(fpPendientes[fpIndex].nombre);
+  fpAvanzar();
+}
+
+function fpAvanzar(){
+  fpIndex++;
+  if(fpIndex >= fpPendientes.length) fpFinalizar();
+  else { fpLimpiarFirma(); fpRenderPaso(); }
 }
 
 function fpFinalizar(){
   document.getElementById('fp-paso-firmar').style.display = 'none';
-  document.getElementById('fp-ok-msg').textContent = fpFirmados.length === 1
-    ? `Se registró la firma de ${fpFirmados[0]}.`
-    : `Se registraron ${fpFirmados.length} firmas: ${fpFirmados.join(', ')}.`;
+  document.getElementById('fp-ok-titulo').textContent = fpFirmados.length ? 'Firmas registradas' : 'No se registró ninguna firma';
+  document.getElementById('fp-ok-msg').textContent = !fpFirmados.length
+    ? 'Salteaste a todos los firmantes, así que el acta sigue sin firmas nuevas.'
+    : fpFirmados.length === 1
+      ? `Se registró la firma de ${fpFirmados[0]}.`
+      : `Se registraron ${fpFirmados.length} firmas: ${fpFirmados.join(', ')}.`;
+  const pend = document.getElementById('fp-ok-pendientes');
+  if(fpOmitidos.length){
+    pend.textContent = fpOmitidos.length === 1
+      ? `Falta la firma de ${fpOmitidos[0]}. Le va a aparecer el aviso al entrar a su cuenta y la puede hacer desde ahí.`
+      : `Faltan las firmas de ${fpOmitidos.join(', ')}. Les va a aparecer el aviso al entrar a sus cuentas.`;
+    pend.style.display = 'block';
+  } else pend.style.display = 'none';
   document.getElementById('fp-ok-acta').href = '/api/turnos/'+fpTurnoId+'/acta';
   document.getElementById('fp-paso-ok').style.display = 'block';
-  mostrarToast('✓ Acta firmada','#1e6640');
+  if(fpFirmados.length) mostrarToast('✓ Firmas registradas','#1e6640');
 }
 
 function feLimpiarFirma(){
