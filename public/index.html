@@ -1212,7 +1212,7 @@ td.no-label::before{display:none;}
     <div id="fp-paso-firmar" style="background:white;border-radius:18px;padding:1.75rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:1rem;">
         <div>
-          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.4px;">Firmas presenciales del acta</div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.4px;" id="fp-titulo">Firmas presenciales del acta</div>
           <div style="font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;" id="fp-turno-info">—</div>
         </div>
         <button class="btn btn-ghost" style="padding:7px 11px;font-size:12px;" onclick="cerrarFirmaPresencial()">Cerrar</button>
@@ -1244,7 +1244,7 @@ td.no-label::before{display:none;}
         <span id="fp-btn-texto">Confirmar firma</span>
       </button>
       <button id="fp-btn-omitir" class="btn btn-ghost btn-full" style="display:none;margin-top:9px;padding:11px;font-size:12.5px;" onclick="fpOmitirFirmante()">No está presente — firma desde su cuenta</button>
-      <div style="font-size:11px;color:var(--text3);margin-top:9px;text-align:center;line-height:1.5;">Cada firma queda registrada con el nombre de quien firma y con la constancia de que fue tomada presencialmente desde tu cuenta.</div>
+      <div id="fp-pie-nota" style="font-size:11px;color:var(--text3);margin-top:9px;text-align:center;line-height:1.5;">Cada firma queda registrada con el nombre de quien firma y con la constancia de que fue tomada presencialmente desde tu cuenta.</div>
     </div>
 
     <div id="fp-paso-ok" style="display:none;background:white;border-radius:18px;padding:2.75rem 2rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);text-align:center;">
@@ -3290,15 +3290,23 @@ function abrirFirmaExpress(){
     wrapActas.style.display = 'block';
     document.getElementById('fe-lista-actas').innerHTML = feActasPendientes.map(p => {
       const fecha = p.fecha ? new Date(String(p.fecha).split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '—';
+      // Si la paciente estuvo presente hay que tomar varias firmas en el momento, no solo la propia
+      const enCadena = !!p.paciente_presencial;
+      const faltan = Number(p.faltan)||0;
+      const detalle = enCadena
+        ? `<div style="font-size:11.5px;color:#8a6d1f;margin-top:3px;">🏥 Paciente presente · ${faltan===1?'falta 1 firma':'faltan '+faltan+' firmas'}</div>`
+        : '';
+      const boton = enCadena
+        ? `<button class="btn btn-primary" style="padding:10px 18px;font-size:13.5px;flex-shrink:0;" onclick="feTomarFirmasPresenciales('${p.id}')">Tomar firmas →</button>`
+        : `<button class="btn btn-primary" style="padding:10px 18px;font-size:13.5px;flex-shrink:0;" onclick="firmarActaExpress('${p.id}')">✓ Firmar acta</button>`;
       return `
       <div id="fe-acta-row-${p.id}" style="border:1.5px solid var(--border2);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
           <div style="font-size:14px;font-weight:600;">${p.paciente}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:3px;">${p.empresa||'—'} · ${fecha} · ${p.tipo||'Consulta'}</div>
+          ${detalle}
         </div>
-        <button class="btn btn-primary" style="padding:10px 18px;font-size:13.5px;flex-shrink:0;" onclick="firmarActaExpress('${p.id}')">
-          ✓ Firmar acta
-        </button>
+        ${boton}
       </div>`;
     }).join('');
   } else {
@@ -3311,12 +3319,27 @@ function abrirFirmaExpress(){
   document.getElementById('firma-express-overlay').style.display='block';
 }
 
-async function firmarActaExpress(turnoId){
+// Desde el cartel del menú: abre el asistente de firmas presenciales sin pasar por la agenda.
+async function feTomarFirmasPresenciales(turnoId){
+  cerrarFirmaExpress();
+  await abrirFirmaPresencial(turnoId);
+}
+
+async function firmarActaExpress(turnoId, firmaBase64){
+  // Si todavía no guardó su firma, en vez de frenarlo le pedimos que la dibuje una vez:
+  // se usa para esta acta y le queda guardada en el perfil para las próximas.
+  if(!firmaBase64 && !miFirmaGuardadaBase64){
+    abrirFirmaPropiaParaActa(turnoId);
+    return;
+  }
   const fila = document.getElementById('fe-acta-row-'+turnoId);
   const btn = fila?.querySelector('button');
   if(btn){ btn.disabled = true; btn.textContent = 'Firmando...'; }
   try{
-    const res = await fetch('/api/turnos/'+turnoId+'/firmar-acta', { method:'POST', headers: apiHeaders() });
+    const res = await fetch('/api/turnos/'+turnoId+'/firmar-acta', {
+      method:'POST', headers: apiHeaders(),
+      body: JSON.stringify(firmaBase64 ? { firma_base64: firmaBase64 } : {})
+    });
     const data = await res.json();
     if(!data.ok){
       mostrarError(data.error || 'Error al firmar el acta');
@@ -3324,7 +3347,10 @@ async function firmarActaExpress(turnoId){
       return;
     }
     feActasPendientes = feActasPendientes.filter(p => String(p.id) !== String(turnoId));
-    mostrarToast('✓ Acta firmada','#1e6640');
+    if(data.firma_guardada_ahora){
+      await cargarMiFirmaCache();
+      mostrarToast('✓ Acta firmada — tu firma quedó guardada','#1e6640');
+    } else mostrarToast('✓ Acta firmada','#1e6640');
     if(fila) fila.remove();
     if(!feActasPendientes.length) document.getElementById('fe-actas-wrap').style.display = 'none';
     if(!fePendientes.length && !feActasPendientes.length) cerrarFirmaExpress();
@@ -3502,6 +3528,23 @@ let fpFirmados = [];
 let fpOmitidos = [];
 let fpCanvasCtx = null;
 let fpDibujada = false;
+let fpModoActaPropia = false; // el mismo lienzo, pero para firmar uno mismo un acta común
+
+// Cuando el médico todavía no guardó su firma, reutilizamos este asistente para que la
+// dibuje una sola vez: firma el acta y de paso le queda guardada en el perfil.
+function abrirFirmaPropiaParaActa(turnoId){
+  const p = feActasPendientes.find(x => String(x.id) === String(turnoId));
+  fpTurnoId = turnoId;
+  fpModoActaPropia = true;
+  fpPendientes = [{ nombre: usuarioActual?.nombre || 'Tu firma', es_paciente: false }];
+  fpIndex = 0; fpFirmados = []; fpOmitidos = [];
+  document.getElementById('fp-titulo').textContent = 'Firmá el acta';
+  document.getElementById('fp-turno-info').textContent = p ? `${p.paciente} · ${p.empresa||'—'}` : '';
+  document.getElementById('fp-paso-firmar').style.display = 'block';
+  document.getElementById('fp-paso-ok').style.display = 'none';
+  document.getElementById('fp-overlay').style.display = 'block';
+  fpRenderPaso();
+}
 
 async function abrirFirmaPresencial(turnoId){
   const t = turnos.find(x => x.id === turnoId);
@@ -3516,6 +3559,8 @@ async function abrirFirmaPresencial(turnoId){
     fpIndex = 0;
     fpFirmados = [];
     fpOmitidos = [];
+    fpModoActaPropia = false;
+    document.getElementById('fp-titulo').textContent = 'Firmas presenciales del acta';
     document.getElementById('fp-turno-info').textContent = `${t.paciente} · ${t.empresa||'—'} · ${t.fecha.split('T')[0]} ${t.hora}`;
     document.getElementById('fp-paso-firmar').style.display = 'block';
     document.getElementById('fp-paso-ok').style.display = 'none';
@@ -3526,7 +3571,7 @@ async function abrirFirmaPresencial(turnoId){
 
 function cerrarFirmaPresencial(){
   document.getElementById('fp-overlay').style.display = 'none';
-  fpTurnoId = null; fpPendientes = []; fpIndex = 0; fpFirmados = []; fpOmitidos = [];
+  fpTurnoId = null; fpPendientes = []; fpIndex = 0; fpFirmados = []; fpOmitidos = []; fpModoActaPropia = false;
 }
 
 function fpRenderPaso(){
@@ -3547,7 +3592,14 @@ function fpRenderPaso(){
     </div>`;
   }).join('');
 
-  document.getElementById('fp-paso-label').textContent = `FIRMA ${fpIndex+1} DE ${fpPendientes.length}`;
+  // En modo "firma propia" no hay cadena de firmantes: sobra la lista y cambia la letra chica
+  document.getElementById('fp-progreso').style.display = fpModoActaPropia ? 'none' : 'flex';
+  document.getElementById('fp-pie-nota').textContent = fpModoActaPropia
+    ? 'Tu firma queda guardada en tu perfil, así la próxima vez firmás con un solo clic.'
+    : 'Cada firma queda registrada con el nombre de quien firma y con la constancia de que fue tomada presencialmente desde tu cuenta.';
+  document.getElementById('fp-paso-label').textContent = fpModoActaPropia
+    ? 'ACTA DE ASISTENCIA'
+    : `FIRMA ${fpIndex+1} DE ${fpPendientes.length}`;
   document.getElementById('fp-firmante-nombre').textContent = actual.nombre;
   document.getElementById('fp-firmante-hint').textContent = esYo
     ? 'Es tu propia firma. Podés dibujarla o usar la que tenés guardada en tu perfil.'
@@ -3628,6 +3680,15 @@ async function fpConfirmarFirma(){
   const firma_base64 = canvas.toDataURL('image/png').split(',')[1];
   const btn = document.getElementById('fp-btn-confirmar');
   btn.disabled = true;
+
+  // Firma propia de un acta común: va por el endpoint de siempre, que además la guarda en el perfil
+  if(fpModoActaPropia){
+    const turnoId = fpTurnoId;
+    cerrarFirmaPresencial();
+    await firmarActaExpress(turnoId, firma_base64);
+    return;
+  }
+
   try{
     const res = await fetch('/api/turnos/'+fpTurnoId+'/firmar-acta-presencial', {
       method:'POST', headers: apiHeaders(),

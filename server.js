@@ -715,13 +715,26 @@ app.post('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
 app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
   try {
     const nombre = req.usuario.nombre;
+    // Un acta aparece como pendiente si al médico le falta firmarla, o si —cuando la paciente
+    // estuvo presente— todavía falta alguna firma que él puede tomar en el momento (la de ella
+    // o la de otro profesional que estuvo ahí). Así el aviso del menú no se apaga a mitad de camino.
     const r = await pool.query(`
-      SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa
+      SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa, t.paciente_presencial,
+             NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1) AS falta_la_mia,
+             (SELECT COUNT(*) FROM turno_medicos m2
+                WHERE m2.turno_id = t.id
+                  AND NOT EXISTS (SELECT 1 FROM firmas_acta f2 WHERE f2.turno_id = t.id AND f2.medico_nombre = m2.medico_nombre))
+             + CASE WHEN t.paciente_presencial
+                     AND NOT EXISTS (SELECT 1 FROM firmas_acta f3 WHERE f3.turno_id = t.id AND f3.es_paciente)
+                    THEN 1 ELSE 0 END AS faltan
       FROM turnos t
       JOIN turno_medicos tm ON tm.turno_id = t.id
       WHERE tm.medico_nombre = $1 AND t.estado = 'completado'
         AND t.fecha >= $2
-        AND NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1)
+        AND (
+          NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1)
+          OR (t.paciente_presencial AND NOT EXISTS (SELECT 1 FROM firmas_acta f4 WHERE f4.turno_id = t.id AND f4.es_paciente))
+        )
       ORDER BY t.fecha DESC, t.hora DESC`, [nombre, FIRMA_ACTA_DESDE]);
     res.json({ ok: true, pendientes: r.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -736,13 +749,23 @@ app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
     if (yaFirmo.rows.length) return res.status(409).json({ error: 'Ya firmaste esta acta' });
 
     const perfil = await pool.query('SELECT matricula, especialidad, firma_guardada FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombre]);
-    if (!perfil.rows.length || !perfil.rows[0].firma_guardada) {
-      return res.status(400).json({ error: 'Todavía no guardaste tu firma. Andá a "Mi perfil" y guardala una vez — después firmar te va a quedar en un clic.' });
-    }
+    if (!perfil.rows.length) return res.status(400).json({ error: 'No encontramos tu perfil de médico' });
     const { matricula, especialidad, firma_guardada } = perfil.rows[0];
+
+    // Si manda una firma dibujada en el momento, se usa esa y de paso le queda guardada
+    // en el perfil, así la próxima vez firma con un clic.
+    const dibujada = req.body && req.body.firma_base64
+      ? req.body.firma_base64.replace(/^data:image\/[a-z]+;base64,/, '')
+      : null;
+    const firmaFinal = dibujada || firma_guardada;
+    if (!firmaFinal) return res.status(400).json({ error: 'Falta la firma' });
+
     await pool.query(`INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64) VALUES ($1,$2,$3,$4,$5)`,
-      [req.params.id, nombre, matricula||'', especialidad||'Medicina Laboral', firma_guardada]);
-    res.json({ ok: true });
+      [req.params.id, nombre, matricula||'', especialidad||'Medicina Laboral', firmaFinal]);
+    if (dibujada && !firma_guardada) {
+      await pool.query('UPDATE medicos SET firma_guardada=$1 WHERE nombre=$2', [dibujada, nombre]);
+    }
+    res.json({ ok: true, firma_guardada_ahora: !!(dibujada && !firma_guardada) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1302,14 +1325,25 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
 
+    // Médicos asignados al turno: se listan al pie aunque todavía no hayan firmado ni
+    // cargado dictamen propio, con la especialidad y matrícula de su perfil.
+    const medicosDelTurno = d.turno_id
+      ? (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [d.turno_id])).rows.map(x => x.medico_nombre)
+      : [];
+    const nombresAlPie = [...new Set([...todos.map(m => m.medico), ...firmasJunta.map(f => f.medico_nombre), ...medicosDelTurno])].filter(Boolean);
+    const perfilesPie = nombresAlPie.length
+      ? (await pool.query('SELECT nombre, matricula, especialidad FROM medicos WHERE nombre = ANY($1::text[])', [nombresAlPie])).rows
+      : [];
+    const perfilPie = nombre => perfilesPie.find(p => p.nombre === nombre) || {};
+
     // Bloque de firmas: autor + otros dictámenes + firmas de junta (sin duplicar)
     const firmantesRender = [];
     for (const m of todos) {
       const esAutor = m.medico === d.medico;
       firmantesRender.push({
         nombre: m.medico,
-        especialidad: m.especialidad || 'Medicina Laboral',
-        matricula: m.matricula || '',
+        especialidad: m.especialidad || perfilPie(m.medico).especialidad || 'Medicina Laboral',
+        matricula: m.matricula || perfilPie(m.medico).matricula || '',
         img: (esAutor && d.firma_doctor) ? d.firma_doctor : (m.firma_doctor || null)
       });
     }
@@ -1326,6 +1360,16 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
         const idx = firmantesRender.findIndex(x => x.nombre === f.medico_nombre);
         if (idx >= 0 && !firmantesRender[idx].img) firmantesRender[idx].img = f.firma_base64 || null;
       }
+    }
+    for (const nombre of medicosDelTurno) {
+      if (firmantesRender.some(x => x.nombre === nombre)) continue;
+      const p = perfilPie(nombre);
+      firmantesRender.push({
+        nombre,
+        especialidad: p.especialidad || 'Medicina Laboral',
+        matricula: p.matricula || '',
+        img: null
+      });
     }
 
     const firmasHtml = firmantesRender.map(m => {
@@ -1499,12 +1543,22 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
       : String(t.fecha).split('T')[0];
     const fecha = new Date(fechaISO + 'T12:00:00Z').toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'UTC' });
     const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
+    // Especialidad y matrícula salen del perfil del médico, así figuran al pie desde el
+    // principio y no recién cuando firma.
+    const perfilesMedicos = medicosTurno.length
+      ? (await pool.query('SELECT nombre, matricula, especialidad FROM medicos WHERE nombre = ANY($1::text[])', [medicosTurno])).rows
+      : [];
+    const perfilDeMedico = nombre => perfilesMedicos.find(p => p.nombre === nombre) || {};
     const firmasActaHtml = medicosTurno.map(nombreMedico => {
       const f = firmasActa.find(x => !x.es_paciente && x.medico_nombre === nombreMedico);
+      const perfil = perfilDeMedico(nombreMedico);
+      // Si ya firmó se respetan los datos con los que firmó; si no, los de su perfil actual.
+      const especialidad = (f && f.especialidad) || perfil.especialidad || 'Medicina Laboral';
+      const matricula = (f && f.matricula) || perfil.matricula || '';
       const firmaImg = f
         ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
-      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div>${f?`<div class="firma-esp">${f.especialidad||''}</div><div class="firma-mat">${f.matricula?'MN/MP '+f.matricula:''}</div>`:'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div><div class="firma-esp">${especialidad}</div><div class="firma-mat">${matricula?'MN/MP '+matricula:''}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
     }).join('') + (t.paciente_presencial ? (() => {
       const fp = firmasActa.find(x => x.es_paciente);
       const firmaImg = fp
