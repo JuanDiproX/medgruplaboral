@@ -627,7 +627,7 @@ app.post('/api/medicos', authMiddleware, async (req, res) => {
     // pueda loguearse y firmar juntas médicas
     let accesoCreado = false;
     if (email && password) {
-      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      const hash = hashPassword(password);
       await pool.query(
         `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'medico')
          ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3`,
@@ -728,6 +728,22 @@ app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
     await pool.query(`UPDATE medicos SET
       nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad), telefono=COALESCE($4,telefono)
       WHERE id=$5`, [nombre||null, matricula||null, especialidad||null, telefono!==undefined?telefono:null, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Dar de alta o restablecer el acceso a la app de un médico ya cargado (login para firmar juntas)
+app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Faltan email y contraseña' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  try {
+    const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
+    if (!m.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
+    await pool.query(
+      `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'medico')
+       ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3`,
+      [m.rows[0].nombre, email.toLowerCase().trim(), hashPassword(password)]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

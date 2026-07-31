@@ -1020,6 +1020,12 @@ td.no-label::before{display:none;}
       <div class="form-group"><label class="form-lbl">Especialidad</label><input type="text" id="edit-med-especialidad" placeholder="Medicina Laboral"/></div>
       <div class="form-group full"><label class="form-lbl">WhatsApp (opcional)</label><input type="text" id="edit-med-telefono" placeholder="Ej: 5492901123456"/></div>
     </div>
+    <div class="divider">Acceso a la app (para firmar juntas)</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px;">Completá email y contraseña para darle acceso por primera vez, o para restablecerle la contraseña si ya la tenía. Dejá los dos vacíos si no querés tocar el acceso.</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-lbl">Email de acceso</label><input type="text" id="edit-med-email" placeholder="medico@medgrup.com"/></div>
+      <div class="form-group"><label class="form-lbl">Contraseña nueva</label><input type="text" id="edit-med-password" placeholder="Dejar vacío para no cambiar"/></div>
+    </div>
     <div id="edit-medico-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalEditarMedico()">Cancelar</button>
@@ -1926,6 +1932,8 @@ function editarMedicoModal(id){
   document.getElementById('edit-med-matricula').value = m.matricula || '';
   document.getElementById('edit-med-especialidad').value = m.especialidad || 'Medicina Laboral';
   document.getElementById('edit-med-telefono').value = m.telefono || '';
+  document.getElementById('edit-med-email').value = '';
+  document.getElementById('edit-med-password').value = '';
   document.getElementById('edit-medico-err').style.display='none';
   document.getElementById('modal-editar-medico').classList.add('open');
 }
@@ -1947,8 +1955,22 @@ async function guardarEdicionMedico(){
     });
     const data = await res.json();
     if(!data.ok){ errEl.textContent=data.error||'Error al guardar'; errEl.style.display='block'; return; }
+
+    // Si completaron email + contraseña, dar de alta o restablecer el acceso a la app
+    const emailAcceso = document.getElementById('edit-med-email').value.trim();
+    const passwordAcceso = document.getElementById('edit-med-password').value;
+    if(emailAcceso && passwordAcceso){
+      const resAcc = await fetch('/api/medicos/'+medicoEditandoId+'/acceso', {
+        method:'POST', headers:apiHeaders(),
+        body: JSON.stringify({ email: emailAcceso, password: passwordAcceso })
+      });
+      const dataAcc = await resAcc.json();
+      if(!dataAcc.ok){ errEl.textContent='Médico actualizado, pero falló el acceso: '+(dataAcc.error||'—'); errEl.style.display='block'; await cargarMedicos(); return; }
+      mostrarToast('✓ Médico actualizado y acceso configurado','#1e6640');
+    } else {
+      mostrarToast('✓ Médico actualizado','#1e6640');
+    }
     cerrarModalEditarMedico();
-    mostrarToast('✓ Médico actualizado','#1e6640');
     await cargarMedicos();
   }catch(e){ errEl.textContent='Error de conexión: '+e.message; errEl.style.display='block'; }
 }
