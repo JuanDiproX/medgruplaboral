@@ -127,6 +127,16 @@ async function initDB() {
         firmado_en TIMESTAMP DEFAULT NOW(),
         UNIQUE (dictamen_id, medico_nombre)
       );
+      CREATE TABLE IF NOT EXISTS firmas_acta (
+        id SERIAL PRIMARY KEY,
+        turno_id VARCHAR(50) REFERENCES turnos(id),
+        medico_nombre VARCHAR(200) NOT NULL,
+        matricula VARCHAR(100),
+        especialidad VARCHAR(200),
+        firma_base64 TEXT,
+        firmado_en TIMESTAMP DEFAULT NOW(),
+        UNIQUE (turno_id, medico_nombre)
+      );
       CREATE TABLE IF NOT EXISTS empresas_clientes (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(200) UNIQUE NOT NULL,
@@ -221,6 +231,7 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
+      `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS firma_guardada TEXT`,
     ]) await client.query(q2).catch(()=>{});
 
     // Fix columnas
@@ -670,6 +681,58 @@ app.get('/api/firmas/pendientes', authMiddleware, async (req, res) => {
         AND NOT EXISTS (SELECT 1 FROM firmas_dictamen f WHERE f.dictamen_id = d.id AND f.medico_nombre = $1)
       ORDER BY d.creado_en DESC`, [nombre]);
     res.json({ ok: true, pendientes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== FIRMA GUARDADA DEL MÉDICO (se dibuja una sola vez y se reutiliza) =====
+app.get('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT firma_guardada FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [req.usuario.nombre]);
+    res.json({ ok: true, firma: r.rows[0]?.firma_guardada || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
+  const { firma_base64 } = req.body;
+  if (!firma_base64) return res.status(400).json({ error: 'Falta la firma' });
+  try {
+    const limpia = firma_base64.replace(/^data:image\/[a-z]+;base64,/, '');
+    const r = await pool.query('UPDATE medicos SET firma_guardada=$1 WHERE nombre=$2 AND activo=true', [limpia, req.usuario.nombre]);
+    if (!r.rowCount) return res.status(404).json({ error: 'No se encontró tu perfil en el equipo médico' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== FIRMA DEL ACTA DE ASISTENCIA (un clic, usa la firma guardada) =====
+app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
+  try {
+    const nombre = req.usuario.nombre;
+    const r = await pool.query(`
+      SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa
+      FROM turnos t
+      JOIN turno_medicos tm ON tm.turno_id = t.id
+      WHERE tm.medico_nombre = $1 AND t.estado = 'completado'
+        AND NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1)
+      ORDER BY t.fecha DESC, t.hora DESC`, [nombre]);
+    res.json({ ok: true, pendientes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
+  try {
+    const nombre = req.usuario.nombre;
+    const asignado = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    if (!asignado.rows.length) return res.status(403).json({ error: 'No estás asignado a este turno' });
+
+    const yaFirmo = await pool.query('SELECT 1 FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    if (yaFirmo.rows.length) return res.status(409).json({ error: 'Ya firmaste esta acta' });
+
+    const perfil = await pool.query('SELECT matricula, especialidad, firma_guardada FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombre]);
+    if (!perfil.rows.length || !perfil.rows[0].firma_guardada) {
+      return res.status(400).json({ error: 'Todavía no guardaste tu firma. Andá a "Mi perfil" y guardala una vez — después firmar te va a quedar en un clic.' });
+    }
+    const { matricula, especialidad, firma_guardada } = perfil.rows[0];
+    await pool.query(`INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64) VALUES ($1,$2,$3,$4,$5)`,
+      [req.params.id, nombre, matricula||'', especialidad||'Medicina Laboral', firma_guardada]);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1314,8 +1377,17 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     const t = r.rows[0];
     const eventos = (await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC', [req.params.id])).rows;
+    const medicosTurno = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [req.params.id])).rows.map(x=>x.medico_nombre);
+    const firmasActa = (await pool.query('SELECT * FROM firmas_acta WHERE turno_id=$1', [req.params.id])).rows;
     const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
+    const firmasActaHtml = medicosTurno.map(nombreMedico => {
+      const f = firmasActa.find(x => x.medico_nombre === nombreMedico);
+      const firmaImg = f
+        ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
+        : `<div class="firma-linea"></div>`;
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div>${f?`<div class="firma-esp">${f.especialidad||''}</div><div class="firma-mat">${f.matricula?'MN/MP '+f.matricula:''}</div>`:'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
+    }).join('');
     const tipoLabel = { inicio_medico:'Inicio de videoconsulta', union_medico:'Médico se incorporó a la consulta', union_paciente:'Paciente se incorporó a la consulta', fin_consulta:'Finalización de la consulta' };
     const tipoIcon = { inicio_medico:'▶', union_medico:'＋', union_paciente:'＋', fin_consulta:'■' };
     const eventosHtml = eventos.length ? eventos.map(e => {
@@ -1338,6 +1410,12 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-desc{font-size:12.5px;}
 .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
 .verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;}
+.firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:34px;padding-top:16px;border-top:1.5px solid #e8e4de;}
+.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
+.firma-nombre{font-size:11.5px;font-weight:700;}
+.firma-esp{font-size:10px;color:#5a5750;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
 .wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
 @media print{body{padding:26px 32px;}}</style></head><body>
 <div class="header">
@@ -1358,6 +1436,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 </div>
 <h2>Registro cronológico de asistencia</h2>
 <div class="eventos-box">${eventosHtml}</div>
+${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="verif">Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.</div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
 <script>window.onload=function(){window.print();}</script></body></html>`;

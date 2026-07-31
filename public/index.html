@@ -814,6 +814,27 @@ td.no-label::before{display:none;}
             </div>
           </div>
         </div>
+
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-hdr"><div class="card-title">Mi firma</div></div>
+          <div class="card-body">
+            <div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.5;">Dibujala una sola vez acá. De ahí en más se usa automáticamente para firmar dictámenes de junta y actas de asistencia — no hace falta que la vuelvas a dibujar cada vez.</div>
+            <div id="mifirma-guardada-wrap" style="display:none;margin-bottom:14px;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;font-weight:600;">Firma guardada actual</div>
+              <div style="border:1px solid var(--border2);border-radius:12px;background:#fbfcfe;padding:10px;">
+                <img id="mifirma-guardada-img" style="max-width:220px;max-height:70px;display:block;"/>
+              </div>
+            </div>
+            <div style="font-size:10px;letter-spacing:1.2px;color:var(--text3);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:8px;" id="mifirma-canvas-label">DIBUJÁ TU FIRMA ACÁ ABAJO</div>
+            <div style="border:2px dashed var(--azul-mid);border-radius:12px;background:#fbfcfe;position:relative;">
+              <canvas id="mifirma-canvas" width="560" height="160" style="width:100%;height:160px;display:block;border-radius:12px;cursor:crosshair;touch-action:none;"></canvas>
+              <button onclick="miFirmaLimpiar()" style="position:absolute;top:8px;right:8px;background:white;border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;">Borrar</button>
+            </div>
+            <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="guardarMiFirma()">Guardar firma</button>
+            <div id="mifirma-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);">✓ Firma guardada</div>
+            <div id="mifirma-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1120,6 +1141,10 @@ td.no-label::before{display:none;}
         <div style="font-size:13.5px;color:var(--text3);margin-top:6px;">Como integrante de la junta médica, tu firma es necesaria para completar estos documentos.</div>
       </div>
       <div id="fe-lista" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <div id="fe-actas-wrap" style="display:none;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-family:'DM Mono',monospace;font-weight:600;margin-bottom:10px;">Actas de asistencia para firmar</div>
+        <div id="fe-lista-actas" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
       <button class="btn btn-ghost btn-full" style="margin-top:1.25rem;padding:12px;" onclick="cerrarFirmaExpress()">Más tarde</button>
     </div>
 
@@ -1793,7 +1818,8 @@ function mostrarApp(){
   if(secAgenda) secAgenda.style.display='block';
   cargarMedicos();cargarTurnos();cargarEmpresasSelect();
   actualizarBotonMenu();
-  // Chequear si el médico tiene dictámenes de junta pendientes de firma (camino express)
+  // Chequear si el médico tiene dictámenes de junta (o actas) pendientes de firma (camino express)
+  cargarMiFirmaCache();
   chequearFirmasPendientes();
   iniciarPollFirmasPendientes();
 }
@@ -3045,30 +3071,39 @@ function cerrarDictamen(){
 // Camino simple: el médico se loguea → ve lo pendiente → lee → firma → listo.
 
 let fePendientes = [];
+let feActasPendientes = [];
 let feDictamenActual = null;
 let feCanvasCtx = null;
 let feFirmado = false;
 
-// IDs de dictámenes que ya se le mostraron al médico en este login (para no forzarle
-// de nuevo el cartel si lo cerró a propósito porque está con un paciente)
+// Claves ya mostradas al médico en este login (para no forzarle de nuevo el cartel si lo
+// cerró a propósito porque está con un paciente). Prefijadas para no mezclar ids de
+// dictámenes (numéricos) con ids de turnos (strings) en el mismo set.
 let firmasVistasIds = new Set();
 let firmasPollInterval = null;
 
 async function chequearFirmasPendientes(){
   try{
-    const r = await fetch('/api/firmas/pendientes', {headers:apiHeaders()});
-    if(!r.ok) return;
-    const data = await r.json();
-    fePendientes = data.pendientes || [];
+    const [rDict, rActa] = await Promise.all([
+      fetch('/api/firmas/pendientes', {headers:apiHeaders()}),
+      fetch('/api/firmas-acta/pendientes', {headers:apiHeaders()})
+    ]);
+    fePendientes = rDict.ok ? (await rDict.json()).pendientes || [] : [];
+    feActasPendientes = rActa.ok ? (await rActa.json()).pendientes || [] : [];
     actualizarBadgeFirmas();
+
+    const clavesActuales = [
+      ...fePendientes.map(p => 'dict-'+p.id),
+      ...feActasPendientes.map(p => 'acta-'+p.id)
+    ];
+    const hayNuevos = clavesActuales.some(k => !firmasVistasIds.has(k));
     const overlayAbierto = document.getElementById('firma-express-overlay').style.display === 'block';
-    const hayNuevos = fePendientes.some(p => !firmasVistasIds.has(p.id));
     // Si el cartel ya está abierto (p.ej. dibujando una firma) no lo pisamos con un refresh;
-    // si está cerrado y apareció un dictamen que nunca vio, se lo mostramos solo.
+    // si está cerrado y apareció algo que nunca vio, se lo mostramos solo.
     if(!overlayAbierto && hayNuevos){
       abrirFirmaExpress();
     }
-    fePendientes.forEach(p => firmasVistasIds.add(p.id));
+    clavesActuales.forEach(k => firmasVistasIds.add(k));
   }catch(e){ console.error('Error chequeando firmas pendientes:', e); }
 }
 
@@ -3083,10 +3118,18 @@ function detenerPollFirmasPendientes(){
 }
 
 function abrirFirmaExpress(){
-  if(!fePendientes.length) return;
-  document.getElementById('fe-titulo').textContent = fePendientes.length === 1
-    ? 'Tenés 1 dictamen para firmar'
-    : `Tenés ${fePendientes.length} dictámenes para firmar`;
+  const totalPend = fePendientes.length + feActasPendientes.length;
+  if(!totalPend) return;
+
+  if(fePendientes.length){
+    document.getElementById('fe-titulo').textContent = fePendientes.length === 1
+      ? 'Tenés 1 dictamen para firmar'
+      : `Tenés ${fePendientes.length} dictámenes para firmar`;
+  } else {
+    document.getElementById('fe-titulo').textContent = feActasPendientes.length === 1
+      ? 'Tenés 1 acta para firmar'
+      : `Tenés ${feActasPendientes.length} actas para firmar`;
+  }
 
   document.getElementById('fe-lista').innerHTML = fePendientes.map(p => {
     const fecha = p.fecha ? new Date(String(p.fecha).split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '—';
@@ -3103,10 +3146,54 @@ function abrirFirmaExpress(){
     </div>`;
   }).join('');
 
+  const wrapActas = document.getElementById('fe-actas-wrap');
+  if(feActasPendientes.length){
+    wrapActas.style.display = 'block';
+    document.getElementById('fe-lista-actas').innerHTML = feActasPendientes.map(p => {
+      const fecha = p.fecha ? new Date(String(p.fecha).split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '—';
+      return `
+      <div id="fe-acta-row-${p.id}" style="border:1.5px solid var(--border2);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:14px;font-weight:600;">${p.paciente}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${p.empresa||'—'} · ${fecha} · ${p.tipo||'Consulta'}</div>
+        </div>
+        <button class="btn btn-primary" style="padding:10px 18px;font-size:13.5px;flex-shrink:0;" onclick="firmarActaExpress('${p.id}')">
+          ✓ Firmar acta
+        </button>
+      </div>`;
+    }).join('');
+  } else {
+    wrapActas.style.display = 'none';
+  }
+
   document.getElementById('fe-paso-lista').style.display='block';
   document.getElementById('fe-paso-firmar').style.display='none';
   document.getElementById('fe-paso-ok').style.display='none';
   document.getElementById('firma-express-overlay').style.display='block';
+}
+
+async function firmarActaExpress(turnoId){
+  const fila = document.getElementById('fe-acta-row-'+turnoId);
+  const btn = fila?.querySelector('button');
+  if(btn){ btn.disabled = true; btn.textContent = 'Firmando...'; }
+  try{
+    const res = await fetch('/api/turnos/'+turnoId+'/firmar-acta', { method:'POST', headers: apiHeaders() });
+    const data = await res.json();
+    if(!data.ok){
+      mostrarError(data.error || 'Error al firmar el acta');
+      if(btn){ btn.disabled = false; btn.textContent = '✓ Firmar acta'; }
+      return;
+    }
+    feActasPendientes = feActasPendientes.filter(p => String(p.id) !== String(turnoId));
+    mostrarToast('✓ Acta firmada','#1e6640');
+    if(fila) fila.remove();
+    if(!feActasPendientes.length) document.getElementById('fe-actas-wrap').style.display = 'none';
+    if(!fePendientes.length && !feActasPendientes.length) cerrarFirmaExpress();
+    actualizarBadgeFirmas();
+  }catch(e){
+    mostrarError('Error de conexión');
+    if(btn){ btn.disabled = false; btn.textContent = '✓ Firmar acta'; }
+  }
 }
 
 function cerrarFirmaExpress(){
@@ -3159,6 +3246,19 @@ function feInicializarCanvas(){
   feCanvasCtx.strokeStyle = '#1a2b45';
   feFirmado = false;
 
+  // Si el médico ya guardó su firma en "Mi perfil", la precargamos acá para que no tenga que redibujarla
+  if(miFirmaGuardadaBase64){
+    const img = new Image();
+    img.onload = () => {
+      const maxW = rect.width * 0.6, maxH = 180 * 0.6;
+      const escala = Math.min(maxW/img.width, maxH/img.height, 1);
+      const w = img.width*escala, h = img.height*escala;
+      feCanvasCtx.drawImage(img, (rect.width-w)/2, (180-h)/2, w, h);
+      feFirmado = true;
+    };
+    img.src = 'data:image/png;base64,'+miFirmaGuardadaBase64;
+  }
+
   let dibujando = false;
   const pos = e => {
     const r = canvas.getBoundingClientRect();
@@ -3172,6 +3272,85 @@ function feInicializarCanvas(){
   canvas.onmousedown = start; canvas.onmousemove = move;
   canvas.onmouseup = end; canvas.onmouseleave = end;
   canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+// ===== MI FIRMA (guardada una sola vez, se reutiliza en dictámenes y actas) =====
+let miFirmaGuardadaBase64 = null;
+let miFirmaCanvasCtx = null;
+let miFirmaDibujada = false;
+
+async function cargarMiFirmaCache(){
+  try{
+    const res = await fetch('/api/medicos/mi-firma', { headers: apiHeaders() });
+    const data = await res.json();
+    miFirmaGuardadaBase64 = data.firma || null;
+  }catch(e){}
+}
+
+async function cargarMiFirma(){
+  await cargarMiFirmaCache();
+  const wrap = document.getElementById('mifirma-guardada-wrap');
+  const label = document.getElementById('mifirma-canvas-label');
+  if(miFirmaGuardadaBase64){
+    document.getElementById('mifirma-guardada-img').src = 'data:image/png;base64,'+miFirmaGuardadaBase64;
+    wrap.style.display = 'block';
+    label.textContent = 'VOLVER A DIBUJAR (opcional)';
+  } else {
+    wrap.style.display = 'none';
+    label.textContent = 'DIBUJÁ TU FIRMA ACÁ ABAJO';
+  }
+}
+
+function miFirmaInicializarCanvas(){
+  const canvas = document.getElementById('mifirma-canvas');
+  if(!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = 160 * 2;
+  miFirmaCanvasCtx = canvas.getContext('2d');
+  miFirmaCanvasCtx.scale(2,2);
+  miFirmaCanvasCtx.lineWidth = 2.2;
+  miFirmaCanvasCtx.lineCap = 'round';
+  miFirmaCanvasCtx.lineJoin = 'round';
+  miFirmaCanvasCtx.strokeStyle = '#1a2b45';
+  miFirmaDibujada = false;
+
+  let dibujando = false;
+  const pos = e => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = e => { e.preventDefault(); dibujando = true; const p = pos(e); miFirmaCanvasCtx.beginPath(); miFirmaCanvasCtx.moveTo(p.x, p.y); };
+  const move = e => { if(!dibujando) return; e.preventDefault(); const p = pos(e); miFirmaCanvasCtx.lineTo(p.x, p.y); miFirmaCanvasCtx.stroke(); miFirmaDibujada = true; };
+  const end = () => { dibujando = false; };
+
+  canvas.onmousedown = start; canvas.onmousemove = move;
+  canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+function miFirmaLimpiar(){
+  if(!miFirmaCanvasCtx) return;
+  const canvas = document.getElementById('mifirma-canvas');
+  miFirmaCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  miFirmaDibujada = false;
+}
+async function guardarMiFirma(){
+  const errEl = document.getElementById('mifirma-err');
+  const okEl = document.getElementById('mifirma-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if(!miFirmaDibujada){ errEl.textContent = 'Dibujá tu firma antes de guardar'; errEl.style.display = 'block'; return; }
+  const canvas = document.getElementById('mifirma-canvas');
+  const firma_base64 = canvas.toDataURL('image/png').split(',')[1];
+  try{
+    const res = await fetch('/api/medicos/mi-firma', { method:'POST', headers:apiHeaders(), body: JSON.stringify({ firma_base64 }) });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent = data.error || 'Error al guardar'; errEl.style.display = 'block'; return; }
+    okEl.style.display = 'block';
+    miFirmaLimpiar();
+    await cargarMiFirma();
+    mostrarToast('✓ Firma guardada','#1e6640');
+  }catch(e){ errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
 }
 
 function feLimpiarFirma(){
@@ -3224,7 +3403,7 @@ async function feFirmarDictamen(){
 }
 
 function feContinuarDespuesDeFirmar(){
-  if(fePendientes.length > 0){
+  if(fePendientes.length > 0 || feActasPendientes.length > 0){
     abrirFirmaExpress();
   } else {
     cerrarFirmaExpress();
@@ -3235,9 +3414,10 @@ function feContinuarDespuesDeFirmar(){
 function actualizarBadgeFirmas(){
   const nav = document.getElementById('nav-firmas');
   const badge = document.getElementById('nav-firmas-badge');
-  if(fePendientes.length > 0){
+  const total = fePendientes.length + feActasPendientes.length;
+  if(total > 0){
     if(nav) nav.style.display='flex';
-    if(badge) badge.textContent = fePendientes.length;
+    if(badge) badge.textContent = total;
   } else {
     if(nav) nav.style.display='none';
   }
@@ -3656,6 +3836,8 @@ function setupPerfil(){
     document.getElementById('perfil-nombre').textContent=usuarioActual.nombre;
     document.getElementById('perfil-email').textContent=usuarioActual.email;
     document.getElementById('perfil-rol-badge').innerHTML=`<span class="badge ${usuarioActual.rol==='admin'?'b-rosa':'b-blue'}">${usuarioActual.rol==='admin'?'Administrador':'Médico'}</span>`;
+    setTimeout(miFirmaInicializarCanvas, 60);
+    cargarMiFirma();
   }catch(e){console.error('Error en setupPerfil:',e);}
 }
 
