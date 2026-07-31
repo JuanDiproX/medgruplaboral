@@ -2283,6 +2283,28 @@ setInterval(() => {
   }
 }, 60000);
 
+// La agenda se vuelve a pedir sola, así todos ven el mismo estado sin recargar la página:
+// si un médico inicia la consulta, al resto le cambia a "En curso" en menos de medio minuto.
+function agendaPuedeRefrescarse(){
+  if(!sessionToken || !usuarioActual) return false;
+  const sec = document.getElementById('sec-agenda');
+  if(!sec || sec.style.display === 'none') return false;
+  // Nada de refrescar mientras está escribiendo un informe, en plena videollamada
+  // o con algo abierto encima: le cambiaríamos la pantalla en el medio.
+  if(document.getElementById('form-dictamen')?.style.display === 'block') return false;
+  if(document.getElementById('video-container')?.classList.contains('active')) return false;
+  if(document.querySelector('.modal-bg.open')) return false;
+  if(document.getElementById('firma-express-overlay')?.style.display === 'block') return false;
+  if(document.getElementById('fp-overlay')?.style.display === 'block') return false;
+  if(document.querySelector('.actions-menu-list.open')) return false;
+  return true;
+}
+setInterval(() => { if(agendaPuedeRefrescarse()) cargarTurnos(); }, 25000);
+// Al volver a la pestaña se actualiza en el momento, sin esperar el próximo ciclo
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && agendaPuedeRefrescarse()) cargarTurnos();
+});
+
 // ===== EDITAR TURNO (admin) =====
 let turnoEditandoId = null;
 
@@ -2808,15 +2830,25 @@ async function verInformePDF(turnoId){
   }catch(e){mostrarError('Error al buscar el informe: '+e.message);}
 }
 
-function unirseTurno(id){
+// El link propio lo resuelve el servidor por nombre exacto. Antes se adivinaba acá comparando
+// pedazos de texto y dos médicos con nombres parecidos ("Dr. X" y "Dr. Y") entraban con el
+// mismo token, así que Daily los registraba a los dos con el mismo nombre.
+async function obtenerMiLinkTurno(t){
+  try{
+    const res = await fetch('/api/turnos/'+t.id+'/mi-link', { headers: apiHeaders() });
+    const data = await res.json();
+    if(data.ok && data.link) return data.link;
+  }catch(e){}
+  // Sin respuesta del servidor: solo se acepta una coincidencia exacta de nombre.
+  // Nunca se cae al link de otro médico, porque eso lo haría entrar con su identidad.
+  const propio = (t.linksMedicos||[]).find(lm => lm.nombre === usuarioActual?.nombre);
+  return propio ? propio.link : null;
+}
+
+async function unirseTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
-  let link=null;
-  if(t.linksMedicos&&t.linksMedicos.length){
-    const nombreActual=(usuarioActual?.nombre||'').toLowerCase();
-    const match=t.linksMedicos.find(lm=>nombreActual.includes(lm.nombre.toLowerCase().split(',')[0].trim())||lm.nombre.toLowerCase().includes(nombreActual.split(' ')[0]));
-    link=match?match.link:t.linksMedicos[0].link;
-  }
-  if(!link)link=t.linkPaciente;
+  const link = await obtenerMiLinkTurno(t);
+  if(!link){ mostrarError('No pudimos generar tu link de acceso a esta videollamada. Pedile al administrador que te agregue al turno.'); return; }
   window.open(link,'_blank');
   addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
 }
@@ -2912,8 +2944,10 @@ function borrarNotaBorrador(turnoId,medicoNombre){
   try{ localStorage.removeItem(`medgrup_nota_${turnoId}_${medicoNombre}`); }catch(e){}
 }
 
-function iniciarTurno(id){
+async function iniciarTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
+  const linkPropio = await obtenerMiLinkTurno(t);
+  if(!linkPropio){ mostrarError('No pudimos generar tu link de acceso a esta videollamada. Pedile al administrador que te agregue al turno.'); return; }
   t.estado='en-curso';renderAgenda();
   fetch('/api/turnos/'+id+'/estado',{method:'PATCH',headers:apiHeaders(),body:JSON.stringify({estado:'en-curso'})});
   document.getElementById('form-dictamen').style.display='none';
@@ -2921,20 +2955,9 @@ function iniciarTurno(id){
   document.getElementById('notas-panel').style.display='none';
   document.getElementById('video-container').classList.add('active');
 
-  let linkPropio = null;
-  if(t.linksMedicos && t.linksMedicos.length && usuarioActual){
-    const nombreActual=(usuarioActual.nombre||'').toLowerCase();
-    const match=t.linksMedicos.find(lm=>{
-      const apellido = lm.nombre.toLowerCase().split(',')[0].trim();
-      const primerNombre = nombreActual.split(/[,\s]+/)[0];
-      return apellido.includes(primerNombre) || nombreActual.includes(apellido);
-    });
-    linkPropio = match ? match.link : t.linksMedicos[0].link;
-  }
-  const linkIframe = linkPropio || t.linkPaciente;
-  linkVideoActual = linkIframe;
+  linkVideoActual = linkPropio;
 
-  document.getElementById('daily-frame').src = linkIframe;
+  document.getElementById('daily-frame').src = linkPropio;
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
 

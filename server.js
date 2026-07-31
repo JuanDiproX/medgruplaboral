@@ -1050,6 +1050,43 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== LINK DE VIDEOLLAMADA DEL USUARIO AUTENTICADO =====
+// El navegador no tiene que adivinar qué link le toca a cada médico comparando nombres:
+// eso hacía que dos médicos cuyos nombres empiezan igual (p. ej. "Dr. ...") terminaran
+// entrando con el token del otro, y Daily los reportaba con el nombre equivocado.
+// Acá el servidor busca por nombre exacto y, si el médico no tenía link (porque lo
+// agregaron al turno después de crearlo), le genera uno a su nombre y lo guarda.
+app.get('/api/turnos/:id/mi-link', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT sala, links_medicos, link_paciente, link_medico FROM turnos WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    const t = r.rows[0];
+    if (!t.sala) return res.status(400).json({ error: 'Este turno no tiene videollamada' });
+
+    const asignado = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, req.usuario.nombre]);
+    if (!asignado.rows.length && req.usuario.rol !== 'admin') {
+      return res.status(403).json({ error: 'No estás asignado a este turno' });
+    }
+
+    const links = Array.isArray(t.links_medicos) ? t.links_medicos
+      : (typeof t.links_medicos === 'string' ? JSON.parse(t.links_medicos || '[]') : (t.links_medicos || []));
+    const propio = links.find(l => l.nombre === req.usuario.nombre);
+    if (propio) return res.json({ ok: true, link: propio.link });
+
+    // Sin link propio: se emite uno a su nombre y queda guardado para las próximas veces.
+    // La URL de la sala se saca de un link existente — nunca se arma a mano, porque el
+    // dominio de Daily lo define la cuenta y adivinarlo daría un link roto sin avisar.
+    const base = t.link_paciente || t.link_medico || links[0]?.link;
+    if (!base) return res.status(500).json({ error: 'El turno no tiene la URL de la sala' });
+    const urlSala = base.split('?')[0];
+    const token = await crearMeetingToken(t.sala, req.usuario.nombre, true);
+    const link = `${urlSala}?t=${token}`;
+    links.push({ nombre: req.usuario.nombre, link });
+    await pool.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(links), req.params.id]);
+    res.json({ ok: true, link, generado: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== TURNO PRESENCIAL (consulta en consultorio, sin videollamada de Daily) =====
 app.post('/api/crear-turno-presencial', authMiddleware, async (req, res) => {
   try {
