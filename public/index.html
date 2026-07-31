@@ -292,8 +292,15 @@ tr:hover td{background:var(--azul-light);}
   transition:all 0.18s;
 }
 .tab-turno.active .tab-count{background:var(--grad-azul);color:white;box-shadow:0 2px 6px rgba(58,110,168,0.3);}
+.agenda-filtros{display:flex;gap:8px;padding:10px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface);}
+.agenda-buscar-wrap{position:relative;flex:1;min-width:0;}
+.agenda-buscar-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);pointer-events:none;}
+.agenda-buscar-wrap input{padding-left:32px;}
+#agenda-filtro-empresa{max-width:200px;flex-shrink:0;}
 @media (max-width:900px){
   .tabs-turnos{padding:8px 1rem 0;}
+  .agenda-filtros{padding:8px 1rem;flex-wrap:wrap;}
+  #agenda-filtro-empresa{max-width:none;flex:1 1 100%;}
   .tab-turno{padding:8px 12px;font-size:11.5px;flex:1;justify-content:center;}
 }
 
@@ -472,6 +479,7 @@ td.no-label::before{display:none;}
         <div class="login-form-group"><label class="login-label">Contraseña</label><input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
         <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar a la plataforma →</button>
         <div class="login-error" id="login-error"></div>
+        <div style="text-align:center;margin-top:14px;"><a href="#" onclick="abrirModalOlvidoPassword('usuario');return false;" style="font-size:12.5px;color:var(--text3);text-decoration:none;">¿Olvidaste tu contraseña?</a></div>
       </div>
       <div id="panel-empresa" style="display:none;">
         <div style="margin-bottom:1.5rem;"><div class="login-form-title">Portal de empresa</div><div class="login-form-sub">Accedé a los informes y actas de tu personal</div></div>
@@ -479,8 +487,48 @@ td.no-label::before{display:none;}
         <div class="login-form-group"><label class="login-label">Contraseña</label><input class="login-input" type="password" id="emp-login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLoginEmpresaDesdeMain()"/></div>
         <button class="login-btn" onclick="doLoginEmpresaDesdeMain()" style="background:linear-gradient(135deg,var(--rosa),var(--rosa-dark));">Ingresar al portal →</button>
         <div class="login-error" id="emp-login-error"></div>
+        <div style="text-align:center;margin-top:14px;"><a href="#" onclick="abrirModalOlvidoPassword('empresa');return false;" style="font-size:12.5px;color:var(--text3);text-decoration:none;">¿Olvidaste tu contraseña?</a></div>
         <div style="margin-top:1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;font-size:12px;color:var(--text3);">¿No tenés acceso? Contactanos en <strong style="color:var(--azul);">administracion@medgrup.com.ar</strong></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OLVIDÉ MI CONTRASEÑA -->
+<div class="modal-bg" id="modal-olvido-password">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">Recuperar contraseña</div>
+    <div id="olvido-paso-form">
+      <div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;">Ingresá tu email y te mandamos un link para elegir una nueva contraseña.</div>
+      <div class="form-group full"><label class="form-lbl">Email</label><input type="text" id="olvido-email" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')enviarOlvidoPassword()"/></div>
+      <div id="olvido-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cerrarModalOlvidoPassword()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-enviar-olvido" onclick="enviarOlvidoPassword()">Enviar link</button>
+      </div>
+    </div>
+    <div id="olvido-paso-ok" style="display:none;">
+      <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:1rem;font-size:13px;color:var(--azul);line-height:1.6;">✓ Si el email existe en nuestro sistema, te enviamos un link para recuperar tu contraseña. Revisá tu bandeja de entrada (y spam).</div>
+      <div class="modal-footer"><button class="btn btn-primary" onclick="cerrarModalOlvidoPassword()">Entendido</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA CONTRASEÑA (llega desde el link del email, vía ?reset_token=) -->
+<div class="modal-bg" id="modal-nueva-password">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">Elegí una nueva contraseña</div>
+    <div id="nueva-pass-paso-form">
+      <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="nueva-pass-input" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')confirmarNuevaPassword()"/></div>
+      <div class="form-group full"><label class="form-lbl">Confirmar contraseña</label><input type="password" id="nueva-pass-confirmar" placeholder="Repetí la contraseña" onkeydown="if(event.key==='Enter')confirmarNuevaPassword()"/></div>
+      <div id="nueva-pass-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary btn-full" id="btn-confirmar-nueva-pass" onclick="confirmarNuevaPassword()">Guardar nueva contraseña</button>
+      </div>
+    </div>
+    <div id="nueva-pass-paso-ok" style="display:none;">
+      <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:1rem;font-size:13px;color:var(--azul);">✓ Contraseña actualizada. Ya podés iniciar sesión con tu nueva contraseña.</div>
+      <div class="modal-footer"><button class="btn btn-primary" onclick="document.getElementById('modal-nueva-password').classList.remove('open')">Ir al login</button></div>
     </div>
   </div>
 </div>
@@ -496,6 +544,7 @@ td.no-label::before{display:none;}
       <div class="nav-item active" id="nav-agenda" onclick="showSection('agenda',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</div>
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
+      <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>Presupuestos</div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Firmas
         <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
@@ -612,6 +661,13 @@ td.no-label::before{display:none;}
               Completados <span class="tab-count" id="count-completados">0</span>
             </button>
           </div>
+          <div class="agenda-filtros">
+            <div class="agenda-buscar-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="agenda-buscar" placeholder="Buscar por paciente..." oninput="renderAgenda()"/>
+            </div>
+            <select id="agenda-filtro-empresa" onchange="renderAgenda()"><option value="">Todas las empresas</option></select>
+          </div>
           <div id="agenda-lista"><div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">Cargando...</div></div>
         </div>
         <div id="form-dictamen" style="display:none;">
@@ -708,7 +764,7 @@ td.no-label::before{display:none;}
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="new-nombre" placeholder="Dr. Apellido, Nombre"/></div>
               <div class="form-group"><label class="form-lbl">Matrícula</label><input type="text" id="new-matricula" placeholder="MP 00.000"/></div>
-              <div class="form-group"><label class="form-lbl">Especialidad</label><select id="new-esp"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Psiquiatra Forense y Médico del Trabajo</option><option>Traumatología</option><option>Cardiología</option></select></div>
+              <div class="form-group"><label class="form-lbl">Especialidad</label><select id="new-esp"><option>Medicina Laboral</option><option>Clínica Médica</option><option>Psiquiatría</option><option>Psiquiatra Forense y Médico del Trabajo</option><option>Traumatología</option><option>Esp. Ortopedia y Traumatología</option><option>Cardiología</option></select></div>
               <div class="form-group"><label class="form-lbl">WhatsApp (opcional)</label><input type="text" id="new-telefono" placeholder="Ej: 5492901123456"/></div>
             </div>
             <div class="divider">Acceso a la app (opcional — para firmar juntas)</div>
@@ -805,6 +861,56 @@ td.no-label::before{display:none;}
         </div>
         <button class="btn btn-primary" id="pe-btn-agregar" style="display:none;margin-top:10px;" onclick="agregarPacienteEmpresa()">Agregar trabajador</button>
         <div id="pe-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sec-presupuestos" style="display:none;">
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Presupuestos emitidos</div><span class="badge b-blue" id="badge-presupuestos">0</span></div>
+          <div id="presupuestos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Nuevo presupuesto</div></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Empresa</label>
+                <select id="pr-empresa" onchange="onEmpresaPresupuestoChange()"><option value="">Elegí una empresa...</option><option value="Otra">Otra empresa</option></select>
+              </div>
+              <div class="form-group full" id="pr-empresa-otra-wrap" style="display:none;"><label class="form-lbl">Nombre de la empresa</label><input type="text" id="pr-empresa-otra" placeholder="Ej: Nueva Empresa S.A."/></div>
+              <div class="form-group"><label class="form-lbl">Contacto (opcional)</label><input type="text" id="pr-contacto" placeholder="Nombre del responsable"/></div>
+              <div class="form-group"><label class="form-lbl">Validez (días)</label><input type="text" id="pr-validez" value="15"/></div>
+            </div>
+            <div class="divider">Ítems del presupuesto</div>
+            <datalist id="pr-catalogo-datalist"></datalist>
+            <div id="pr-items"></div>
+            <button class="btn btn-ghost" style="margin-top:8px;" onclick="agregarItemPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar ítem</button>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+              <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;">Total</div><div style="font-size:20px;font-weight:700;color:var(--azul);" id="pr-total">$ 0,00</div></div>
+            </div>
+            <div class="form-group full" style="margin-top:10px;"><label class="form-lbl">Notas (opcional)</label><textarea id="pr-notas" placeholder="Condiciones, forma de pago, etc."></textarea></div>
+            <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="guardarPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Generar presupuesto</button>
+            <div id="pr-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+            <div id="pr-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-hdr"><div class="card-title">Catálogo de servicios</div></div>
+          <div class="card-body">
+            <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">Los servicios cargados acá aparecen como sugerencia al escribir el concepto de un ítem.</div>
+            <div id="catalogo-lista" style="margin-bottom:10px;"></div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-lbl">Servicio</label><input type="text" id="cat-nombre" placeholder="Ej: Junta médica"/></div>
+              <div class="form-group"><label class="form-lbl">Precio</label><input type="text" id="cat-precio" placeholder="0"/></div>
+            </div>
+            <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="agregarServicioCatalogo()">Agregar al catálogo</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1570,6 +1676,78 @@ async function doLogin(){
   }catch(e){errEl.textContent='Error de conexión';errEl.style.display='block';btn.disabled=false;btn.textContent='Ingresar a la plataforma →';}
 }
 
+// ===== RECUPERAR CONTRASEÑA =====
+let olvidoTipoActual = 'usuario'; // 'usuario' (médico/admin) o 'empresa'
+
+function abrirModalOlvidoPassword(tipo){
+  olvidoTipoActual = tipo;
+  document.getElementById('olvido-email').value = '';
+  document.getElementById('olvido-err').style.display = 'none';
+  document.getElementById('olvido-paso-form').style.display = 'block';
+  document.getElementById('olvido-paso-ok').style.display = 'none';
+  document.getElementById('modal-olvido-password').classList.add('open');
+  setTimeout(()=>document.getElementById('olvido-email').focus(), 50);
+}
+function cerrarModalOlvidoPassword(){
+  document.getElementById('modal-olvido-password').classList.remove('open');
+}
+async function enviarOlvidoPassword(){
+  const email = document.getElementById('olvido-email').value.trim();
+  const errEl = document.getElementById('olvido-err');
+  errEl.style.display = 'none';
+  if(!email){ errEl.textContent='Ingresá tu email'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('btn-enviar-olvido');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try{
+    const endpoint = olvidoTipoActual==='empresa' ? '/api/empresa/forgot-password' : '/api/forgot-password';
+    const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+    await res.json();
+    document.getElementById('olvido-paso-form').style.display = 'none';
+    document.getElementById('olvido-paso-ok').style.display = 'block';
+  }catch(e){
+    errEl.textContent = 'Error de conexión'; errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false; btn.textContent = 'Enviar link';
+  }
+}
+
+// Si la URL trae ?reset_token=..., lo agarramos y mostramos el modal de nueva contraseña
+let resetTokenActual = null;
+function chequearTokenReset(){
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('reset_token');
+  if(!token) return;
+  resetTokenActual = token;
+  document.getElementById('nueva-pass-paso-form').style.display = 'block';
+  document.getElementById('nueva-pass-paso-ok').style.display = 'none';
+  document.getElementById('nueva-pass-err').style.display = 'none';
+  document.getElementById('nueva-pass-input').value = '';
+  document.getElementById('nueva-pass-confirmar').value = '';
+  document.getElementById('modal-nueva-password').classList.add('open');
+  // Limpiamos el token de la URL para que no quede visible ni se reutilice si recargan la página
+  history.replaceState(null, '', window.location.pathname);
+}
+async function confirmarNuevaPassword(){
+  const p1 = document.getElementById('nueva-pass-input').value;
+  const p2 = document.getElementById('nueva-pass-confirmar').value;
+  const errEl = document.getElementById('nueva-pass-err');
+  errEl.style.display = 'none';
+  if(!p1 || p1.length < 6){ errEl.textContent='Mínimo 6 caracteres'; errEl.style.display='block'; return; }
+  if(p1 !== p2){ errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('btn-confirmar-nueva-pass');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try{
+    const res = await fetch('/api/reset-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: resetTokenActual, password: p1 }) });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent = data.error||'Error al actualizar la contraseña'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Guardar nueva contraseña'; return; }
+    document.getElementById('nueva-pass-paso-form').style.display = 'none';
+    document.getElementById('nueva-pass-paso-ok').style.display = 'block';
+  }catch(e){
+    errEl.textContent = 'Error de conexión'; errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Guardar nueva contraseña';
+  }
+}
+
 async function doLogout(){
   await fetch('/api/logout',{method:'POST',headers:apiHeaders()});
   localStorage.removeItem('medgrup_token');
@@ -1638,7 +1816,7 @@ function actualizarBotonMenu(){
 window.addEventListener('resize', actualizarBotonMenu);
 
 function showSection(id,el){
-  ['agenda','medicos','perfil','empresas'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
+  ['agenda','medicos','perfil','empresas','presupuestos'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
   secActiva.style.display='block';
@@ -1647,12 +1825,13 @@ function showSection(id,el){
   secActiva.classList.add('sec-anim');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
   if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
+  if(id==='presupuestos'){cargarPresupuestos();cargarServiciosCatalogo();cargarEmpresasSelectPresupuesto();if(!document.getElementById('pr-items').children.length)agregarItemPresupuesto();}
   window.scrollTo({top:0,behavior:'smooth'});
   if(esMobile()){
     const sb = document.querySelector('.sidebar');
@@ -1786,11 +1965,22 @@ async function cargarTurnos(){
       return;
     }
     turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
+    poblarFiltroEmpresasAgenda();
     renderAgenda();
   }catch(e){
     console.error('Error en cargarTurnos:', e);
     document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error de conexión al cargar los turnos. Recargá la página.</div>';
   }
+}
+
+// Arma el select de "Todas las empresas" del buscador de agenda con las empresas que ya tienen turnos
+function poblarFiltroEmpresasAgenda(){
+  const sel = document.getElementById('agenda-filtro-empresa');
+  if(!sel) return;
+  const valorPrevio = sel.value;
+  const empresas = [...new Set(turnos.map(t=>t.empresa).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = `<option value="">Todas las empresas</option>` + empresas.map(e=>`<option value="${e}">${e}</option>`).join('');
+  if(valorPrevio && empresas.includes(valorPrevio)) sel.value = valorPrevio;
 }
 
 function minutosHastaTurno(t){
@@ -1846,10 +2036,20 @@ function renderAgenda(){
   document.getElementById('cnt-hoy').textContent=turnos.filter(t=>t.fecha.split('T')[0]===hoy).length;
   document.getElementById('badge-turnos').textContent=turnos.length;
 
+  // Filtro de búsqueda + empresa: solo afecta la lista de "Turnos programados", no las métricas de arriba
+  const textoBusqueda = (document.getElementById('agenda-buscar')?.value||'').trim().toLowerCase();
+  const empresaFiltro = document.getElementById('agenda-filtro-empresa')?.value||'';
+  const hayFiltroActivo = !!(textoBusqueda || empresaFiltro);
+  const ordFiltrado = ord.filter(t=>{
+    const matchTexto = !textoBusqueda || t.paciente.toLowerCase().includes(textoBusqueda);
+    const matchEmpresa = !empresaFiltro || t.empresa===empresaFiltro;
+    return matchTexto && matchEmpresa;
+  });
+
   // Separar en próximos (pendiente / en-curso) y completados
-  const proximos = ord.filter(t=>t.estado!=='completado');
+  const proximos = ordFiltrado.filter(t=>t.estado!=='completado');
   // Completados: los más recientes primero
-  const completados = ord.filter(t=>t.estado==='completado').reverse();
+  const completados = ordFiltrado.filter(t=>t.estado==='completado').reverse();
 
   // Contadores de pestañas (null-safe: si el HTML está cacheado sin estos elementos, no rompe)
   const elCountProx = document.getElementById('count-proximos');
@@ -1865,9 +2065,11 @@ function renderAgenda(){
   const lista = tabTurnosActiva==='completados' ? completados : proximos;
 
   if(!lista.length){
-    const msgVacio = tabTurnosActiva==='completados'
-      ? 'Todavía no hay turnos completados.'
-      : 'No hay turnos próximos. Programá uno con el botón de arriba.';
+    const msgVacio = hayFiltroActivo
+      ? 'No se encontraron turnos con ese filtro.'
+      : tabTurnosActiva==='completados'
+        ? 'Todavía no hay turnos completados.'
+        : 'No hay turnos próximos. Programá uno con el botón de arriba.';
     document.getElementById('agenda-lista').innerHTML=`<div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">${msgVacio}</div>`;
     return;
   }
@@ -3652,7 +3854,224 @@ async function eliminarPacienteEmpresa(id){
   }catch(e){ mostrarError('Error de conexión'); }
 }
 
+// ===== PRESUPUESTOS =====
+function fmtMonedaJS(n){
+  return '$ ' + Number(n||0).toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+let presupuestosData = [];
+async function cargarPresupuestos(){
+  try{
+    const res = await fetch('/api/presupuestos', { headers: apiHeaders() });
+    const data = await res.json();
+    presupuestosData = data.presupuestos || [];
+    const badge = document.getElementById('badge-presupuestos');
+    if(badge) badge.textContent = presupuestosData.length;
+    renderPresupuestos();
+  }catch(e){
+    document.getElementById('presupuestos-lista').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar los presupuestos.</div>';
+  }
+}
+const ESTADO_PRESUPUESTO_LABEL = { enviado:'Enviado', aprobado:'Aprobado', rechazado:'Rechazado' };
+function renderPresupuestos(){
+  const cont = document.getElementById('presupuestos-lista');
+  if(!presupuestosData.length){
+    cont.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Todavía no generaste ningún presupuesto.</div>';
+    return;
+  }
+  cont.innerHTML = `<table><thead><tr><th>N°</th><th>Empresa</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody>` +
+    presupuestosData.map(p=>{
+      const fecha = new Date(p.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires'});
+      return `<tr>
+        <td class="no-label" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--azul);font-weight:600;">${p.numero}</td>
+        <td data-label="Empresa"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.empresa)}<span>${p.empresa}</span></div></td>
+        <td data-label="Fecha" style="font-family:'DM Mono',monospace;font-size:12px;">${fecha}</td>
+        <td data-label="Total" style="font-weight:600;">${fmtMonedaJS(p.total)}</td>
+        <td data-label="Estado">
+          <select onchange="cambiarEstadoPresupuesto(${p.id},this.value)" style="width:auto;padding:5px 8px;font-size:11.5px;">
+            <option value="enviado" ${p.estado==='enviado'?'selected':''}>Enviado</option>
+            <option value="aprobado" ${p.estado==='aprobado'?'selected':''}>Aprobado</option>
+            <option value="rechazado" ${p.estado==='rechazado'?'selected':''}>Rechazado</option>
+          </select>
+        </td>
+        <td class="no-label" style="display:flex;gap:6px;">
+          <a href="/api/presupuestos/${p.id}/pdf" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:5px 10px;font-size:11px;text-decoration:none;">PDF</a>
+          <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarPresupuesto(${p.id})">Eliminar</button>
+        </td>
+      </tr>`;
+    }).join('') + `</tbody></table>`;
+}
+async function cambiarEstadoPresupuesto(id, estado){
+  try{
+    await fetch('/api/presupuestos/'+id+'/estado', { method:'PATCH', headers:apiHeaders(), body:JSON.stringify({ estado }) });
+    mostrarToast('✓ Estado actualizado','#1e6640');
+    await cargarPresupuestos();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+async function eliminarPresupuesto(id){
+  if(!(await confirmar('¿Eliminar este presupuesto? Esta acción no se puede deshacer.', { titulo: 'Eliminar presupuesto' }))) return;
+  try{
+    await fetch('/api/presupuestos/'+id, { method:'DELETE', headers:apiHeaders() });
+    mostrarToast('✓ Presupuesto eliminado','#9a2847');
+    await cargarPresupuestos();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+async function cargarEmpresasSelectPresupuesto(){
+  const sel = document.getElementById('pr-empresa');
+  if(!sel) return;
+  try{
+    const res = await fetch('/api/empresas-nombres', { headers: apiHeaders() });
+    const data = await res.json();
+    const delPortal = data.empresas || [];
+    const todas = [...new Set([...delPortal, ...EMPRESAS_HISTORICAS])].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML = `<option value="">Elegí una empresa...</option>` + todas.map(e=>`<option value="${e}">${e}</option>`).join('') + `<option value="Otra">Otra empresa</option>`;
+  }catch(e){
+    sel.innerHTML = `<option value="">Elegí una empresa...</option>` + EMPRESAS_HISTORICAS.map(e=>`<option value="${e}">${e}</option>`).join('') + `<option value="Otra">Otra empresa</option>`;
+  }
+}
+function onEmpresaPresupuestoChange(){
+  const val = document.getElementById('pr-empresa').value;
+  document.getElementById('pr-empresa-otra-wrap').style.display = val==='Otra' ? 'block' : 'none';
+}
+
+// Ítems del presupuesto: cada fila tiene un id propio para poder agregar/quitar sin perder el foco al tipear
+let prItemCounter = 0;
+function agregarItemPresupuesto(){
+  const id = prItemCounter++;
+  const html = `<div id="pr-item-row-${id}" style="display:grid;grid-template-columns:1fr 56px 110px 90px 26px;gap:6px;margin-bottom:6px;align-items:center;">
+    <input type="text" list="pr-catalogo-datalist" id="pr-item-concepto-${id}" placeholder="Concepto" oninput="onConceptoPresupuestoChange(${id})"/>
+    <input type="text" id="pr-item-cantidad-${id}" placeholder="Cant." value="1" oninput="actualizarSubtotalItem(${id})" style="text-align:center;"/>
+    <input type="text" id="pr-item-precio-${id}" placeholder="Precio" oninput="actualizarSubtotalItem(${id})" style="text-align:right;"/>
+    <div id="pr-item-subtotal-${id}" style="text-align:right;font-size:12px;font-weight:600;color:var(--text2);">$ 0,00</div>
+    <button onclick="eliminarItemPresupuesto(${id})" style="background:none;border:none;color:var(--rosa);cursor:pointer;font-size:16px;padding:0;line-height:1;" title="Quitar ítem">✕</button>
+  </div>`;
+  document.getElementById('pr-items').insertAdjacentHTML('beforeend', html);
+}
+function eliminarItemPresupuesto(id){
+  const row = document.getElementById('pr-item-row-'+id);
+  if(row) row.remove();
+  recalcularTotalPresupuesto();
+}
+function onConceptoPresupuestoChange(id){
+  const valor = document.getElementById('pr-item-concepto-'+id).value.trim();
+  const match = catalogoServicios.find(s=>s.nombre.toLowerCase()===valor.toLowerCase());
+  if(match) document.getElementById('pr-item-precio-'+id).value = match.precio;
+  actualizarSubtotalItem(id);
+}
+function actualizarSubtotalItem(id){
+  const cant = parseFloat(document.getElementById('pr-item-cantidad-'+id)?.value) || 0;
+  const precio = parseFloat(document.getElementById('pr-item-precio-'+id)?.value) || 0;
+  const subtotalEl = document.getElementById('pr-item-subtotal-'+id);
+  if(subtotalEl) subtotalEl.textContent = fmtMonedaJS(cant*precio);
+  recalcularTotalPresupuesto();
+}
+function recalcularTotalPresupuesto(){
+  let total = 0;
+  document.querySelectorAll('#pr-items > div').forEach(row=>{
+    const id = row.id.replace('pr-item-row-','');
+    total += (parseFloat(document.getElementById('pr-item-cantidad-'+id)?.value)||0) * (parseFloat(document.getElementById('pr-item-precio-'+id)?.value)||0);
+  });
+  const totalEl = document.getElementById('pr-total');
+  if(totalEl) totalEl.textContent = fmtMonedaJS(total);
+}
+function resetFormPresupuesto(){
+  document.getElementById('pr-empresa').value = '';
+  document.getElementById('pr-empresa-otra').value = '';
+  document.getElementById('pr-empresa-otra-wrap').style.display = 'none';
+  document.getElementById('pr-contacto').value = '';
+  document.getElementById('pr-validez').value = '15';
+  document.getElementById('pr-notas').value = '';
+  document.getElementById('pr-items').innerHTML = '';
+  prItemCounter = 0;
+  agregarItemPresupuesto();
+  recalcularTotalPresupuesto();
+}
+
+async function guardarPresupuesto(){
+  const errEl = document.getElementById('pr-err');
+  errEl.style.display = 'none';
+  document.getElementById('pr-ok').style.display = 'none';
+
+  let empresa = document.getElementById('pr-empresa').value;
+  if(empresa==='Otra') empresa = document.getElementById('pr-empresa-otra').value.trim();
+  if(!empresa){ errEl.textContent='Elegí o escribí una empresa'; errEl.style.display='block'; return; }
+
+  const contacto = document.getElementById('pr-contacto').value.trim();
+  const validez_dias = parseInt(document.getElementById('pr-validez').value) || 15;
+  const notas = document.getElementById('pr-notas').value.trim();
+
+  const items = [];
+  document.querySelectorAll('#pr-items > div').forEach(row=>{
+    const id = row.id.replace('pr-item-row-','');
+    const concepto = document.getElementById('pr-item-concepto-'+id)?.value?.trim();
+    const cantidad = parseFloat(document.getElementById('pr-item-cantidad-'+id)?.value) || 0;
+    const precio_unitario = parseFloat(document.getElementById('pr-item-precio-'+id)?.value) || 0;
+    if(concepto) items.push({ concepto, cantidad, precio_unitario });
+  });
+  if(!items.length){ errEl.textContent='Agregá al menos un ítem con concepto'; errEl.style.display='block'; return; }
+
+  try{
+    const res = await fetch('/api/presupuestos', { method:'POST', headers:apiHeaders(), body: JSON.stringify({ empresa, contacto, validez_dias, items, notas }) });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent = data.error||'Error al generar el presupuesto'; errEl.style.display='block'; return; }
+    document.getElementById('pr-ok').innerHTML = `✓ Presupuesto <strong>${data.presupuesto.numero}</strong> generado — <a href="/api/presupuestos/${data.presupuesto.id}/pdf" target="_blank" rel="noopener" style="color:var(--azul);">Ver PDF →</a>`;
+    document.getElementById('pr-ok').style.display = 'block';
+    resetFormPresupuesto();
+    await cargarPresupuestos();
+  }catch(e){ errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+}
+
+// ===== CATÁLOGO DE SERVICIOS =====
+let catalogoServicios = [];
+async function cargarServiciosCatalogo(){
+  try{
+    const res = await fetch('/api/servicios-catalogo', { headers: apiHeaders() });
+    const data = await res.json();
+    catalogoServicios = data.servicios || [];
+    const datalist = document.getElementById('pr-catalogo-datalist');
+    if(datalist) datalist.innerHTML = catalogoServicios.map(s=>`<option value="${s.nombre}">`).join('');
+    renderCatalogoLista();
+  }catch(e){}
+}
+function renderCatalogoLista(){
+  const cont = document.getElementById('catalogo-lista');
+  if(!cont) return;
+  if(!catalogoServicios.length){
+    cont.innerHTML = '<div style="font-size:12px;color:var(--text3);">Sin servicios cargados todavía.</div>';
+    return;
+  }
+  cont.innerHTML = catalogoServicios.map(s=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;">
+      <span>${s.nombre}</span>
+      <span style="display:flex;align-items:center;gap:10px;">
+        <span style="font-family:'DM Mono',monospace;color:var(--text2);">${fmtMonedaJS(s.precio)}</span>
+        <button onclick="eliminarServicioCatalogo(${s.id})" style="background:none;border:none;color:var(--rosa);cursor:pointer;font-size:14px;padding:0;line-height:1;" title="Eliminar">✕</button>
+      </span>
+    </div>`).join('');
+}
+async function agregarServicioCatalogo(){
+  const nombre = document.getElementById('cat-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('cat-precio').value) || 0;
+  if(!nombre){ mostrarError('Ingresá el nombre del servicio'); return; }
+  try{
+    await fetch('/api/admin/servicios-catalogo', { method:'POST', headers:apiHeaders(), body: JSON.stringify({ nombre, precio }) });
+    document.getElementById('cat-nombre').value = '';
+    document.getElementById('cat-precio').value = '';
+    await cargarServiciosCatalogo();
+    mostrarToast('✓ Servicio agregado al catálogo','#1e6640');
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+async function eliminarServicioCatalogo(id){
+  if(!(await confirmar('¿Eliminar este servicio del catálogo?', { titulo: 'Eliminar servicio' }))) return;
+  try{
+    await fetch('/api/admin/servicios-catalogo/'+id, { method:'DELETE', headers:apiHeaders() });
+    await cargarServiciosCatalogo();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
 checkSession();
+chequearTokenReset();
 </script>
 </body>
 </html>

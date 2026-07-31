@@ -8,11 +8,14 @@ const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_FROM = process.env.RESEND_FROM || 'MEDGRUP <onboarding@resend.dev>';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 
 app.use(cors());
@@ -24,6 +27,28 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 
 function hashPassword(p) { return crypto.createHmac('sha256', SESSION_SECRET).update(p).digest('hex'); }
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
+
+// Envío de emails transaccionales vía Resend (REST simple, sin SDK — mismo patrón que Daily/Anthropic)
+async function enviarEmail(to, subject, html) {
+  if (!RESEND_API_KEY) { console.error('⚠ RESEND_API_KEY no configurada: no se pudo enviar email a', to); return false; }
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html })
+    });
+    if (!resp.ok) { console.error('Error enviando email:', await resp.text()); return false; }
+    return true;
+  } catch (err) { console.error('Error enviando email:', err.message); return false; }
+}
+
+// QR de verificación pública embebido en los PDFs (informes y presupuestos)
+async function generarQRDataUrl(numero) {
+  try {
+    const url = `${baseUrlApp()}/verificar/${encodeURIComponent(numero)}`;
+    return await QRCode.toDataURL(url, { width: 140, margin: 1, color: { dark: '#1a2433', light: '#ffffff' } });
+  } catch (err) { console.error('Error generando QR:', err.message); return null; }
+}
 
 const sessions = {};
 const empresaSessions = {};
@@ -119,6 +144,37 @@ async function initDB() {
         activo BOOLEAN DEFAULT true,
         creado_en TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS reset_tokens (
+        id SERIAL PRIMARY KEY,
+        tipo VARCHAR(20) NOT NULL,
+        email VARCHAR(200) NOT NULL,
+        token VARCHAR(100) UNIQUE NOT NULL,
+        expira_en TIMESTAMP NOT NULL,
+        usado BOOLEAN DEFAULT false,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS servicios_catalogo (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(200) NOT NULL,
+        precio NUMERIC(12,2) DEFAULT 0,
+        activo BOOLEAN DEFAULT true,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS presupuestos (
+        id SERIAL PRIMARY KEY,
+        numero VARCHAR(20) NOT NULL,
+        empresa VARCHAR(200) NOT NULL,
+        contacto VARCHAR(200),
+        fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+        validez_dias INTEGER DEFAULT 15,
+        items JSONB NOT NULL DEFAULT '[]',
+        subtotal NUMERIC(12,2) DEFAULT 0,
+        total NUMERIC(12,2) DEFAULT 0,
+        notas TEXT,
+        estado VARCHAR(20) DEFAULT 'enviado',
+        creado_por VARCHAR(200),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -210,6 +266,58 @@ app.post('/api/empresa/login', async (req, res) => {
 });
 app.post('/api/empresa/logout', (req, res) => { const t = req.headers['x-empresa-token']; if (t) delete empresaSessions[t]; res.json({ ok: true }); });
 
+// ===== RECUPERAR CONTRASEÑA (médicos/admin y empresas comparten la misma tabla de tokens) =====
+function baseUrlApp() {
+  return process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:' + PORT;
+}
+
+async function iniciarResetPassword(tipo, tabla, email) {
+  const r = await pool.query(`SELECT nombre, email FROM ${tabla} WHERE LOWER(email)=LOWER($1) AND activo=true`, [email.trim()]);
+  if (!r.rows.length) return; // no revelamos si el email existe o no
+  const u = r.rows[0];
+  const token = generateToken();
+  const expira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+  await pool.query('INSERT INTO reset_tokens (tipo,email,token,expira_en) VALUES ($1,$2,$3,$4)', [tipo, u.email, token, expira]);
+  const link = `${baseUrlApp()}/?reset_token=${token}`;
+  await enviarEmail(u.email, 'Recuperar contraseña — MEDGRUP', `
+    <div style="font-family:sans-serif;color:#1a2433;">
+      <p>Hola ${u.nombre},</p>
+      <p>Recibimos un pedido para restablecer tu contraseña en MEDGRUP. Hacé clic en el siguiente link para elegir una nueva (válido por 1 hora):</p>
+      <p><a href="${link}" style="background:#3a6ea8;color:white;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Elegir nueva contraseña</a></p>
+      <p style="font-size:12px;color:#5a6575;">Si no fuiste vos, ignorá este email — tu contraseña actual sigue funcionando.</p>
+    </div>`);
+}
+
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Falta el email' });
+  try { await iniciarResetPassword('usuario', 'usuarios', email); }
+  catch (err) { console.error('Error en forgot-password:', err.message); }
+  res.json({ ok: true, mensaje: 'Si el email existe en nuestro sistema, te enviamos un link para recuperar tu contraseña.' });
+});
+
+app.post('/api/empresa/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Falta el email' });
+  try { await iniciarResetPassword('empresa', 'empresas_clientes', email); }
+  catch (err) { console.error('Error en empresa/forgot-password:', err.message); }
+  res.json({ ok: true, mensaje: 'Si el email existe en nuestro sistema, te enviamos un link para recuperar tu contraseña.' });
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password || password.length < 6) return res.status(400).json({ error: 'Completá una contraseña de al menos 6 caracteres' });
+  try {
+    const r = await pool.query(`SELECT * FROM reset_tokens WHERE token=$1 AND usado=false AND expira_en > NOW()`, [token]);
+    if (!r.rows.length) return res.status(400).json({ error: 'El link expiró o ya fue usado. Pedí uno nuevo.' });
+    const row = r.rows[0];
+    const tabla = row.tipo === 'empresa' ? 'empresas_clientes' : 'usuarios';
+    await pool.query(`UPDATE ${tabla} SET password_hash=$1 WHERE LOWER(email)=LOWER($2)`, [hashPassword(password), row.email]);
+    await pool.query('UPDATE reset_tokens SET usado=true WHERE id=$1', [row.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Turnos de la empresa (por nombre que ya está en el campo empresa del turno)
 app.get('/api/empresa/mis-turnos', empresaAuthMiddleware, async (req, res) => {
   try {
@@ -275,6 +383,193 @@ app.delete('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res)
   try {
     await pool.query('UPDATE pacientes_empresa SET activo=false WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== CATÁLOGO DE SERVICIOS (para armar presupuestos) =====
+app.get('/api/servicios-catalogo', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM servicios_catalogo WHERE activo=true ORDER BY nombre');
+    res.json({ ok: true, servicios: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/admin/servicios-catalogo', adminMiddleware, async (req, res) => {
+  const { nombre, precio } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'Falta el nombre del servicio' });
+  try {
+    const r = await pool.query('INSERT INTO servicios_catalogo (nombre,precio) VALUES ($1,$2) RETURNING *', [nombre.trim(), parseFloat(precio)||0]);
+    res.json({ ok: true, servicio: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.patch('/api/admin/servicios-catalogo/:id', adminMiddleware, async (req, res) => {
+  const { nombre, precio } = req.body;
+  try {
+    await pool.query('UPDATE servicios_catalogo SET nombre=COALESCE($1,nombre), precio=COALESCE($2,precio) WHERE id=$3', [nombre||null, precio!==undefined?parseFloat(precio):null, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/admin/servicios-catalogo/:id', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('UPDATE servicios_catalogo SET activo=false WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== PRESUPUESTOS =====
+app.get('/api/presupuestos', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM presupuestos ORDER BY creado_en DESC');
+    res.json({ ok: true, presupuestos: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.get('/api/presupuestos/:id/datos', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM presupuestos WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    res.json({ ok: true, presupuesto: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/presupuestos', authMiddleware, async (req, res) => {
+  const { empresa, contacto, validez_dias, items, notas } = req.body;
+  if (!empresa) return res.status(400).json({ error: 'Falta la empresa' });
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Agregá al menos un ítem' });
+  try {
+    const itemsCalc = items.map(it => {
+      const cantidad = parseFloat(it.cantidad) || 0;
+      const precio_unitario = parseFloat(it.precio_unitario) || 0;
+      return { concepto: (it.concepto||'').trim(), cantidad, precio_unitario, subtotal: +(cantidad*precio_unitario).toFixed(2) };
+    });
+    const total = +itemsCalc.reduce((acc, it) => acc + it.subtotal, 0).toFixed(2);
+
+    const count = await pool.query('SELECT COUNT(*) FROM presupuestos');
+    const numero = `PRES-${new Date().getFullYear()}-` + String(parseInt(count.rows[0].count)+1).padStart(4,'0');
+
+    const r = await pool.query(`INSERT INTO presupuestos
+      (numero,empresa,contacto,validez_dias,items,subtotal,total,notas,creado_por)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [numero, empresa, contacto||'', parseInt(validez_dias)||15, JSON.stringify(itemsCalc), total, total, notas||'', req.usuario.nombre]);
+    res.json({ ok: true, presupuesto: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.patch('/api/presupuestos/:id/estado', authMiddleware, async (req, res) => {
+  const { estado } = req.body;
+  if (!['enviado','aprobado','rechazado'].includes(estado)) return res.status(400).json({ error: 'Estado inválido' });
+  try {
+    await pool.query('UPDATE presupuestos SET estado=$1 WHERE id=$2', [estado, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/presupuestos/:id', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM presupuestos WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PDF del presupuesto (público, igual que los informes — para que se pueda mandar el link directo a la empresa)
+app.get('/api/presupuestos/:id/pdf', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM presupuestos WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    const p = r.rows[0];
+    const items = Array.isArray(p.items) ? p.items : JSON.parse(p.items || '[]');
+    const fechaEmision = new Date(p.fecha).toLocaleDateString('es-AR', { year:'numeric', month:'long', day:'numeric', timeZone:'America/Argentina/Buenos_Aires' });
+    const fechaVencimiento = new Date(new Date(p.fecha).getTime() + p.validez_dias*24*60*60*1000).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'America/Argentina/Buenos_Aires' });
+    const fmtMoneda = n => '$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    const qrVerificacion = await generarQRDataUrl(p.numero);
+
+    const filasHtml = items.map(it => `<tr>
+      <td>${it.concepto}</td>
+      <td style="text-align:center;">${it.cantidad}</td>
+      <td style="text-align:right;">${fmtMoneda(it.precio_unitario)}</td>
+      <td style="text-align:right;">${fmtMoneda(it.subtotal)}</td>
+    </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<title>Presupuesto ${p.numero}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
+.logo-img{height:40px;width:auto;object-fit:contain;}
+.doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
+.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+.titulo-doc{margin:12px 0 4px;text-align:center;}
+.titulo-doc h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1916;}
+.titulo-doc .subtitulo{font-size:11px;color:#5a5750;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;}
+.destinatario{background:#f4f7fb;border-left:3px solid #3a6ea8;padding:8px 12px;margin:10px 0 16px;font-size:11.5px;}
+.destinatario strong{color:#2a5080;}
+table.items{width:100%;border-collapse:collapse;margin:14px 0;}
+table.items th{background:#3a6ea8;color:white;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;padding:8px 10px;text-align:left;}
+table.items th:nth-child(2),table.items th:nth-child(3),table.items th:nth-child(4){text-align:right;}
+table.items th:nth-child(2){text-align:center;}
+table.items td{padding:8px 10px;border-bottom:1px solid #e8e4de;font-size:12px;}
+.total-row{display:flex;justify-content:flex-end;margin-top:10px;}
+.total-box{background:#f4f7fb;border:1.5px solid #3a6ea8;border-radius:8px;padding:10px 20px;text-align:right;min-width:220px;}
+.total-label{font-size:10.5px;color:#5a5750;text-transform:uppercase;letter-spacing:0.5px;}
+.total-val{font-size:19px;font-weight:700;color:#3a6ea8;}
+.validez-box{margin-top:16px;background:#fdf5e8;border:1px solid #e8c988;border-radius:8px;padding:10px 14px;font-size:11.5px;color:#8f5000;}
+.notas{margin-top:14px;font-size:11.5px;color:#5a5750;white-space:pre-wrap;}
+.firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:50px;padding-top:16px;border-top:1.5px solid #e8e4de;}
+.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
+.firma-nombre{font-size:11.5px;font-weight:700;}
+.wm{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+@media print{body{padding:20px 28px;}table.items th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+</style></head><body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:11px;">
+    <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
+    <div>
+      <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP</div>
+      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <div class="doc-ref">
+      <div class="doc-numero">${p.numero}</div>
+      <div>Tierra del Fuego, ${fechaEmision}</div>
+    </div>
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
+  </div>
+</div>
+
+<div class="titulo-doc">
+  <h1>Presupuesto de Servicios</h1>
+  <div class="subtitulo">Medicina del Trabajo · Psiquiatría Forense</div>
+</div>
+
+<div class="destinatario">
+  <strong>Para:</strong> ${p.empresa}${p.contacto ? ' — At.: '+p.contacto : ''}<br/>
+  <strong>N° de presupuesto:</strong> ${p.numero}
+</div>
+
+<table class="items">
+  <thead><tr><th>Concepto</th><th>Cant.</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+  <tbody>${filasHtml}</tbody>
+</table>
+
+<div class="total-row">
+  <div class="total-box">
+    <div class="total-label">Total</div>
+    <div class="total-val">${fmtMoneda(p.total)}</div>
+  </div>
+</div>
+
+<div class="validez-box">⏳ Presupuesto válido hasta el ${fechaVencimiento} (${p.validez_dias} días desde su emisión).</div>
+${p.notas ? `<div class="notas">${p.notas}</div>` : ''}
+
+<div class="firmas-row">
+  <div class="firma-item"><div class="firma-linea"></div><div class="firma-nombre">MEDGRUP Servicio Médico</div></div>
+</div>
+
+<div class="wm">MEDGRUP Servicio Médico Laboral · Presupuesto · ${p.numero} · medgruplaboral.com.ar</div>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -725,6 +1020,77 @@ app.get('/api/dictamenes/:id/datos', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== VERIFICACIÓN PÚBLICA DE DOCUMENTOS (QR en los PDFs) =====
+// No expone datos médicos ni el paciente — solo confirma autenticidad, emisor y destinatario.
+app.get('/verificar/:numero', async (req, res) => {
+  const numero = req.params.numero;
+  try {
+    let info = null;
+    if (numero.startsWith('DICT-')) {
+      const r = await pool.query('SELECT numero, medico, empresa, especialidad, matricula, creado_en FROM dictamenes WHERE numero=$1', [numero]);
+      if (r.rows.length) {
+        const d = r.rows[0];
+        info = {
+          tipo: 'Informe médico-laboral',
+          emitidoPor: d.medico + (d.especialidad ? ' — ' + d.especialidad : '') + (d.matricula ? ' (MN/MP ' + d.matricula + ')' : ''),
+          empresa: d.empresa,
+          fecha: d.creado_en
+        };
+      }
+    } else if (numero.startsWith('PRES-')) {
+      const r = await pool.query('SELECT numero, empresa, creado_en FROM presupuestos WHERE numero=$1', [numero]);
+      if (r.rows.length) {
+        const p = r.rows[0];
+        info = { tipo: 'Presupuesto de servicios', emitidoPor: 'MEDGRUP Servicio Médico', empresa: p.empresa, fecha: p.creado_en };
+      }
+    }
+    const fechaFmt = info ? new Date(info.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric', timeZone:'America/Argentina/Buenos_Aires' }) : '';
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Verificación de documento — MEDGRUP</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#eef3f9;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.card{background:white;border-radius:20px;padding:2.5rem;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(42,80,128,0.15);text-align:center;}
+.logo{height:44px;margin-bottom:1.5rem;}
+.icono{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;}
+.icono.ok{background:#eaf5f0;}
+.icono.error{background:#fdf0f0;}
+h1{font-size:18px;margin-bottom:8px;}
+h1.ok{color:#1e6640;}
+h1.error{color:#b02a2a;}
+.numero{font-family:'DM Mono',monospace;font-size:13px;color:#3a6ea8;background:#f4f7fb;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:1.25rem;}
+.datos{text-align:left;background:#f4f7fb;border-radius:12px;padding:16px 18px;font-size:13.5px;line-height:1.5;color:#1a2433;}
+.datos > div{margin-bottom:10px;}
+.datos > div:last-child{margin-bottom:0;}
+.datos strong{color:#5a6575;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:2px;}
+.footer{margin-top:1.75rem;font-size:11px;color:#97a3b4;}
+</style></head><body>
+<div class="card">
+  <img src="/logo.png" alt="MEDGRUP" class="logo"/>
+  ${info ? `
+    <div class="icono ok"><svg viewBox="0 0 24 24" fill="none" stroke="#1e6640" stroke-width="2" width="30" height="30"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg></div>
+    <h1 class="ok">Documento auténtico</h1>
+    <div class="numero">${numero}</div>
+    <div class="datos">
+      <div><strong>Tipo de documento</strong>${info.tipo}</div>
+      <div><strong>Emitido por</strong>${info.emitidoPor}</div>
+      <div><strong>Para</strong>${info.empresa}</div>
+      <div><strong>Fecha de emisión</strong>${fechaFmt}</div>
+    </div>
+  ` : `
+    <div class="icono error"><svg viewBox="0 0 24 24" fill="none" stroke="#b02a2a" stroke-width="2" width="30" height="30"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+    <h1 class="error">Documento no encontrado</h1>
+    <div style="font-size:13.5px;color:#5a6575;">El número <strong>${numero}</strong> no corresponde a ningún documento emitido por MEDGRUP, o fue dado de baja.</div>
+  `}
+  <div class="footer">MEDGRUP Servicio Médico Laboral · Verificación de autenticidad</div>
+</div>
+</body></html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) { res.status(500).send('Error interno del servidor'); }
+});
+
 // ===== PDF INFORME =====
 app.get('/api/dictamenes/:id/pdf', async (req, res) => {
   try {
@@ -740,6 +1106,7 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
 
     const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
+    const qrVerificacion = await generarQRDataUrl(d.numero);
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
     const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
 
@@ -852,10 +1219,13 @@ li{margin-bottom:5px;}
       <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div>
     </div>
   </div>
-  <div class="doc-ref">
-    <div class="doc-numero">${d.numero}</div>
-    <div>Tierra del Fuego, ${fechaEmision}</div>
-    <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <div class="doc-ref">
+      <div class="doc-numero">${d.numero}</div>
+      <div>Tierra del Fuego, ${fechaEmision}</div>
+      <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
+    </div>
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
   </div>
 </div>
 
