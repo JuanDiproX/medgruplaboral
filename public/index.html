@@ -2239,6 +2239,8 @@ function renderAgenda(){
           : `<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`)
       : '';
     const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
+    // Salida de emergencia: si la llamada termino pero el turno quedo "en curso"
+    const bfin=t.estado==='en-curso'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="finalizarTurnoDesdeAgenda('${t.id}')" title="Cerrar la consulta y cargar el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Finalizar</button>`:'';
     const bd=t.estado==='completado'
       ? esAdmin
         // Admin: abre el modal de edición completa con todos los campos
@@ -2266,7 +2268,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${brecordar}${bLinks}${bfp}${bp}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
  }catch(err){
   console.error('Error en renderAgenda:', err);
@@ -2967,6 +2969,33 @@ async function abrirDictamenCompletado(turnoId){
     if(!dicts.length){ editarDictamen(turnoId); return; }
     abrirModalEditarDictamen(dicts[0].id);
   }catch(e){ mostrarToast('Error: '+e.message,'#c0365a'); }
+}
+
+// Cierra un turno que quedó "en curso" desde la agenda, sin depender del reproductor.
+// Hace falta cuando la llamada terminó pero la pestaña que la inició se recargó o se cerró:
+// en ese caso el botón "Finalizar consulta" del video ya no existe y el turno quedaba trabado.
+async function finalizarTurnoDesdeAgenda(id){
+  const t = turnos.find(x=>x.id===id);
+  if(!t) return;
+  if(!(await confirmar('Se va a cerrar la consulta y abrir el formulario del informe.', { titulo:'Finalizar consulta', textoConfirmar:'Finalizar', danger:false }))) return;
+  t.estado = 'completado';
+  try{
+    await fetch('/api/turnos/'+id+'/estado', { method:'PATCH', headers:apiHeaders(), body: JSON.stringify({ estado:'completado' }) });
+  }catch(e){ mostrarError('Error de conexión al finalizar la consulta'); return; }
+  registrarEventoTurno(id,'fin_consulta',usuarioActual?.nombre||'');
+  // Si el reproductor estaba abierto en esta misma pestaña, lo cerramos
+  stopTimer();
+  document.getElementById('video-container').classList.remove('active');
+  document.getElementById('daily-frame').src='';
+  document.getElementById('notas-panel').style.display='none';
+  document.getElementById('links-box').style.display='none';
+  document.getElementById('metrics-row').style.display='none';
+  document.getElementById('turnos-card').style.display='none';
+  renderAgenda();
+  addLog('blue','Consulta finalizada', t.paciente);
+  await abrirDictamenParaTurno(t, '—');
+  addLog('amber','Completá tu dictamen médico','');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 // Turno presencial: no hay videollamada — pasa directo a completado y abre el dictamen
