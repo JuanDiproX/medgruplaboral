@@ -892,11 +892,16 @@ app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
 // ===== TURNOS =====
 app.get('/api/turnos', authMiddleware, async (req, res) => {
   try {
+    // El admin ve toda la agenda; cada médico ve únicamente los turnos en los que está
+    // asignado. El array de médicos sigue trayendo a todos los del turno (para saber con
+    // quién comparte la junta), por eso el filtro va como EXISTS y no sobre el JOIN.
+    const esAdmin = req.usuario.rol === 'admin';
     const r = await pool.query(`
       SELECT t.*, COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL),'{}') as medicos
       FROM turnos t LEFT JOIN turno_medicos tm ON t.id=tm.turno_id
+      ${esAdmin ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos a WHERE a.turno_id=t.id AND a.medico_nombre=$1)'}
       GROUP BY t.id ORDER BY t.fecha ASC, t.hora ASC
-    `);
+    `, esAdmin ? [] : [req.usuario.nombre]);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
