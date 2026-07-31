@@ -12,6 +12,8 @@ const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// La firma de actas se sumó este día: no la pedimos retroactivamente para turnos previos ya cerrados
+const FIRMA_ACTA_DESDE = '2026-07-31';
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -711,8 +713,9 @@ app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
       FROM turnos t
       JOIN turno_medicos tm ON tm.turno_id = t.id
       WHERE tm.medico_nombre = $1 AND t.estado = 'completado'
+        AND t.fecha >= $2
         AND NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1)
-      ORDER BY t.fecha DESC, t.hora DESC`, [nombre]);
+      ORDER BY t.fecha DESC, t.hora DESC`, [nombre, FIRMA_ACTA_DESDE]);
     res.json({ ok: true, pendientes: r.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
