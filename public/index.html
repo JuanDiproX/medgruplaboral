@@ -1756,6 +1756,8 @@ async function confirmarNuevaPassword(){
 
 async function doLogout(){
   await fetch('/api/logout',{method:'POST',headers:apiHeaders()});
+  detenerPollFirmasPendientes();
+  firmasVistasIds = new Set();
   localStorage.removeItem('medgrup_token');
   sessionToken=null;usuarioActual=null;
   document.getElementById('app-page').style.display='none';
@@ -1793,6 +1795,7 @@ function mostrarApp(){
   actualizarBotonMenu();
   // Chequear si el médico tiene dictámenes de junta pendientes de firma (camino express)
   chequearFirmasPendientes();
+  iniciarPollFirmasPendientes();
 }
 
 async function checkSession(){
@@ -3046,6 +3049,11 @@ let feDictamenActual = null;
 let feCanvasCtx = null;
 let feFirmado = false;
 
+// IDs de dictámenes que ya se le mostraron al médico en este login (para no forzarle
+// de nuevo el cartel si lo cerró a propósito porque está con un paciente)
+let firmasVistasIds = new Set();
+let firmasPollInterval = null;
+
 async function chequearFirmasPendientes(){
   try{
     const r = await fetch('/api/firmas/pendientes', {headers:apiHeaders()});
@@ -3053,10 +3061,25 @@ async function chequearFirmasPendientes(){
     const data = await r.json();
     fePendientes = data.pendientes || [];
     actualizarBadgeFirmas();
-    if(fePendientes.length > 0){
+    const overlayAbierto = document.getElementById('firma-express-overlay').style.display === 'block';
+    const hayNuevos = fePendientes.some(p => !firmasVistasIds.has(p.id));
+    // Si el cartel ya está abierto (p.ej. dibujando una firma) no lo pisamos con un refresh;
+    // si está cerrado y apareció un dictamen que nunca vio, se lo mostramos solo.
+    if(!overlayAbierto && hayNuevos){
       abrirFirmaExpress();
     }
+    fePendientes.forEach(p => firmasVistasIds.add(p.id));
   }catch(e){ console.error('Error chequeando firmas pendientes:', e); }
+}
+
+// Repite el chequeo mientras la sesión esté abierta, para que si Barboza termina el
+// informe mientras Scarello ya está logueado, le aparezca solo sin tener que relogearse
+function iniciarPollFirmasPendientes(){
+  if(firmasPollInterval) clearInterval(firmasPollInterval);
+  firmasPollInterval = setInterval(chequearFirmasPendientes, 45000);
+}
+function detenerPollFirmasPendientes(){
+  if(firmasPollInterval){ clearInterval(firmasPollInterval); firmasPollInterval = null; }
 }
 
 function abrirFirmaExpress(){
