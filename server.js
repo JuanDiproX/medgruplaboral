@@ -232,6 +232,13 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
+      `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS modalidad VARCHAR(20) DEFAULT 'telemedicina'`,
+      // Independiente de "modalidad" (que solo decide si se crea sala de Daily): esto decide si
+      // la paciente estuvo físicamente presente — de eso depende el estilo del acta (declaración
+      // jurada vs. registro de eventos) y si hace falta capturarle la firma.
+      `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS paciente_presencial BOOLEAN DEFAULT false`,
+      `ALTER TABLE IF EXISTS firmas_acta ADD COLUMN IF NOT EXISTS es_paciente BOOLEAN DEFAULT false`,
+      `ALTER TABLE IF EXISTS firmas_acta ADD COLUMN IF NOT EXISTS capturada_por VARCHAR(200)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS firma_guardada TEXT`,
     ]) await client.query(q2).catch(()=>{});
@@ -739,6 +746,74 @@ app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== FIRMA PRESENCIAL EN CADENA =====
+// Cuando varios firmantes (médicos y/o la paciente) están físicamente presentes con un solo
+// dispositivo logueado, esto permite capturar sus firmas una por una, bien identificadas, sin
+// que cada uno necesite su propia cuenta.
+async function puedeGestionarFirmasDelTurno(turnoId, usuario) {
+  if (usuario.rol === 'admin') return true;
+  const r = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [turnoId, usuario.nombre]);
+  return r.rows.length > 0;
+}
+
+app.get('/api/turnos/:id/firmantes-pendientes', authMiddleware, async (req, res) => {
+  try {
+    if (!(await puedeGestionarFirmasDelTurno(req.params.id, req.usuario))) {
+      return res.status(403).json({ error: 'No estás asignado a este turno' });
+    }
+    const t = await pool.query('SELECT paciente, paciente_presencial FROM turnos WHERE id=$1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+
+    const medicosTurno = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1', [req.params.id])).rows.map(x => x.medico_nombre);
+    const firmas = (await pool.query('SELECT medico_nombre, es_paciente FROM firmas_acta WHERE turno_id=$1', [req.params.id])).rows;
+    const yaFirmoMedico = nombre => firmas.some(f => !f.es_paciente && f.medico_nombre === nombre);
+    const yaFirmoPaciente = firmas.some(f => f.es_paciente);
+
+    // Orden: primero quien está pidiendo la lista (si le falta firmar), después el resto de médicos, al final la paciente
+    const pendientes = [];
+    const propio = medicosTurno.find(n => n === req.usuario.nombre);
+    if (propio && !yaFirmoMedico(propio)) pendientes.push({ nombre: propio, es_paciente: false });
+    medicosTurno.filter(n => n !== req.usuario.nombre && !yaFirmoMedico(n)).forEach(n => pendientes.push({ nombre: n, es_paciente: false }));
+    if (t.rows[0].paciente_presencial && !yaFirmoPaciente) pendientes.push({ nombre: t.rows[0].paciente, es_paciente: true });
+
+    res.json({ ok: true, pendientes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/turnos/:id/firmar-acta-presencial', authMiddleware, async (req, res) => {
+  try {
+    if (!(await puedeGestionarFirmasDelTurno(req.params.id, req.usuario))) {
+      return res.status(403).json({ error: 'No estás asignado a este turno' });
+    }
+    const { nombre_firmante, es_paciente, firma_base64 } = req.body;
+    if (!firma_base64) return res.status(400).json({ error: 'Falta la firma' });
+
+    const t = await pool.query('SELECT paciente, paciente_presencial FROM turnos WHERE id=$1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+
+    let nombreFinal, matricula = '', especialidad = '';
+    if (es_paciente) {
+      if (!t.rows[0].paciente_presencial) return res.status(400).json({ error: 'Este turno no tiene a la paciente marcada como presencial' });
+      nombreFinal = t.rows[0].paciente; // se usa el nombre real de la BD, no lo que mande el cliente
+    } else {
+      const asignado = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre_firmante]);
+      if (!asignado.rows.length) return res.status(400).json({ error: 'Ese médico no está asignado a este turno' });
+      nombreFinal = nombre_firmante;
+      const perfil = await pool.query('SELECT matricula, especialidad FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombreFinal]);
+      matricula = perfil.rows[0]?.matricula || '';
+      especialidad = perfil.rows[0]?.especialidad || 'Medicina Laboral';
+    }
+
+    const yaFirmo = await pool.query('SELECT 1 FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombreFinal]);
+    if (yaFirmo.rows.length) return res.status(409).json({ error: `${nombreFinal} ya firmó esta acta` });
+
+    const limpia = firma_base64.replace(/^data:image\/[a-z]+;base64,/, '');
+    await pool.query(`INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64,es_paciente,capturada_por) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.params.id, nombreFinal, matricula, especialidad, limpia, !!es_paciente, req.usuario.nombre]);
+    res.json({ ok: true, nombre: nombreFinal });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Firmar un dictamen (junta médica)
 app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
   try {
@@ -891,9 +966,22 @@ app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
 });
 
 // ===== CREAR SALA =====
+// Un token de reunión real (no un query param suelto) es lo único que hace que Daily complete
+// user_name y owner en el webhook — de eso depende que el acta reconozca médico vs. paciente.
+async function crearMeetingToken(roomName, userName, isOwner) {
+  const resp = await fetch('https://api.daily.co/v1/meeting-tokens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
+    body: JSON.stringify({ properties: { room_name: roomName, user_name: userName, is_owner: isOwner } })
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'No se pudo crear el token de acceso');
+  return data.token;
+}
+
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   try {
-    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono } = req.body;
+    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono, paciente_presencial } = req.body;
     const nombreSala = `medgrup-${Date.now()}`;
     const resp = await fetch('https://api.daily.co/v1/rooms', {
       method: 'POST',
@@ -913,22 +1001,39 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
     const sala = await resp.json();
     if (!resp.ok) return res.status(500).json({ error: 'No se pudo crear la sala', detalle: sala });
 
-    // Cada médico obtiene un link con su nombre precargado como owner
-    const linksMedicos = (ml||[]).map(n => ({
+    // Cada médico obtiene un link con un token real de moderador (owner) a su nombre
+    const linksMedicos = await Promise.all((ml||[]).map(async n => ({
       nombre: n,
-      link: `${sala.url}?t=owner&userName=${encodeURIComponent(n)}`
-    }));
-    // El paciente obtiene un link con su nombre precargado como participante
-    const linkPaciente = `${sala.url}?userName=${encodeURIComponent(paciente)}`;
+      link: `${sala.url}?t=${await crearMeetingToken(sala.name, n, true)}`
+    })));
+    // La paciente obtiene un link con un token real (no moderador) a su nombre
+    const tokenPaciente = await crearMeetingToken(sala.name, paciente, false);
+    const linkPaciente = `${sala.url}?t=${tokenPaciente}`;
+    const linkMedicoGenerico = linksMedicos[0]?.link || sala.url;
 
     const turnoId = `turno-${Date.now()}`;
-    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono)
-      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono,paciente_presencial)
+      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
-       sala.name, linkPaciente, sala.url+'?t=owner', JSON.stringify(linksMedicos), motivo||'',
-       diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'']);
+       sala.name, linkPaciente, linkMedicoGenerico, JSON.stringify(linksMedicos), motivo||'',
+       diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'', !!paciente_presencial]);
     for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
-    res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: sala.url+'?t=owner', links_medicos: linksMedicos, turno_id: turnoId, paciente });
+    res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: linkMedicoGenerico, links_medicos: linksMedicos, turno_id: turnoId, paciente });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== TURNO PRESENCIAL (consulta en consultorio, sin videollamada de Daily) =====
+app.post('/api/crear-turno-presencial', authMiddleware, async (req, res) => {
+  try {
+    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono } = req.body;
+    if (!paciente) return res.status(400).json({ error: 'Falta el paciente' });
+    const turnoId = `turno-${Date.now()}`;
+    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono,modalidad,paciente_presencial)
+      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,'presencial',true)`,
+      [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
+       motivo||'', diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'']);
+    for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
+    res.json({ ok: true, turno_id: turnoId, paciente });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1382,21 +1487,48 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     const eventos = (await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC', [req.params.id])).rows;
     const medicosTurno = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [req.params.id])).rows.map(x=>x.medico_nombre);
     const firmasActa = (await pool.query('SELECT * FROM firmas_acta WHERE turno_id=$1', [req.params.id])).rows;
-    const fecha = new Date(t.fecha).toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
+    // La fecha del turno es un DATE sin hora: si se la convierte a zona horaria argentina
+    // (servidor en UTC) cae en el día anterior, así que se formatea desde sus componentes.
+    const fechaISO = t.fecha instanceof Date
+      ? `${t.fecha.getFullYear()}-${String(t.fecha.getMonth()+1).padStart(2,'0')}-${String(t.fecha.getDate()).padStart(2,'0')}`
+      : String(t.fecha).split('T')[0];
+    const fecha = new Date(fechaISO + 'T12:00:00Z').toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'UTC' });
     const fechaEmision = new Date().toLocaleDateString('es-AR', { day:'2-digit',month:'long',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const firmasActaHtml = medicosTurno.map(nombreMedico => {
-      const f = firmasActa.find(x => x.medico_nombre === nombreMedico);
+      const f = firmasActa.find(x => !x.es_paciente && x.medico_nombre === nombreMedico);
       const firmaImg = f
         ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
       return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div>${f?`<div class="firma-esp">${f.especialidad||''}</div><div class="firma-mat">${f.matricula?'MN/MP '+f.matricula:''}</div>`:'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
-    }).join('');
+    }).join('') + (t.paciente_presencial ? (() => {
+      const fp = firmasActa.find(x => x.es_paciente);
+      const firmaImg = fp
+        ? `<img src="data:image/png;base64,${fp.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
+        : `<div class="firma-linea"></div>`;
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${t.paciente}</div>${fp?'<div class="firma-esp">Paciente evaluado/a</div>':'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
+    })() : '');
+    const esDeclaracionJurada = t.paciente_presencial === true;
     const tipoLabel = { inicio_medico:'Inicio de videoconsulta', union_medico:'Médico se incorporó a la consulta', union_paciente:'Paciente se incorporó a la consulta', fin_consulta:'Finalización de la consulta' };
     const tipoIcon = { inicio_medico:'▶', union_medico:'＋', union_paciente:'＋', fin_consulta:'■' };
     const eventosHtml = eventos.length ? eventos.map(e => {
-      const hora = new Date(e.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'America/Argentina/Buenos_Aires' });
+      const hora = new Date(e.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/Argentina/Buenos_Aires' });
       return `<div class="ev-row"><div class="ev-hora">${hora}</div><div class="ev-icon">${tipoIcon[e.tipo]||'•'}</div><div class="ev-desc"><strong>${tipoLabel[e.tipo]||e.tipo}</strong>${e.participante?' — '+e.participante:''}</div></div>`;
     }).join('') : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">Sin eventos de asistencia registrados.</div>`;
+
+    const subtitulo = esDeclaracionJurada
+      ? 'Declaración jurada de asistencia'
+      : 'Constancia de asistencia mediante registro de eventos de la videoconsulta';
+    // Caso mixto: la paciente estuvo presente pero al menos un profesional participó por videollamada.
+    const comparecencia = t.modalidad === 'presencial'
+      ? 'quien compareció físicamente ante los profesionales intervinientes'
+      : 'quien compareció físicamente en el lugar de la evaluación, habiendo participado los profesionales intervinientes en forma presencial y/o remota mediante videoconferencia por la plataforma MEDGRUP';
+    const introParrafo = esDeclaracionJurada
+      ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>, ${comparecencia}, cuya identidad y firma constan al pie del presente documento.`
+      : `Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.`;
+    const seccionEventosHtml = esDeclaracionJurada ? '' : `<h2>Registro cronológico de asistencia</h2><div class="eventos-box">${eventosHtml}</div>`;
+    const verifTexto = esDeclaracionJurada
+      ? 'Este documento certifica la asistencia en carácter de declaración jurada, suscripta mediante firma digital por los profesionales intervinientes y por la persona evaluada.'
+      : 'Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.';
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${t.paciente}</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -1429,18 +1561,17 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
 </div>
 <h1>Acta de Asistencia — ${t.tipo||'Consulta Médica'}</h1>
-<div class="subt">Constancia de asistencia mediante registro de eventos de la videoconsulta</div>
-<p>Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.</p>
+<div class="subt">${subtitulo}</div>
+<p>${introParrafo}</p>
 <div class="datos-box">
   <div><div class="dato-label">Paciente</div><div class="dato-value">${t.paciente}</div></div>
   <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
   <div><div class="dato-label">Fecha del turno</div><div class="dato-value">${fecha}</div></div>
-  <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}</div></div>
+  <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}${t.modalidad==='presencial'?' (Presencial)':(t.paciente_presencial?' (Paciente presente)':'')}</div></div>
 </div>
-<h2>Registro cronológico de asistencia</h2>
-<div class="eventos-box">${eventosHtml}</div>
+${seccionEventosHtml}
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
-<div class="verif">Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.</div>
+<div class="verif">${verifTexto}</div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
 <script>window.onload=function(){window.print();}</script></body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

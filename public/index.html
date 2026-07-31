@@ -944,6 +944,13 @@ td.no-label::before{display:none;}
   <div class="modal">
     <div class="modal-title">Programar turno</div>
     <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Modalidad</label>
+        <select id="t-modalidad" onchange="onModalidadTurnoChange()"><option value="telemedicina">🎥 Videollamada (Daily)</option><option value="presencial">🏥 Presencial (consultorio)</option></select>
+      </div>
+      <div class="form-group full" id="t-presencial-wrap">
+        <label class="form-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);"><input type="checkbox" id="t-paciente-presencial" style="width:auto;margin:0;"/> El/la paciente está físicamente con el médico</label>
+        <div class="form-section-hint" style="margin-top:5px;">Marcalo aunque haya videollamada (por ejemplo, si un médico se conecta a distancia). El acta se emite como declaración jurada y se le pide la firma a la paciente en el momento.</div>
+      </div>
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" list="pacientes-datalist" oninput="onPacienteTurnoInput()" placeholder="Apellido, Nombre del paciente"/><datalist id="pacientes-datalist"></datalist></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
@@ -969,10 +976,10 @@ td.no-label::before{display:none;}
     </div>
     <div class="form-section">
       <div class="form-section-hdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos participantes</div>
-      <div class="form-section-hint">Cada uno recibe su propio link de moderador.</div>
+      <div class="form-section-hint" id="medicos-hint-turno">Cada uno recibe su propio link de moderador.</div>
       <div class="medicos-check-list" id="medicos-check-list"></div>
     </div>
-    <div class="loading" id="loading-turno" style="margin-top:12px;"><div class="spinner"></div>Creando sala de videoconsulta...</div>
+    <div class="loading" id="loading-turno" style="margin-top:12px;"><div class="spinner"></div><span id="loading-turno-texto">Creando sala de videoconsulta...</span></div>
     <div id="turno-resultado" style="display:none;margin-top:14px;">
       <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:1rem;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:600;color:var(--azul);">✓ Turno programado — <span id="res-resumen">—</span></div>
@@ -982,7 +989,7 @@ td.no-label::before{display:none;}
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-turno" onclick="guardarTurno()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Programar y generar links</button>
+      <button class="btn btn-primary" id="btn-guardar-turno" onclick="guardarTurno()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span id="btn-guardar-turno-texto">Programar y generar links</span></button>
     </div>
   </div>
 </div>
@@ -1193,6 +1200,60 @@ td.no-label::before{display:none;}
       <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;">¡Firma registrada!</div>
       <div style="font-size:13.5px;color:var(--text2);margin-top:8px;line-height:1.6;" id="fe-ok-msg">El dictamen quedó firmado correctamente.</div>
       <button class="btn btn-primary btn-full" style="margin-top:1.5rem;padding:13px;" onclick="feContinuarDespuesDeFirmar()">Continuar</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- FIRMA PRESENCIAL EN CADENA (varias personas firmando en el mismo dispositivo) -->
+<div id="fp-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(8px);z-index:820;overflow-y:auto;padding:20px;">
+  <div style="max-width:620px;margin:24px auto;">
+
+    <div id="fp-paso-firmar" style="background:white;border-radius:18px;padding:1.75rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:1rem;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.4px;">Firmas presenciales del acta</div>
+          <div style="font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;" id="fp-turno-info">—</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:7px 11px;font-size:12px;" onclick="cerrarFirmaPresencial()">Cerrar</button>
+      </div>
+
+      <!-- Orden de firmantes -->
+      <div id="fp-progreso" style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:1.1rem;"></div>
+
+      <!-- Quién firma ahora -->
+      <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:12px;padding:13px 15px;margin-bottom:1rem;">
+        <div style="font-size:10px;letter-spacing:1.2px;color:var(--azul);font-family:'DM Mono',monospace;font-weight:600;" id="fp-paso-label">FIRMA 1 DE 1</div>
+        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-top:3px;" id="fp-firmante-nombre">—</div>
+        <div style="font-size:12.5px;color:var(--text2);margin-top:4px;line-height:1.5;" id="fp-firmante-hint">—</div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+        <div style="font-size:10px;letter-spacing:1.2px;color:var(--text3);font-family:'DM Mono',monospace;font-weight:600;">DIBUJÁ LA FIRMA ACÁ ABAJO</div>
+        <button id="fp-btn-mi-firma" style="display:none;background:white;border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--azul);cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="fpUsarMiFirma()">Usar mi firma guardada</button>
+      </div>
+      <div style="border:2px dashed var(--azul-mid);border-radius:12px;background:#fbfcfe;position:relative;">
+        <canvas id="fp-canvas" width="560" height="180" style="width:100%;height:180px;display:block;border-radius:12px;cursor:crosshair;touch-action:none;"></canvas>
+        <button onclick="fpLimpiarFirma()" style="position:absolute;top:8px;right:8px;background:white;border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;">Borrar</button>
+      </div>
+
+      <div id="fp-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+
+      <button id="fp-btn-confirmar" class="btn btn-primary btn-full" style="margin-top:1.1rem;padding:15px;font-size:14.5px;" onclick="fpConfirmarFirma()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="20,6 9,17 4,12"/></svg>
+        <span id="fp-btn-texto">Confirmar firma</span>
+      </button>
+      <div style="font-size:11px;color:var(--text3);margin-top:9px;text-align:center;line-height:1.5;">Cada firma queda registrada con el nombre de quien firma y con la constancia de que fue tomada presencialmente desde tu cuenta.</div>
+    </div>
+
+    <div id="fp-paso-ok" style="display:none;background:white;border-radius:18px;padding:2.75rem 2rem;box-shadow:0 24px 64px rgba(0,0,0,0.3);text-align:center;">
+      <div style="width:72px;height:72px;border-radius:50%;background:var(--verde-light);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--verde)" stroke-width="2.5" style="width:36px;height:36px;"><polyline points="20,6 9,17 4,12"/></svg>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;">Acta firmada</div>
+      <div style="font-size:13.5px;color:var(--text2);margin-top:8px;line-height:1.6;" id="fp-ok-msg">—</div>
+      <a id="fp-ok-acta" href="#" target="_blank" rel="noopener" class="btn btn-ghost btn-full" style="margin-top:1.25rem;padding:12px;text-decoration:none;justify-content:center;">Ver el acta</a>
+      <button class="btn btn-primary btn-full" style="margin-top:10px;padding:13px;" onclick="cerrarFirmaPresencial()">Listo</button>
     </div>
 
   </div>
@@ -2015,7 +2076,7 @@ async function cargarTurnos(){
       document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar los turnos: '+(data.error||'respuesta inválida')+'</div>';
       return;
     }
-    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
+    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
     poblarFiltroEmpresasAgenda();
     renderAgenda();
   }catch(e){
@@ -2169,7 +2230,12 @@ function renderAgenda(){
       const mins = minutosHastaTurno(t);
       badgeUrg = `<span class="badge-urgente badge-proximo">⏰ ${textoTiempoRestante(mins)}</span>`;
     }
-    const bi=t.estado==='pendiente'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`:'';
+    const esPresencial = t.modalidad==='presencial';
+    const bi = t.estado==='pendiente'
+      ? (esPresencial
+          ? `<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarInformePresencial('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Cargar informe</button>`
+          : `<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="iniciarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>`)
+      : '';
     const bj=t.estado==='en-curso'?`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="unirseTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>`:'';
     const bd=t.estado==='completado'
       ? esAdmin
@@ -2181,7 +2247,10 @@ function renderAgenda(){
     // Acta: el médico la ve como link directo; al admin se le ofrece en el menú de más acciones (abre el modal de edición)
     const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
-    const brecordar=t.estado!=='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e9d5a;" onclick="recordarTurnoWA('${t.id}')" title="Enviar recordatorio por WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;pointer-events:none;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>Recordar</button>`:'';
+    const brecordar=(t.estado!=='completado'&&!esPresencial)?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e9d5a;" onclick="recordarTurnoWA('${t.id}')" title="Enviar recordatorio por WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;pointer-events:none;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>Recordar</button>`:'';
+    const bLinks = esPresencial ? '' : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>`;
+    // Firma en cadena: solo tiene sentido si la paciente estuvo presente (con o sin videollamada)
+    const bfp=(t.estado==='completado'&&t.pacientePresencial)?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e9d5a;" onclick="abrirFirmaPresencial('${t.id}')" title="Capturar las firmas de quienes están presentes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M3 17s2-6 6-6 4 4 7 4 5-3 5-3"/><path d="M3 21h18"/></svg>Firmas</button>`:'';
 
     // Acciones de admin (Acta, Subir firmado, Editar, Eliminar) se agrupan en un menú "⋮" para no saturar la fila
     let menuItems='';
@@ -2195,7 +2264,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${brecordar}<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>${bp}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${brecordar}${bLinks}${bfp}${bp}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
  }catch(err){
   console.error('Error en renderAgenda:', err);
@@ -2527,7 +2596,23 @@ function verLinks(id){
   document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
 }
 
-function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';pacientesTurnoActual=[];document.getElementById('pacientes-datalist').innerHTML='';cargarMedicos();cargarEmpresasSelect();}
+function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';pacientesTurnoActual=[];document.getElementById('pacientes-datalist').innerHTML='';document.getElementById('t-modalidad').value='telemedicina';document.getElementById('t-paciente-presencial').checked=false;onModalidadTurnoChange();cargarMedicos();cargarEmpresasSelect();}
+
+function onModalidadTurnoChange(){
+  const presencial = document.getElementById('t-modalidad').value === 'presencial';
+  document.getElementById('medicos-hint-turno').textContent = presencial
+    ? 'Quedan asignados al turno para poder cargar el informe y firmar el acta — no se genera videollamada.'
+    : 'Cada uno recibe su propio link de moderador.';
+  document.getElementById('btn-guardar-turno-texto').textContent = presencial
+    ? 'Programar turno presencial'
+    : 'Programar y generar links';
+  document.getElementById('loading-turno-texto').textContent = presencial
+    ? 'Guardando turno...'
+    : 'Creando sala de videoconsulta...';
+  // En modalidad presencial la paciente siempre está presente, así que la opción no se pregunta.
+  document.getElementById('t-presencial-wrap').style.display = presencial ? 'none' : '';
+  if(presencial) document.getElementById('t-paciente-presencial').checked = false;
+}
 
 const EMPRESAS_HISTORICAS=['LOGANT S.A.','Gloker Trucks S.A.','Huinoil S.A.','CEMEP','Grupo L'];
 
@@ -2571,6 +2656,8 @@ function onPacienteTurnoInput(){
 async function guardarTurno(){
   const paciente=document.getElementById('t-paciente').value.trim();
   if(!paciente){mostrarError('Ingresá el nombre del paciente');return;}
+  const modalidad=document.getElementById('t-modalidad').value;
+  const esPresencial=modalidad==='presencial';
   const telefono=document.getElementById('t-telefono')?.value?.trim()||'';
   const fecha=document.getElementById('t-fecha').value,hora=document.getElementById('t-hora').value,tipo=document.getElementById('t-tipo').value,empresa=document.getElementById('t-empresa').value,motivo=document.getElementById('t-motivo').value;
   const diagnostico_previo=document.getElementById('t-diagnostico')?.value?.trim()||'';
@@ -2581,14 +2668,18 @@ async function guardarTurno(){
   if(!ms.length){mostrarError('Seleccioná al menos un médico');return;}
   document.getElementById('btn-guardar-turno').style.display='none';document.getElementById('loading-turno').style.display='flex';
   try{
-    const res=await fetch('/api/crear-sala',{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,telefono,medicos:ms,tipo,fecha,hora,empresa,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante})});
+    const endpoint = esPresencial ? '/api/crear-turno-presencial' : '/api/crear-sala';
+    const paciente_presencial = esPresencial || document.getElementById('t-paciente-presencial').checked;
+    const res=await fetch(endpoint,{method:'POST',headers:apiHeaders(),body:JSON.stringify({paciente,telefono,medicos:ms,tipo,fecha,hora,empresa,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,paciente_presencial})});
     const data=await res.json();document.getElementById('loading-turno').style.display='none';
     if(!data.ok){mostrarError('Error: '+data.error);document.getElementById('btn-guardar-turno').style.display='inline-flex';return;}
     await cargarTurnos();
     const tg=turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
     const fl=new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('res-resumen').textContent=`${paciente} — ${fl} ${hora} hs`;
-    document.getElementById('links-modal').innerHTML=tg?buildLinksHtml(tg):'';
+    document.getElementById('links-modal').innerHTML = esPresencial
+      ? `<div style="font-size:12.5px;color:var(--text2);line-height:1.5;">Turno presencial cargado. Cuando el médico esté listo, va a la Agenda y hace clic en <strong>"Cargar informe"</strong> para escribir el dictamen — no hace falta ninguna videollamada.</div>`
+      : (tg?buildLinksHtml(tg):'');
     document.getElementById('turno-resultado').style.display='block';
     addLog('blue','Turno programado',`${paciente} — ${empresa} — ${fl} ${hora}`);
   }catch(e){document.getElementById('loading-turno').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';mostrarError('Error: '+e.message);}
@@ -2874,6 +2965,23 @@ async function abrirDictamenCompletado(turnoId){
     if(!dicts.length){ editarDictamen(turnoId); return; }
     abrirModalEditarDictamen(dicts[0].id);
   }catch(e){ mostrarToast('Error: '+e.message,'#c0365a'); }
+}
+
+// Turno presencial: no hay videollamada — pasa directo a completado y abre el dictamen
+// con los datos que ya cargó el admin (diagnóstico previo, médico tratante, etc.)
+async function iniciarInformePresencial(id){
+  const t = turnos.find(x=>x.id===id);
+  if(!t) return;
+  t.estado = 'completado';
+  try{
+    await fetch('/api/turnos/'+id+'/estado', { method:'PATCH', headers:apiHeaders(), body: JSON.stringify({ estado:'completado' }) });
+  }catch(e){ mostrarError('Error de conexión al iniciar el informe'); return; }
+  document.getElementById('metrics-row').style.display='none';
+  document.getElementById('turnos-card').style.display='none';
+  renderAgenda();
+  addLog('blue','Informe presencial iniciado', t.paciente);
+  await abrirDictamenParaTurno(t, '—');
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function finalizarConsulta(){
@@ -3351,6 +3459,162 @@ async function guardarMiFirma(){
     await cargarMiFirma();
     mostrarToast('✓ Firma guardada','#1e6640');
   }catch(e){ errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+}
+
+// ===== FIRMA PRESENCIAL EN CADENA =====
+// Un solo dispositivo (el del médico a cargo) va tomando la firma de cada persona presente,
+// en orden: primero él, después los otros médicos asignados, y al final la paciente.
+let fpTurnoId = null;
+let fpPendientes = [];
+let fpIndex = 0;
+let fpFirmados = [];
+let fpCanvasCtx = null;
+let fpDibujada = false;
+
+async function abrirFirmaPresencial(turnoId){
+  const t = turnos.find(x => x.id === turnoId);
+  if(!t) return;
+  try{
+    const res = await fetch('/api/turnos/'+turnoId+'/firmantes-pendientes', { headers: apiHeaders() });
+    const data = await res.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudieron cargar los firmantes'); return; }
+    if(!data.pendientes.length){ mostrarToast('✓ El acta ya tiene todas las firmas','#1e6640'); return; }
+    fpTurnoId = turnoId;
+    fpPendientes = data.pendientes;
+    fpIndex = 0;
+    fpFirmados = [];
+    document.getElementById('fp-turno-info').textContent = `${t.paciente} · ${t.empresa||'—'} · ${t.fecha.split('T')[0]} ${t.hora}`;
+    document.getElementById('fp-paso-firmar').style.display = 'block';
+    document.getElementById('fp-paso-ok').style.display = 'none';
+    document.getElementById('fp-overlay').style.display = 'block';
+    fpRenderPaso();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+function cerrarFirmaPresencial(){
+  document.getElementById('fp-overlay').style.display = 'none';
+  fpTurnoId = null; fpPendientes = []; fpIndex = 0; fpFirmados = [];
+}
+
+function fpRenderPaso(){
+  const actual = fpPendientes[fpIndex];
+  const esYo = !actual.es_paciente && actual.nombre === usuarioActual?.nombre;
+
+  document.getElementById('fp-progreso').innerHTML = fpPendientes.map((p, i) => {
+    const hecho = i < fpIndex;
+    const esActual = i === fpIndex;
+    const icono = hecho ? '✓' : (i+1);
+    const color = hecho ? 'var(--verde)' : esActual ? 'var(--azul)' : 'var(--text3)';
+    const peso = esActual ? '600' : '400';
+    const rol = p.es_paciente ? 'Paciente evaluado/a' : 'Médico interviniente';
+    return `<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:${color};font-weight:${peso};">
+      <span style="width:19px;height:19px;flex:none;border-radius:50%;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'DM Mono',monospace;">${icono}</span>
+      <span>${p.nombre}</span><span style="color:var(--text3);font-weight:400;font-size:11px;">· ${rol}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fp-paso-label').textContent = `FIRMA ${fpIndex+1} DE ${fpPendientes.length}`;
+  document.getElementById('fp-firmante-nombre').textContent = actual.nombre;
+  document.getElementById('fp-firmante-hint').textContent = esYo
+    ? 'Es tu propia firma. Podés dibujarla o usar la que tenés guardada en tu perfil.'
+    : actual.es_paciente
+      ? 'Entregale el dispositivo a la paciente para que firme. La firma queda registrada a su nombre.'
+      : 'Entregale el dispositivo a este médico para que firme. La firma queda registrada a su nombre.';
+  document.getElementById('fp-btn-texto').textContent = 'Confirmar firma de ' + actual.nombre;
+  document.getElementById('fp-btn-mi-firma').style.display = (esYo && miFirmaGuardadaBase64) ? 'block' : 'none';
+  document.getElementById('fp-error').style.display = 'none';
+  const btn = document.getElementById('fp-btn-confirmar');
+  btn.disabled = false;
+
+  setTimeout(() => { fpInicializarCanvas(); if(esYo && miFirmaGuardadaBase64) fpUsarMiFirma(); }, 60);
+}
+
+function fpInicializarCanvas(){
+  const canvas = document.getElementById('fp-canvas');
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = 180 * 2;
+  fpCanvasCtx = canvas.getContext('2d');
+  fpCanvasCtx.scale(2,2);
+  fpCanvasCtx.lineWidth = 2.2;
+  fpCanvasCtx.lineCap = 'round';
+  fpCanvasCtx.lineJoin = 'round';
+  fpCanvasCtx.strokeStyle = '#1a2b45';
+  fpDibujada = false;
+
+  let dibujando = false;
+  const pos = e => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = e => { e.preventDefault(); dibujando = true; const p = pos(e); fpCanvasCtx.beginPath(); fpCanvasCtx.moveTo(p.x, p.y); };
+  const move = e => { if(!dibujando) return; e.preventDefault(); const p = pos(e); fpCanvasCtx.lineTo(p.x, p.y); fpCanvasCtx.stroke(); fpDibujada = true; };
+  const end = () => { dibujando = false; };
+
+  canvas.onmousedown = start; canvas.onmousemove = move;
+  canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function fpLimpiarFirma(){
+  if(!fpCanvasCtx) return;
+  const canvas = document.getElementById('fp-canvas');
+  fpCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  fpDibujada = false;
+}
+
+function fpUsarMiFirma(){
+  if(!miFirmaGuardadaBase64 || !fpCanvasCtx) return;
+  const canvas = document.getElementById('fp-canvas');
+  const ancho = canvas.getBoundingClientRect().width;
+  fpLimpiarFirma();
+  const img = new Image();
+  img.onload = () => {
+    const escala = Math.min((ancho*0.6)/img.width, (180*0.6)/img.height, 1);
+    const w = img.width*escala, h = img.height*escala;
+    fpCanvasCtx.drawImage(img, (ancho-w)/2, (180-h)/2, w, h);
+    fpDibujada = true;
+  };
+  img.src = 'data:image/png;base64,'+miFirmaGuardadaBase64;
+}
+
+async function fpConfirmarFirma(){
+  const errEl = document.getElementById('fp-error');
+  errEl.style.display = 'none';
+  if(!fpDibujada){
+    errEl.textContent = 'Dibujá la firma en el recuadro antes de confirmar.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const actual = fpPendientes[fpIndex];
+  const canvas = document.getElementById('fp-canvas');
+  const firma_base64 = canvas.toDataURL('image/png').split(',')[1];
+  const btn = document.getElementById('fp-btn-confirmar');
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/turnos/'+fpTurnoId+'/firmar-acta-presencial', {
+      method:'POST', headers: apiHeaders(),
+      body: JSON.stringify({ nombre_firmante: actual.nombre, es_paciente: !!actual.es_paciente, firma_base64 })
+    });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent = data.error || 'No se pudo registrar la firma'; errEl.style.display='block'; btn.disabled=false; return; }
+    fpFirmados.push(actual.nombre);
+    addLog('green','Firma presencial registrada', `${actual.nombre} firmó el acta`);
+    fpIndex++;
+    if(fpIndex >= fpPendientes.length) fpFinalizar();
+    else { fpLimpiarFirma(); fpRenderPaso(); }
+  }catch(e){ errEl.textContent = 'Error de conexión'; errEl.style.display='block'; btn.disabled=false; }
+}
+
+function fpFinalizar(){
+  document.getElementById('fp-paso-firmar').style.display = 'none';
+  document.getElementById('fp-ok-msg').textContent = fpFirmados.length === 1
+    ? `Se registró la firma de ${fpFirmados[0]}.`
+    : `Se registraron ${fpFirmados.length} firmas: ${fpFirmados.join(', ')}.`;
+  document.getElementById('fp-ok-acta').href = '/api/turnos/'+fpTurnoId+'/acta';
+  document.getElementById('fp-paso-ok').style.display = 'block';
+  mostrarToast('✓ Acta firmada','#1e6640');
 }
 
 function feLimpiarFirma(){
