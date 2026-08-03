@@ -237,6 +237,10 @@ async function initDB() {
       // la paciente estuvo físicamente presente — de eso depende el estilo del acta (declaración
       // jurada vs. registro de eventos) y si hace falta capturarle la firma.
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS paciente_presencial BOOLEAN DEFAULT false`,
+      // Independiente de si estuvo presente: hay juntas donde la paciente comparece pero el acta
+      // la suscriben solo los profesionales. Con esto se le saca el renglón de firma sin dejar
+      // de ser una declaración jurada.
+      `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS firma_paciente BOOLEAN DEFAULT true`,
       `ALTER TABLE IF EXISTS firmas_acta ADD COLUMN IF NOT EXISTS es_paciente BOOLEAN DEFAULT false`,
       `ALTER TABLE IF EXISTS firmas_acta ADD COLUMN IF NOT EXISTS capturada_por VARCHAR(200)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
@@ -724,7 +728,7 @@ app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
              (SELECT COUNT(*) FROM turno_medicos m2
                 WHERE m2.turno_id = t.id
                   AND NOT EXISTS (SELECT 1 FROM firmas_acta f2 WHERE f2.turno_id = t.id AND f2.medico_nombre = m2.medico_nombre))
-             + CASE WHEN t.paciente_presencial
+             + CASE WHEN t.paciente_presencial AND t.firma_paciente
                      AND NOT EXISTS (SELECT 1 FROM firmas_acta f3 WHERE f3.turno_id = t.id AND f3.es_paciente)
                     THEN 1 ELSE 0 END AS faltan
       FROM turnos t
@@ -733,7 +737,7 @@ app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
         AND t.fecha >= $2
         AND (
           NOT EXISTS (SELECT 1 FROM firmas_acta fa WHERE fa.turno_id = t.id AND fa.medico_nombre = $1)
-          OR (t.paciente_presencial AND NOT EXISTS (SELECT 1 FROM firmas_acta f4 WHERE f4.turno_id = t.id AND f4.es_paciente))
+          OR (t.paciente_presencial AND t.firma_paciente AND NOT EXISTS (SELECT 1 FROM firmas_acta f4 WHERE f4.turno_id = t.id AND f4.es_paciente))
         )
       ORDER BY t.fecha DESC, t.hora DESC`, [nombre, FIRMA_ACTA_DESDE]);
     res.json({ ok: true, pendientes: r.rows });
@@ -769,6 +773,50 @@ app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== GESTIÓN DE FIRMAS DEL ACTA (solo admin) =====
+// Sirve para corregir un acta ya emitida: quitar una firma equivocada para que esa persona
+// vuelva a firmar, o sacarle a la paciente el renglón de firma cuando el acta la suscriben
+// únicamente los profesionales.
+app.get('/api/turnos/:id/firmas-acta', adminMiddleware, async (req, res) => {
+  try {
+    const t = await pool.query('SELECT paciente, paciente_presencial, firma_paciente FROM turnos WHERE id=$1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    const medicos = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [req.params.id])).rows.map(x => x.medico_nombre);
+    const firmas = (await pool.query(
+      'SELECT medico_nombre, especialidad, matricula, es_paciente, capturada_por, firmado_en FROM firmas_acta WHERE turno_id=$1 ORDER BY firmado_en ASC',
+      [req.params.id])).rows;
+    res.json({
+      ok: true,
+      paciente: t.rows[0].paciente,
+      paciente_presencial: t.rows[0].paciente_presencial,
+      firma_paciente: t.rows[0].firma_paciente !== false,
+      medicos,
+      firmas
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/turnos/:id/firmas-acta/:nombre', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2 RETURNING medico_nombre',
+      [req.params.id, req.params.nombre]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Esa firma no existe en el acta' });
+    res.json({ ok: true, nombre: r.rows[0].medico_nombre });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/turnos/:id/firma-paciente', adminMiddleware, async (req, res) => {
+  try {
+    const pide = !!req.body.firma_paciente;
+    const chk = await pool.query('SELECT paciente FROM turnos WHERE id=$1', [req.params.id]);
+    if (!chk.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    await pool.query('UPDATE turnos SET firma_paciente=$1 WHERE id=$2', [pide, req.params.id]);
+    // Si se deja de pedir la firma de la paciente, se retira la que hubiera quedado registrada
+    if (!pide) await pool.query('DELETE FROM firmas_acta WHERE turno_id=$1 AND es_paciente=true', [req.params.id]);
+    res.json({ ok: true, firma_paciente: pide });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== FIRMA PRESENCIAL EN CADENA =====
 // Cuando varios firmantes (médicos y/o la paciente) están físicamente presentes con un solo
 // dispositivo logueado, esto permite capturar sus firmas una por una, bien identificadas, sin
@@ -784,7 +832,7 @@ app.get('/api/turnos/:id/firmantes-pendientes', authMiddleware, async (req, res)
     if (!(await puedeGestionarFirmasDelTurno(req.params.id, req.usuario))) {
       return res.status(403).json({ error: 'No estás asignado a este turno' });
     }
-    const t = await pool.query('SELECT paciente, paciente_presencial FROM turnos WHERE id=$1', [req.params.id]);
+    const t = await pool.query('SELECT paciente, paciente_presencial, firma_paciente FROM turnos WHERE id=$1', [req.params.id]);
     if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
 
     const medicosTurno = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1', [req.params.id])).rows.map(x => x.medico_nombre);
@@ -797,7 +845,7 @@ app.get('/api/turnos/:id/firmantes-pendientes', authMiddleware, async (req, res)
     const propio = medicosTurno.find(n => n === req.usuario.nombre);
     if (propio && !yaFirmoMedico(propio)) pendientes.push({ nombre: propio, es_paciente: false });
     medicosTurno.filter(n => n !== req.usuario.nombre && !yaFirmoMedico(n)).forEach(n => pendientes.push({ nombre: n, es_paciente: false }));
-    if (t.rows[0].paciente_presencial && !yaFirmoPaciente) pendientes.push({ nombre: t.rows[0].paciente, es_paciente: true });
+    if (t.rows[0].paciente_presencial && t.rows[0].firma_paciente !== false && !yaFirmoPaciente) pendientes.push({ nombre: t.rows[0].paciente, es_paciente: true });
 
     res.json({ ok: true, pendientes });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -811,12 +859,13 @@ app.post('/api/turnos/:id/firmar-acta-presencial', authMiddleware, async (req, r
     const { nombre_firmante, es_paciente, firma_base64 } = req.body;
     if (!firma_base64) return res.status(400).json({ error: 'Falta la firma' });
 
-    const t = await pool.query('SELECT paciente, paciente_presencial FROM turnos WHERE id=$1', [req.params.id]);
+    const t = await pool.query('SELECT paciente, paciente_presencial, firma_paciente FROM turnos WHERE id=$1', [req.params.id]);
     if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
 
     let nombreFinal, matricula = '', especialidad = '';
     if (es_paciente) {
       if (!t.rows[0].paciente_presencial) return res.status(400).json({ error: 'Este turno no tiene a la paciente marcada como presencial' });
+      if (t.rows[0].firma_paciente === false) return res.status(400).json({ error: 'Esta acta la firman únicamente los profesionales' });
       nombreFinal = t.rows[0].paciente; // se usa el nombre real de la BD, no lo que mande el cliente
     } else {
       const asignado = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre_firmante]);
@@ -1596,7 +1645,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
         ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
       return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div><div class="firma-esp">${especialidad}</div><div class="firma-mat">${matricula?'MN/MP '+matricula:''}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
-    }).join('') + (t.paciente_presencial ? (() => {
+    }).join('') + (t.paciente_presencial && t.firma_paciente !== false ? (() => {
       const fp = firmasActa.find(x => x.es_paciente);
       const firmaImg = fp
         ? `<img src="data:image/png;base64,${fp.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
@@ -1618,12 +1667,18 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     const comparecencia = t.modalidad === 'presencial'
       ? 'quien compareció físicamente ante los profesionales intervinientes'
       : 'quien compareció físicamente en el lugar de la evaluación, habiendo participado los profesionales intervinientes en forma presencial y/o remota mediante videoconferencia por la plataforma MEDGRUP';
+    // Si el acta la suscriben solo los profesionales, el texto no puede seguir diciendo que
+    // la firma de la evaluada consta al pie: sería afirmar algo que el documento no muestra.
+    const firmaDeLaPaciente = esDeclaracionJurada && t.firma_paciente !== false;
+    const cierreIntro = firmaDeLaPaciente
+      ? 'cuya identidad y firma constan al pie del presente documento.'
+      : 'quedando la presente suscripta por los profesionales actuantes, cuya identidad y firma constan al pie del presente documento.';
     const introParrafo = esDeclaracionJurada
-      ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>, ${comparecencia}, cuya identidad y firma constan al pie del presente documento.`
+      ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>, ${comparecencia}, ${cierreIntro}`
       : `Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.`;
     const seccionEventosHtml = esDeclaracionJurada ? '' : `<h2>Registro cronológico de asistencia</h2><div class="eventos-box">${eventosHtml}</div>`;
     const verifTexto = esDeclaracionJurada
-      ? 'Este documento certifica la asistencia en carácter de declaración jurada, suscripta mediante firma digital por los profesionales intervinientes y por la persona evaluada.'
+      ? `Este documento certifica la asistencia en carácter de declaración jurada, suscripta mediante firma digital por los profesionales intervinientes${firmaDeLaPaciente?' y por la persona evaluada':''}.`
       : 'Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.';
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${t.paciente}</title>

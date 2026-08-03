@@ -266,6 +266,9 @@ tr:hover td{background:var(--azul-light);}
 .form-section-hint{font-size:11.5px;color:var(--text3);margin:5px 0 10px;line-height:1.5;}
 .form-section .form-grid,.form-section .medicos-check-list{margin-top:0;}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+/* Confirmación y prompt se abren DESDE otros modales: si comparten z-index, el que va
+   después en el HTML los tapa y quedan visibles pero sin poder clickearse. */
+#modal-confirm,#modal-prompt{z-index:900;}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:fadeUp 0.2s ease both;}
 .modal-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.3px;}
@@ -1284,6 +1287,17 @@ td.no-label::before{display:none;}
     </div>
 
     <div id="acta-eventos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
+
+    <!-- Firmas del acta: quitar una firma para que esa persona vuelva a firmar -->
+    <div style="border-top:1px solid var(--border);padding-top:1rem;margin-bottom:1rem;">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">Firmas del acta</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:10px;">Si quitás una firma, esa persona vuelve a aparecer como pendiente y puede firmar de nuevo.</div>
+      <div id="acta-firmas-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <label id="acta-firma-paciente-wrap" style="display:none;align-items:flex-start;gap:9px;cursor:pointer;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;">
+        <input type="checkbox" id="acta-firma-paciente" style="width:auto;margin:2px 0 0 0;" onchange="cambiarFirmaPaciente()"/>
+        <span style="font-size:12.5px;line-height:1.5;">El/la paciente firma el acta<br/><span style="color:var(--text3);font-size:11.5px;">Si lo destildás, el acta la suscriben solo los profesionales: se le saca el renglón de firma y el texto deja de mencionarla como firmante.</span></span>
+      </label>
+    </div>
 
     <div id="acta-error" style="display:none;margin-bottom:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
 
@@ -3863,7 +3877,78 @@ async function abrirModalEditarActa(turnoId){
 
   document.getElementById('btn-ver-acta-updated').href = `/api/turnos/${turnoId}/acta`;
   await recargarEventosActa();
+  await recargarFirmasActa();
   document.getElementById('modal-editar-acta').classList.add('open');
+}
+
+// ===== Firmas del acta (admin) =====
+async function recargarFirmasActa(){
+  if(!actaTurnoId) return;
+  const lista = document.getElementById('acta-firmas-lista');
+  const wrapPac = document.getElementById('acta-firma-paciente-wrap');
+  try{
+    const r = await fetch('/api/turnos/'+actaTurnoId+'/firmas-acta', {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok){ lista.innerHTML = `<div style="font-size:12.5px;color:var(--rosa-dark);">${data.error||'No se pudieron cargar las firmas'}</div>`; return; }
+
+    // La opción de la firma de la paciente solo aplica si estuvo presente
+    wrapPac.style.display = data.paciente_presencial ? 'flex' : 'none';
+    document.getElementById('acta-firma-paciente').checked = data.firma_paciente;
+
+    // Se listan todos los que deben firmar, hayan firmado o no
+    const filas = [
+      ...data.medicos.map(n => ({ nombre:n, rol:'Médico interviniente' })),
+      ...(data.paciente_presencial && data.firma_paciente ? [{ nombre:data.paciente, rol:'Paciente evaluado/a' }] : [])
+    ];
+    lista.innerHTML = filas.map(f => {
+      const firma = data.firmas.find(x => x.medico_nombre === f.nombre);
+      const cuando = firma?.firmado_en
+        ? new Date(firma.firmado_en).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})
+        : null;
+      const detalle = firma
+        ? `<div style="font-size:11.5px;color:var(--verde);margin-top:2px;">✓ Firmó el ${cuando}${firma.capturada_por && firma.capturada_por !== f.nombre ? ' · tomada por '+firma.capturada_por : ''}</div>`
+        : `<div style="font-size:11.5px;color:#c8a800;margin-top:2px;">Firma pendiente</div>`;
+      const boton = firma
+        ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);flex-shrink:0;" onclick="quitarFirmaActa(${JSON.stringify(f.nombre).replace(/"/g,'&quot;')})">Quitar firma</button>`
+        : '';
+      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${f.nombre}</div><div style="font-size:11px;color:var(--text3);">${f.rol}</div>${detalle}</div>
+        ${boton}
+      </div>`;
+    }).join('') || '<div style="font-size:12.5px;color:var(--text3);">Este turno no tiene médicos asignados.</div>';
+  }catch(e){
+    lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa-dark);">Error de conexión al cargar las firmas</div>';
+  }
+}
+
+async function quitarFirmaActa(nombre){
+  if(!(await confirmar(`Se va a quitar la firma de ${nombre} del acta. Va a quedar como pendiente y puede volver a firmar.`, { titulo:'Quitar firma', textoConfirmar:'Quitar', danger:true }))) return;
+  try{
+    const r = await fetch('/api/turnos/'+actaTurnoId+'/firmas-acta/'+encodeURIComponent(nombre), { method:'DELETE', headers:apiHeaders() });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo quitar la firma'); return; }
+    mostrarToast('Firma de '+nombre+' quitada','#2a5080');
+    addLog('amber','Firma quitada del acta', nombre);
+    await recargarFirmasActa();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+async function cambiarFirmaPaciente(){
+  const check = document.getElementById('acta-firma-paciente');
+  const pide = check.checked;
+  if(!pide && !(await confirmar('El acta va a pasar a estar firmada solo por los profesionales. Si la paciente ya había firmado, esa firma se elimina.', { titulo:'Sacar la firma de la paciente', textoConfirmar:'Confirmar', danger:true }))){
+    check.checked = true; return;
+  }
+  try{
+    const r = await fetch('/api/turnos/'+actaTurnoId+'/firma-paciente', {
+      method:'PATCH', headers:apiHeaders(), body: JSON.stringify({ firma_paciente: pide })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo actualizar'); check.checked = !pide; return; }
+    mostrarToast(pide ? 'El acta vuelve a pedir la firma de la paciente' : 'El acta la firman solo los profesionales','#2a5080');
+    await recargarFirmasActa();
+    cargarTurnos();
+  }catch(e){ mostrarError('Error de conexión'); check.checked = !pide; }
 }
 
 function cerrarModalEditarActa(){
