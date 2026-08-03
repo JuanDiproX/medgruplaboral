@@ -1035,12 +1035,50 @@ app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
 // Editar médico (nombre, matrícula, especialidad)
 app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
   const { nombre, matricula, especialidad, telefono } = req.body;
+  const client = await pool.connect();
   try {
-    await pool.query(`UPDATE medicos SET
+    const actual = await client.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
+    if (!actual.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
+    const nombreViejo = actual.rows[0].nombre;
+    const nombreNuevo = (nombre || '').trim();
+    const renombra = !!nombreNuevo && nombreNuevo !== nombreViejo;
+
+    // El nombre del médico se usa como clave en el login, en la asignación a turnos, en los
+    // links de videollamada y en todas sus firmas. Si se cambia, hay que arrastrarlo a todos
+    // lados en la misma transacción o el médico pierde sus turnos y sus firmas quedan sueltas.
+    await client.query('BEGIN');
+    await client.query(`UPDATE medicos SET
       nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad), telefono=COALESCE($4,telefono)
-      WHERE id=$5`, [nombre||null, matricula||null, especialidad||null, telefono!==undefined?telefono:null, req.params.id]);
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+      WHERE id=$5`, [nombreNuevo || null, matricula||null, especialidad||null, telefono!==undefined?telefono:null, req.params.id]);
+
+    if (renombra) {
+      await client.query('UPDATE usuarios       SET nombre=$1        WHERE nombre=$2', [nombreNuevo, nombreViejo]);
+      await client.query('UPDATE turno_medicos  SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+      await client.query('UPDATE firmas_acta    SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+      await client.query('UPDATE firmas_acta    SET capturada_por=$1 WHERE capturada_por=$2', [nombreNuevo, nombreViejo]);
+      await client.query('UPDATE firmas_dictamen SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+      await client.query('UPDATE dictamenes     SET medico=$1        WHERE medico=$2', [nombreNuevo, nombreViejo]);
+      // links_medicos es un JSONB [{nombre, link}]: se reescribe en JS para no depender de
+      // funciones de JSON del motor, y solo se guardan los turnos que realmente lo tenían.
+      const conLinks = await client.query('SELECT id, links_medicos FROM turnos WHERE links_medicos IS NOT NULL');
+      for (const fila of conLinks.rows) {
+        const links = Array.isArray(fila.links_medicos) ? fila.links_medicos
+          : (typeof fila.links_medicos === 'string' ? JSON.parse(fila.links_medicos || '[]') : []);
+        if (!links.some(l => l && l.nombre === nombreViejo)) continue;
+        const actualizados = links.map(l => l && l.nombre === nombreViejo ? { ...l, nombre: nombreNuevo } : l);
+        await client.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(actualizados), fila.id]);
+      }
+      // Las sesiones abiertas guardan el nombre viejo: se actualizan para no dejarlo sin turnos
+      for (const tok of Object.keys(sessions)) {
+        if (sessions[tok].nombre === nombreViejo) sessions[tok].nombre = nombreNuevo;
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, renombrado: renombra });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(()=>{});
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
 });
 
 // Dar de alta o restablecer el acceso a la app de un médico ya cargado (login para firmar juntas)
@@ -1533,10 +1571,12 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     }
     for (const f of firmasJunta) {
       if (!firmantesRender.some(x => x.nombre === f.medico_nombre)) {
+        // Si firmó antes de que le cargaran matrícula o especialidad, la copia guardada al
+        // firmar viene vacía: en ese caso se completa con lo que hoy tiene en su perfil.
         firmantesRender.push({
           nombre: f.medico_nombre,
-          especialidad: f.especialidad || 'Medicina Laboral',
-          matricula: f.matricula || '',
+          especialidad: f.especialidad || perfilPie(f.medico_nombre).especialidad || 'Medicina Laboral',
+          matricula: f.matricula || perfilPie(f.medico_nombre).matricula || '',
           img: f.firma_base64 || null
         });
       } else {
@@ -1564,13 +1604,9 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     }).join('');
 
     // Trazabilidad de firmas de junta para el pie del documento
-    const trazaFirmasHtml = firmasJunta.length
-      ? `<div style="margin-top:6px;font-family:'DM Mono',monospace;font-size:8px;color:#9a9790;text-align:right;">` +
-        firmasJunta.map(f => {
-          const fh = new Date(f.firmado_en).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
-          return `Firmado electrónicamente por ${f.medico_nombre} el ${fh} hs · hash ${String(f.hash_contenido).substring(0,12)}`;
-        }).join('<br/>') + `</div>`
-      : '';
+    // El detalle de fecha, hora y hash de cada firma queda registrado en la base, pero no se
+    // imprime en el documento: al pie alcanza con el código de verificación.
+    const trazaFirmasHtml = '';
     const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
