@@ -889,7 +889,7 @@ app.post('/api/turnos/:id/firmas-acta/importar', adminMiddleware, async (req, re
     await pool.query(
       `INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64,es_paciente,capturada_por)
        VALUES ($1,$2,$3,$4,$5,false,$6)`,
-      [req.params.id, nombre, perfil.rows[0]?.matricula || '', perfil.rows[0]?.especialidad || 'Medicina Laboral', firma, req.usuario.nombre]);
+      [req.params.id, nombre, perfil.rows[0]?.matricula || '', perfil.rows[0]?.especialidad || '', firma, req.usuario.nombre]);
     res.json({ ok: true, nombre, origen });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -971,7 +971,7 @@ app.post('/api/turnos/:id/firmar-acta-presencial', authMiddleware, async (req, r
       nombreFinal = nombre_firmante;
       const perfil = await pool.query('SELECT matricula, especialidad FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombreFinal]);
       matricula = perfil.rows[0]?.matricula || '';
-      especialidad = perfil.rows[0]?.especialidad || 'Medicina Laboral';
+      especialidad = perfil.rows[0]?.especialidad || '';
     }
 
     const yaFirmo = await pool.query('SELECT 1 FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombreFinal]);
@@ -1009,7 +1009,7 @@ app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
     const perfil = await pool.query(
       'SELECT matricula, especialidad FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombre]);
     const matricula = perfil.rows[0]?.matricula || '';
-    const especialidad = perfil.rows[0]?.especialidad || 'Medicina Laboral';
+    const especialidad = perfil.rows[0]?.especialidad || '';
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '';
 
@@ -1661,12 +1661,13 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     }
     for (const f of firmasJunta) {
       if (!firmantesRender.some(x => x.nombre === f.medico_nombre)) {
-        // Si firmó antes de que le cargaran matrícula o especialidad, la copia guardada al
-        // firmar viene vacía: en ese caso se completa con lo que hoy tiene en su perfil.
+        // Estos datos no los escribe el médico: son una copia automática de su perfil tomada
+        // al firmar. Si en ese momento el perfil no se encontraba, quedó guardado el valor por
+        // defecto "Medicina Laboral", así que manda lo que hoy figura en el perfil.
         firmantesRender.push({
           nombre: f.medico_nombre,
-          especialidad: f.especialidad || perfilPie(f.medico_nombre).especialidad || 'Medicina Laboral',
-          matricula: f.matricula || perfilPie(f.medico_nombre).matricula || '',
+          especialidad: perfilPie(f.medico_nombre).especialidad || f.especialidad || 'Medicina Laboral',
+          matricula: perfilPie(f.medico_nombre).matricula || f.matricula || '',
           img: f.firma_base64 || null
         });
       } else {
@@ -1862,9 +1863,10 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     const firmasActaHtml = medicosTurno.map(nombreMedico => {
       const f = firmasActa.find(x => !x.es_paciente && x.medico_nombre === nombreMedico);
       const perfil = perfilDeMedico(nombreMedico);
-      // Si ya firmó se respetan los datos con los que firmó; si no, los de su perfil actual.
-      const especialidad = (f && f.especialidad) || perfil.especialidad || 'Medicina Laboral';
-      const matricula = (f && f.matricula) || perfil.matricula || '';
+      // Matrícula y especialidad se copian solas del perfil al firmar: si en ese momento el
+      // perfil no se encontraba quedó el valor por defecto, así que manda el perfil actual.
+      const especialidad = perfil.especialidad || (f && f.especialidad) || 'Medicina Laboral';
+      const matricula = perfil.matricula || (f && f.matricula) || '';
       const firmaImg = f
         ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
