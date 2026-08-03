@@ -1064,6 +1064,7 @@ td.no-label::before{display:none;}
       <div class="form-group"><label class="form-lbl">Email de acceso</label><input type="text" id="edit-med-email" placeholder="medico@medgrup.com"/></div>
       <div class="form-group"><label class="form-lbl">Contraseña nueva</label><input type="text" id="edit-med-password" placeholder="Dejar vacío para no cambiar"/></div>
     </div>
+    <div id="edit-med-alternativos" style="display:none;margin-top:12px;background:#fdf6e3;border:1px solid #e8d59a;border-radius:var(--r);padding:12px 14px;font-size:12.5px;color:#8a6d1f;line-height:1.55;"></div>
     <div id="edit-medico-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalEditarMedico()">Cancelar</button>
@@ -2055,7 +2056,46 @@ function editarMedicoModal(id){
   document.getElementById('edit-med-email').value = '';
   document.getElementById('edit-med-password').value = '';
   document.getElementById('edit-medico-err').style.display='none';
+  document.getElementById('edit-med-alternativos').style.display='none';
   document.getElementById('modal-editar-medico').classList.add('open');
+  chequearNombresAlternativos(id);
+}
+
+// Si al médico lo renombraron antes de que el cambio se arrastrara, sus turnos y firmas
+// quedaron guardados con el nombre viejo: el sistema no lo reconoce y hasta puede impedirle
+// firmar. Se le avisa al admin y se le ofrece unificarlo.
+async function chequearNombresAlternativos(id){
+  const caja = document.getElementById('edit-med-alternativos');
+  try{
+    const r = await fetch('/api/medicos/'+id+'/nombres-alternativos', {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok || !data.alternativos.length){ caja.style.display='none'; return; }
+    caja.innerHTML = data.alternativos.map(alt => `
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <strong>Hay documentos a nombre de "${alt}"</strong><br/>
+          Sus turnos, firmas y su acceso quedaron guardados con ese nombre, distinto al del perfil
+          ("${data.nombre}"). Por eso puede no verse su matrícula en los documentos y hasta fallarle la firma.
+        </div>
+        <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;flex-shrink:0;" onclick="unificarNombreMedico(${id}, ${JSON.stringify(alt).replace(/"/g,'&quot;')})">Unificar con "${data.nombre}"</button>
+      </div>`).join('<div style="height:10px;"></div>');
+    caja.style.display='block';
+  }catch(e){ caja.style.display='none'; }
+}
+
+async function unificarNombreMedico(id, nombreAnterior){
+  if(!(await confirmar(`Se van a pasar al nombre del perfil todos los turnos, firmas y el acceso que hoy figuran como "${nombreAnterior}". No se borra nada.`, { titulo:'Unificar nombre', textoConfirmar:'Unificar', danger:false }))) return;
+  try{
+    const r = await fetch('/api/medicos/'+id+'/unificar-nombre', {
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ nombre_anterior: nombreAnterior })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo unificar'); return; }
+    mostrarToast('Nombre unificado en todos los documentos','#1e6640');
+    addLog('green','Nombre de médico unificado', `${data.de} → ${data.a}`);
+    await chequearNombresAlternativos(id);
+    cargarTurnos();
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 function cerrarModalEditarMedico(){ document.getElementById('modal-editar-medico').classList.remove('open'); }
 

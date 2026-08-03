@@ -1033,6 +1033,93 @@ app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Editar médico (nombre, matrícula, especialidad)
+// El nombre del médico funciona como clave: identifica su login, su asignación a turnos, su
+// link de videollamada y cada una de sus firmas. Cambiarlo en un solo lado lo deja sin turnos
+// y con las firmas huérfanas, así que siempre se arrastra a todas las tablas de una vez.
+async function migrarNombreMedico(client, nombreViejo, nombreNuevo) {
+  await client.query('UPDATE usuarios        SET nombre=$1        WHERE nombre=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE turno_medicos   SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE firmas_acta     SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE firmas_acta     SET capturada_por=$1 WHERE capturada_por=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE firmas_dictamen SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE dictamenes      SET medico=$1        WHERE medico=$2', [nombreNuevo, nombreViejo]);
+  await client.query('UPDATE turnos          SET medico_tratante=$1 WHERE medico_tratante=$2', [nombreNuevo, nombreViejo]);
+
+  // links_medicos es un JSONB [{nombre, link}]: se reescribe en JS para no depender de
+  // funciones de JSON del motor, y solo se guardan los turnos que realmente lo tenían.
+  const conLinks = await client.query('SELECT id, links_medicos FROM turnos WHERE links_medicos IS NOT NULL');
+  for (const fila of conLinks.rows) {
+    const links = Array.isArray(fila.links_medicos) ? fila.links_medicos
+      : (typeof fila.links_medicos === 'string' ? JSON.parse(fila.links_medicos || '[]') : []);
+    if (!links.some(l => l && l.nombre === nombreViejo)) continue;
+    const actualizados = links.map(l => l && l.nombre === nombreViejo ? { ...l, nombre: nombreNuevo } : l);
+    await client.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(actualizados), fila.id]);
+  }
+  // Las sesiones abiertas guardan el nombre viejo: se actualizan para no dejarlo sin turnos
+  for (const tok of Object.keys(sessions)) {
+    if (sessions[tok].nombre === nombreViejo) sessions[tok].nombre = nombreNuevo;
+  }
+}
+
+// Compara nombres ignorando título, acentos, puntuación y mayúsculas, para detectar que
+// "Scarello Luciano" y "Dr. Scarello Luciano" son la misma persona.
+function claveNombre(n) {
+  return String(n || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\b(dr|dra|lic|prof|med)\b\.?/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Nombres con los que quedaron guardados turnos, firmas o el login de este médico y que ya no
+// coinciden con el de su perfil. Pasa cuando lo renombraron antes de que el cambio se arrastrara.
+app.get('/api/medicos/:id/nombres-alternativos', adminMiddleware, async (req, res) => {
+  try {
+    const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
+    if (!m.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
+    const actual = m.rows[0].nombre;
+    const clave = claveNombre(actual);
+
+    const usados = (await pool.query(`
+      SELECT medico_nombre AS n FROM turno_medicos
+      UNION SELECT medico_nombre FROM firmas_acta
+      UNION SELECT medico_nombre FROM firmas_dictamen
+      UNION SELECT medico FROM dictamenes
+      UNION SELECT nombre FROM usuarios`)).rows.map(r => r.n).filter(Boolean);
+
+    // Solo los que son la misma persona escrita distinto, y que no pertenezcan a otro médico
+    const otrosMedicos = (await pool.query('SELECT nombre FROM medicos WHERE id!=$1', [req.params.id])).rows.map(r => r.nombre);
+    const alternativos = [...new Set(usados)].filter(n =>
+      n !== actual && claveNombre(n) === clave && !otrosMedicos.includes(n));
+
+    res.json({ ok: true, nombre: actual, alternativos });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Unifica los registros históricos que quedaron con el nombre viejo
+app.post('/api/medicos/:id/unificar-nombre', adminMiddleware, async (req, res) => {
+  const { nombre_anterior } = req.body;
+  if (!nombre_anterior) return res.status(400).json({ error: 'Falta el nombre anterior' });
+  const client = await pool.connect();
+  try {
+    const m = await client.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
+    if (!m.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
+    const actual = m.rows[0].nombre;
+    if (nombre_anterior === actual) return res.status(400).json({ error: 'Ese ya es el nombre del médico' });
+    if (claveNombre(nombre_anterior) !== claveNombre(actual)) {
+      return res.status(400).json({ error: 'Ese nombre corresponde a otra persona: solo se unifican variantes del mismo nombre' });
+    }
+    await client.query('BEGIN');
+    await migrarNombreMedico(client, nombre_anterior, actual);
+    await client.query('COMMIT');
+    res.json({ ok: true, de: nombre_anterior, a: actual });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(()=>{});
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
+});
+
 app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
   const { nombre, matricula, especialidad, telefono } = req.body;
   const client = await pool.connect();
@@ -1051,28 +1138,7 @@ app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
       nombre=COALESCE($1,nombre), matricula=COALESCE($2,matricula), especialidad=COALESCE($3,especialidad), telefono=COALESCE($4,telefono)
       WHERE id=$5`, [nombreNuevo || null, matricula||null, especialidad||null, telefono!==undefined?telefono:null, req.params.id]);
 
-    if (renombra) {
-      await client.query('UPDATE usuarios       SET nombre=$1        WHERE nombre=$2', [nombreNuevo, nombreViejo]);
-      await client.query('UPDATE turno_medicos  SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
-      await client.query('UPDATE firmas_acta    SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
-      await client.query('UPDATE firmas_acta    SET capturada_por=$1 WHERE capturada_por=$2', [nombreNuevo, nombreViejo]);
-      await client.query('UPDATE firmas_dictamen SET medico_nombre=$1 WHERE medico_nombre=$2', [nombreNuevo, nombreViejo]);
-      await client.query('UPDATE dictamenes     SET medico=$1        WHERE medico=$2', [nombreNuevo, nombreViejo]);
-      // links_medicos es un JSONB [{nombre, link}]: se reescribe en JS para no depender de
-      // funciones de JSON del motor, y solo se guardan los turnos que realmente lo tenían.
-      const conLinks = await client.query('SELECT id, links_medicos FROM turnos WHERE links_medicos IS NOT NULL');
-      for (const fila of conLinks.rows) {
-        const links = Array.isArray(fila.links_medicos) ? fila.links_medicos
-          : (typeof fila.links_medicos === 'string' ? JSON.parse(fila.links_medicos || '[]') : []);
-        if (!links.some(l => l && l.nombre === nombreViejo)) continue;
-        const actualizados = links.map(l => l && l.nombre === nombreViejo ? { ...l, nombre: nombreNuevo } : l);
-        await client.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(actualizados), fila.id]);
-      }
-      // Las sesiones abiertas guardan el nombre viejo: se actualizan para no dejarlo sin turnos
-      for (const tok of Object.keys(sessions)) {
-        if (sessions[tok].nombre === nombreViejo) sessions[tok].nombre = nombreNuevo;
-      }
-    }
+    if (renombra) await migrarNombreMedico(client, nombreViejo, nombreNuevo);
     await client.query('COMMIT');
     res.json({ ok: true, renombrado: renombra });
   } catch (err) {
