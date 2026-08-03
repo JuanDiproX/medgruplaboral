@@ -690,7 +690,9 @@ app.get('/api/firmas/pendientes', authMiddleware, async (req, res) => {
       JOIN turnos t ON d.turno_id = t.id
       JOIN turno_medicos tm ON tm.turno_id = t.id
       WHERE tm.medico_nombre = $1
-        AND d.medico != $1
+        -- El autor normalmente firma al generar el informe, así que no se le vuelve a pedir.
+        -- La excepción es que le hayan quitado la firma para rehacerla: ahí reaparece acá.
+        AND (d.medico != $1 OR d.firma_doctor IS NULL)
         AND NOT EXISTS (SELECT 1 FROM firmas_dictamen f WHERE f.dictamen_id = d.id AND f.medico_nombre = $1)
       ORDER BY d.creado_en DESC`, [nombre]);
     res.json({ ok: true, pendientes: r.rows });
@@ -770,6 +772,61 @@ app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
       await pool.query('UPDATE medicos SET firma_guardada=$1 WHERE nombre=$2', [dibujada, nombre]);
     }
     res.json({ ok: true, firma_guardada_ahora: !!(dibujada && !firma_guardada) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== GESTIÓN DE FIRMAS DEL INFORME (solo admin) =====
+// Si un médico firmó mal, hay que poder retirarle la firma sin tocar el informe. El contenido
+// vive en la tabla dictamenes y el PDF se arma en el momento, así que quitar una firma solo
+// deja ese renglón en blanco hasta que la persona vuelva a firmar.
+app.get('/api/dictamenes/:id/firmas', adminMiddleware, async (req, res) => {
+  try {
+    const dRes = await pool.query('SELECT id, numero, medico, turno_id, firma_doctor FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!dRes.rows.length) return res.status(404).json({ error: 'Dictamen no encontrado' });
+    const d = dRes.rows[0];
+    const juntas = (await pool.query(
+      'SELECT medico_nombre, especialidad, matricula, firmado_en FROM firmas_dictamen WHERE dictamen_id=$1 ORDER BY firmado_en ASC',
+      [req.params.id])).rows;
+    const medicosTurno = d.turno_id
+      ? (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [d.turno_id])).rows.map(x => x.medico_nombre)
+      : [];
+
+    const nombres = [...new Set([d.medico, ...medicosTurno, ...juntas.map(j => j.medico_nombre)])].filter(Boolean);
+    const firmantes = nombres.map(n => {
+      const junta = juntas.find(j => j.medico_nombre === n);
+      const esAutor = n === d.medico;
+      return {
+        nombre: n,
+        es_autor: esAutor,
+        // El autor puede tener la firma en el propio dictamen o, si la rehízo, como firma de junta
+        firmo: !!(junta || (esAutor && d.firma_doctor)),
+        origen: junta ? 'junta' : (esAutor && d.firma_doctor ? 'autor' : null),
+        firmado_en: junta ? junta.firmado_en : null,
+        especialidad: junta?.especialidad || '',
+        matricula: junta?.matricula || ''
+      };
+    });
+    res.json({ ok: true, numero: d.numero, autor: d.medico, firmantes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/dictamenes/:id/firmas/:nombre', adminMiddleware, async (req, res) => {
+  try {
+    const dRes = await pool.query('SELECT medico FROM dictamenes WHERE id=$1', [req.params.id]);
+    if (!dRes.rows.length) return res.status(404).json({ error: 'Dictamen no encontrado' });
+    const nombre = req.params.nombre;
+
+    // Una misma persona puede tener la firma en los dos lugares: se limpian ambos
+    const borradasJunta = await pool.query('DELETE FROM firmas_dictamen WHERE dictamen_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    let borradaAutor = 0;
+    if (nombre === dRes.rows[0].medico) {
+      const r = await pool.query('UPDATE dictamenes SET firma_doctor=NULL WHERE id=$1 AND firma_doctor IS NOT NULL', [req.params.id]);
+      borradaAutor = r.rowCount;
+    }
+    if (!borradasJunta.rowCount && !borradaAutor) {
+      return res.status(404).json({ error: 'Esa persona no tiene firma en este informe' });
+    }
+    res.json({ ok: true, nombre });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

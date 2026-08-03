@@ -1379,6 +1379,13 @@ td.no-label::before{display:none;}
 
     <div id="ed-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
 
+    <!-- Firmas del informe: quitar una para que ese médico vuelva a firmar -->
+    <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem;margin-bottom:1rem;">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">Firmas del informe</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:10px;">Quitar una firma no borra el informe: el contenido queda intacto y ese renglón vuelve a estar en blanco hasta que la persona firme de nuevo.</div>
+      <div id="ed-firmas-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalEditarDictamen()">Cancelar</button>
       <button class="btn btn-primary" id="btn-ed-guardar" onclick="guardarEdicionDictamen()">
@@ -4044,6 +4051,44 @@ async function eliminarEventoActa(eventoId){
   }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
+// ===== Firmas del informe (admin) =====
+async function recargarFirmasDictamen(){
+  const lista = document.getElementById('ed-firmas-lista');
+  if(!lista || !dictamenEditandoId) return;
+  try{
+    const r = await fetch('/api/dictamenes/'+dictamenEditandoId+'/firmas', {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok){ lista.innerHTML = `<div style="font-size:12.5px;color:var(--rosa-dark);">${data.error||'No se pudieron cargar las firmas'}</div>`; return; }
+    lista.innerHTML = data.firmantes.map(f => {
+      const cuando = f.firmado_en
+        ? new Date(f.firmado_en).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})
+        : null;
+      const detalle = f.firmo
+        ? `<div style="font-size:11.5px;color:var(--verde);margin-top:2px;">✓ Firmado${cuando?' el '+cuando:''}</div>`
+        : `<div style="font-size:11.5px;color:#c8a800;margin-top:2px;">Firma pendiente</div>`;
+      const boton = f.firmo
+        ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);flex-shrink:0;" onclick="quitarFirmaDictamen(${JSON.stringify(f.nombre).replace(/"/g,'&quot;')})">Quitar firma</button>`
+        : '';
+      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${f.nombre}</div><div style="font-size:11px;color:var(--text3);">${f.es_autor?'Autor del informe':'Médico interviniente'}</div>${detalle}</div>
+        ${boton}
+      </div>`;
+    }).join('');
+  }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa-dark);">Error de conexión al cargar las firmas</div>'; }
+}
+
+async function quitarFirmaDictamen(nombre){
+  if(!(await confirmar(`Se va a quitar la firma de ${nombre} del informe. El contenido del informe no se toca: queda igual, solo con ese renglón de firma en blanco hasta que vuelva a firmar.`, { titulo:'Quitar firma del informe', textoConfirmar:'Quitar', danger:true }))) return;
+  try{
+    const r = await fetch('/api/dictamenes/'+dictamenEditandoId+'/firmas/'+encodeURIComponent(nombre), { method:'DELETE', headers:apiHeaders() });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo quitar la firma'); return; }
+    mostrarToast('Firma de '+nombre+' quitada — ya puede volver a firmar','#2a5080');
+    addLog('amber','Firma quitada del informe', nombre);
+    await recargarFirmasDictamen();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
 async function abrirModalEditarDictamen(dictamenId){
   dictamenEditandoId = dictamenId;
   document.getElementById('ed-error').style.display='none';
@@ -4062,6 +4107,7 @@ async function abrirModalEditarDictamen(dictamenId){
   }
 
   document.getElementById('ed-numero-badge').textContent = d.numero || '—';
+  recargarFirmasDictamen();
 
   const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
   set('ed-apellido-nombre', d.apellido_nombre || d.paciente);
