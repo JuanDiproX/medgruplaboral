@@ -765,6 +765,7 @@ td.no-label::before{display:none;}
   </div>
 
   <div id="sec-medicos" style="display:none;">
+    <div id="medicos-desincronizados" style="display:none;margin-bottom:1rem;background:#fdf6e3;border:1px solid #e8d59a;border-radius:var(--r);padding:14px 16px;font-size:13px;color:#8a6d1f;line-height:1.55;"></div>
     <div class="two-col">
       <div><div class="card"><div class="card-hdr"><div class="card-title">Médicos activos</div></div><div id="medicos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div></div></div>
       <div>
@@ -1999,7 +2000,30 @@ function avatarChip(nombre){
   let h=0; for(const c of (nombre||'')) h=(h*31+c.charCodeAt(0))>>>0;
   return `<div class="row-avatar" style="background:${grads[h%grads.length]};">${iniciales(nombre)}</div>`;
 }
+// Aviso arriba de la lista: médicos cuyos turnos y firmas quedaron con un nombre distinto al
+// de su perfil. Se muestra acá y no solo dentro de "Editar" para que se vea sin buscarlo.
+async function chequearMedicosDesincronizados(){
+  const caja = document.getElementById('medicos-desincronizados');
+  if(!caja || usuarioActual?.rol !== 'admin') return;
+  try{
+    const r = await fetch('/api/medicos-nombres-desincronizados', {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok || !data.desincronizados.length){ caja.style.display='none'; return; }
+    caja.innerHTML = data.desincronizados.map(m => `
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <strong>⚠ ${m.nombre} figura con otro nombre en sus documentos</strong><br/>
+          Sus turnos, firmas y acceso quedaron guardados como ${m.alternativos.map(a=>`"${a}"`).join(', ')}.
+          Por eso en el informe y el acta no se ve su matrícula, y puede fallarle la firma.
+        </div>
+        <button class="btn btn-primary" style="padding:7px 13px;font-size:12.5px;flex-shrink:0;" onclick="unificarNombreMedico(${m.id}, ${JSON.stringify(m.alternativos[0]).replace(/"/g,'&quot;')})">Unificar ahora</button>
+      </div>`).join('<div style="height:12px;"></div>');
+    caja.style.display='block';
+  }catch(e){ caja.style.display='none'; }
+}
+
 function renderMedicos(){
+  chequearMedicosDesincronizados();
   if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
   document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
     medicosData.map(m=>`<tr><td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(m.nombre)}<div><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado'}</div></div></div></td><td data-label="Especialidad"><span style="color:var(--azul-dark);font-weight:600;font-size:12.5px;line-height:1.4;">${m.especialidad}</span></td><td data-label="Estado"><span class="badge b-green">● Activo</span></td><td class="no-label" style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
@@ -2093,7 +2117,9 @@ async function unificarNombreMedico(id, nombreAnterior){
     if(!data.ok){ mostrarError(data.error || 'No se pudo unificar'); return; }
     mostrarToast('Nombre unificado en todos los documentos','#1e6640');
     addLog('green','Nombre de médico unificado', `${data.de} → ${data.a}`);
-    await chequearNombresAlternativos(id);
+    // Se puede haber disparado desde el modal de edición o desde el aviso de la lista
+    if(document.getElementById('modal-editar-medico').classList.contains('open')) await chequearNombresAlternativos(id);
+    await chequearMedicosDesincronizados();
     cargarTurnos();
   }catch(e){ mostrarError('Error de conexión'); }
 }

@@ -1074,6 +1074,30 @@ function claveNombre(n) {
 
 // Nombres con los que quedaron guardados turnos, firmas o el login de este médico y que ya no
 // coinciden con el de su perfil. Pasa cuando lo renombraron antes de que el cambio se arrastrara.
+// Lo mismo pero para todo el equipo, así el aviso se ve en la lista de médicos sin tener
+// que entrar a editar uno por uno.
+app.get('/api/medicos-nombres-desincronizados', adminMiddleware, async (req, res) => {
+  try {
+    const medicos = (await pool.query('SELECT id, nombre FROM medicos WHERE activo=true')).rows;
+    const usados = (await pool.query(`
+      SELECT medico_nombre AS n FROM turno_medicos
+      UNION SELECT medico_nombre FROM firmas_acta
+      UNION SELECT medico_nombre FROM firmas_dictamen
+      UNION SELECT medico FROM dictamenes
+      UNION SELECT nombre FROM usuarios`)).rows.map(r => r.n).filter(Boolean);
+    const nombresDeMedicos = medicos.map(m => m.nombre);
+
+    const desincronizados = medicos.map(m => {
+      const clave = claveNombre(m.nombre);
+      const alternativos = [...new Set(usados)].filter(n =>
+        n !== m.nombre && claveNombre(n) === clave && !nombresDeMedicos.includes(n));
+      return { id: m.id, nombre: m.nombre, alternativos };
+    }).filter(x => x.alternativos.length);
+
+    res.json({ ok: true, desincronizados });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/medicos/:id/nombres-alternativos', adminMiddleware, async (req, res) => {
   try {
     const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
