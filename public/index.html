@@ -3915,9 +3915,13 @@ async function recargarFirmasActa(){
       const detalle = firma
         ? `<div style="font-size:11.5px;color:var(--verde);margin-top:2px;">✓ Firmó el ${cuando}${firma.capturada_por && firma.capturada_por !== f.nombre ? ' · tomada por '+firma.capturada_por : ''}</div>`
         : `<div style="font-size:11.5px;color:#c8a800;margin-top:2px;">Firma pendiente</div>`;
+      const nombreJs = JSON.stringify(f.nombre).replace(/"/g,'&quot;');
       const boton = firma
-        ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);flex-shrink:0;" onclick="quitarFirmaActa(${JSON.stringify(f.nombre).replace(/"/g,'&quot;')})">Quitar firma</button>`
-        : '';
+        ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);flex-shrink:0;" onclick="quitarFirmaActa(${nombreJs})">Quitar firma</button>`
+        // A los médicos pendientes se les puede aplicar la firma que ya usaron en el informe
+        : (f.rol === 'Médico interviniente'
+            ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;flex-shrink:0;" onclick="importarFirmaActa(${nombreJs})">Usar su firma del informe</button>`
+            : '');
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${f.nombre}</div><div style="font-size:11px;color:var(--text3);">${f.rol}</div>${detalle}</div>
         ${boton}
@@ -3936,6 +3940,22 @@ async function quitarFirmaActa(nombre){
     if(!data.ok){ mostrarError(data.error || 'No se pudo quitar la firma'); return; }
     mostrarToast('Firma de '+nombre+' quitada','#2a5080');
     addLog('amber','Firma quitada del acta', nombre);
+    await recargarFirmasActa();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+async function importarFirmaActa(nombre){
+  if(!(await confirmar(`Se va a aplicar al acta la misma firma que ${nombre} usó en el informe. Queda registrado que la aplicaste vos desde la cuenta admin.`, { titulo:'Usar la firma del informe', textoConfirmar:'Aplicar', danger:false }))) return;
+  try{
+    const r = await fetch('/api/turnos/'+actaTurnoId+'/firmas-acta/importar', {
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ nombre })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo aplicar la firma'); return; }
+    mostrarToast(data.origen === 'perfil'
+      ? 'Se aplicó la firma guardada de '+nombre
+      : 'Se aplicó al acta la firma del informe de '+nombre, '#1e6640');
+    addLog('green','Firma aplicada al acta', nombre);
     await recargarFirmasActa();
   }catch(e){ mostrarError('Error de conexión'); }
 }

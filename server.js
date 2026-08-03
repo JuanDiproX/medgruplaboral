@@ -853,6 +853,47 @@ app.get('/api/turnos/:id/firmas-acta', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Aplica al acta la firma que el médico ya usó en el informe de este mismo turno (o, si no
+// firmó el informe, la que tiene guardada en su perfil). Queda asentado en capturada_por que
+// la registró el admin, no el médico en ese momento.
+app.post('/api/turnos/:id/firmas-acta/importar', adminMiddleware, async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Falta el nombre del médico' });
+
+    const asignado = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    if (!asignado.rows.length) return res.status(400).json({ error: 'Ese médico no está asignado a este turno' });
+
+    const yaFirmo = await pool.query('SELECT 1 FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, nombre]);
+    if (yaFirmo.rows.length) return res.status(409).json({ error: `${nombre} ya firmó esta acta` });
+
+    // 1) La firma que dejó en el informe de este turno
+    let firma = null, origen = null;
+    const junta = await pool.query(
+      `SELECT f.firma_base64 FROM firmas_dictamen f
+       JOIN dictamenes d ON d.id = f.dictamen_id
+       WHERE d.turno_id=$1 AND f.medico_nombre=$2 ORDER BY f.firmado_en DESC LIMIT 1`,
+      [req.params.id, nombre]);
+    if (junta.rows.length) { firma = junta.rows[0].firma_base64; origen = 'informe'; }
+    if (!firma) {
+      const autor = await pool.query(
+        'SELECT firma_doctor FROM dictamenes WHERE turno_id=$1 AND medico=$2 AND firma_doctor IS NOT NULL ORDER BY creado_en DESC LIMIT 1',
+        [req.params.id, nombre]);
+      if (autor.rows.length) { firma = autor.rows[0].firma_doctor; origen = 'informe'; }
+    }
+    // 2) Si no firmó el informe, la que tiene guardada en su perfil
+    const perfil = await pool.query('SELECT matricula, especialidad, firma_guardada FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [nombre]);
+    if (!firma && perfil.rows[0]?.firma_guardada) { firma = perfil.rows[0].firma_guardada; origen = 'perfil'; }
+    if (!firma) return res.status(404).json({ error: `${nombre} no tiene ninguna firma registrada para copiar` });
+
+    await pool.query(
+      `INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64,es_paciente,capturada_por)
+       VALUES ($1,$2,$3,$4,$5,false,$6)`,
+      [req.params.id, nombre, perfil.rows[0]?.matricula || '', perfil.rows[0]?.especialidad || 'Medicina Laboral', firma, req.usuario.nombre]);
+    res.json({ ok: true, nombre, origen });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/turnos/:id/firmas-acta/:nombre', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query('DELETE FROM firmas_acta WHERE turno_id=$1 AND medico_nombre=$2 RETURNING medico_nombre',
