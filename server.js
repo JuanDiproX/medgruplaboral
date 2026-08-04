@@ -1736,6 +1736,12 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     // El detalle de fecha, hora y hash de cada firma queda registrado en la base, pero no se
     // imprime en el documento: al pie alcanza con el código de verificación.
     const trazaFirmasHtml = '';
+    // Las secciones vacías no se imprimen. Para que no queden huecos en la numeración
+    // (III … V, como si faltara una sección), se numeran a medida que se van armando.
+    let seccion = 0;
+    const n = () => ++seccion;
+    const romano = i => ['I','II','III','IV','V','VI','VII','VIII','IX','X'][i-1] || String(i);
+
     const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
@@ -1757,7 +1763,12 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const puesto = d.puesto || d.profesion || '—';
     const antiguedad = d.antiguedad || '—';
     const sitLicencia = d.situacion_licencia || '—';
-    const metodologia = d.metodologia || `Se procedió a la realización de una evaluación pericial semiestructurada por vía telemática el día de la fecha, bajo estricto encuadre profesional. El abordaje comprendió el examen semiológico directo, el rastreo de psicodinamismos, el análisis de factores etiológicos y psicopatológicos preexistentes, así como la compulsa de la documentación médica obrante en el legajo.\n\nSe deja expresa constancia de que el presente dictamen se emite en el marco de la legislación vigente de Medicina del Trabajo, garantizando el resguardo y la protección de los datos personales del examinado.`;
+    // El texto por defecto solo aplica a informes viejos que nunca tuvieron metodología cargada.
+    // Si el médico la borró a propósito (queda como texto vacío), la sección no se imprime:
+    // ese texto habla de un examen semiológico y de videollamada, y no siempre corresponde.
+    const metodologia = (d.metodologia === null || d.metodologia === undefined)
+      ? `Se procedió a la realización de una evaluación pericial semiestructurada por vía telemática el día de la fecha, bajo estricto encuadre profesional. El abordaje comprendió el examen semiológico directo, el rastreo de psicodinamismos, el análisis de factores etiológicos y psicopatológicos preexistentes, así como la compulsa de la documentación médica obrante en el legajo.\n\nSe deja expresa constancia de que el presente dictamen se emite en el marco de la legislación vigente de Medicina del Trabajo, garantizando el resguardo y la protección de los datos personales del examinado.`
+      : d.metodologia;
     const analisis = d.analisis || '';
     const diagCIE = d.diagnostico_cie || '';
 
@@ -1825,7 +1836,7 @@ li{margin-bottom:5px;}
   <strong>FECHA DE EMISIÓN:</strong> ${fechaEmision.toUpperCase()}
 </div>
 
-<h2>I. Datos personales del evaluado</h2>
+<h2>${romano(n())}. Datos personales del evaluado</h2>
 <div style="padding:4px 0;">
   <div class="bullet-item">Apellidos y Nombres: <strong>${apellidoNombre}</strong></div>
   <div class="bullet-item">Documento Nacional de Identidad: DNI ${d.paciente_dni||'—'}</div>
@@ -1840,17 +1851,15 @@ li{margin-bottom:5px;}
   ${sitLicencia!=='—'?`<div class="bullet-item">Situación de Licencia: ${sitLicencia}</div>`:''}
 </div>
 
-<h2>II. Metodología adoptada</h2>
-<p style="white-space:pre-wrap;">${metodologia}</p>
-${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}
+${metodologia?`<h2>${romano(n())}. Metodología adoptada</h2><p style="white-space:pre-wrap;">${metodologia}</p>${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}`:''}
 
-${d.antecedentes?`<h2>III. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
+${d.antecedentes?`<h2>${romano(n())}. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
 
-${d.hallazgos?`<h2>IV. Examen semiológico (estado actual)</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>`:''}
+${d.hallazgos?`<h2>${romano(n())}. Examen semiológico (estado actual)</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>`:''}
 
-${analisis?`<h2>V. Análisis médico-legal de la documentación</h2><p style="white-space:pre-wrap;">${analisis}</p>`:''}
+${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2><p style="white-space:pre-wrap;">${analisis}</p>`:''}
 
-<h2>VI. Conclusiones médico-legales</h2>
+<h2>${romano(n())}. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
 <div class="conc-box">

@@ -1608,6 +1608,10 @@ f) Las conclusiones de la sección VI deben desprenderse ÚNICAMENTE de lo dicta
    exactamente lo que dijo: no lo cambies ni lo completes con criterio propio.
 g) Es correcto que una sección quede más breve que en el modelo. Es preferible un informe
    corto y fiel antes que uno extenso con datos que el médico nunca dijo.
+h) Si el médico directamente NO abordó una sección entera, devolvé ese campo como string
+   vacío "". Por ejemplo: si no hubo examen semiológico, "hallazgos" va vacío; si no hay
+   documentación que analizar, "analisis" va vacío. La sección simplemente no se imprime.
+   NO la rellenes con texto genérico, ni con "no se consigna", ni con hallazgos normales.
 
 REGLAS ESTRICTAS:
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
@@ -4389,10 +4393,14 @@ async function guardarEdicionDictamen(){
   const errEl = document.getElementById('ed-error');
   errEl.style.display='none';
 
-  const get = id => document.getElementById(id)?.value?.trim()||null;
+  // Vaciar un campo tiene que borrarlo de verdad: mandar null hacía que el servidor
+  // conservara el texto anterior, así que no había forma de sacar una sección del informe.
+  const get = id => document.getElementById(id)?.value?.trim() ?? '';
+  // Estos no pueden quedar vacíos nunca: si el campo está en blanco se deja como estaba.
+  const getObligatorio = id => get(id) || null;
   const payload = {
-    apellido_nombre:    get('ed-apellido-nombre'),
-    paciente:           get('ed-apellido-nombre'),
+    apellido_nombre:    getObligatorio('ed-apellido-nombre'),
+    paciente:           getObligatorio('ed-apellido-nombre'),
     paciente_dni:       get('ed-dni'),
     fecha_nacimiento:   get('ed-fecha-nac'),
     edad:               get('ed-edad'),
@@ -4415,9 +4423,9 @@ async function guardarEdicionDictamen(){
     derivacion:         get('ed-derivacion') || 'Sin derivación',
     aptitud:            document.getElementById('ed-aptitud')?.value || 'apto',
     aptitud_texto:      get('ed-aptitud-texto'),
-    medico:             get('ed-medico'),
-    especialidad:       get('ed-especialidad'),
-    matricula:          get('ed-matricula'),
+    medico:             getObligatorio('ed-medico'),
+    especialidad:       getObligatorio('ed-especialidad'),
+    matricula:          getObligatorio('ed-matricula'),
   };
 
   const btn = document.getElementById('btn-ed-guardar');
