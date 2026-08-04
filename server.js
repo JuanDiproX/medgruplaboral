@@ -1670,7 +1670,10 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
     const qrVerificacion = await generarQRDataUrl(d.numero);
     const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
-    const integrantesHtml = todos.map(m => `<li style="margin-bottom:6px;"><strong>${m.medico}</strong>${m.especialidad?': '+m.especialidad:''}${m.matricula?' (MN/MP: '+m.matricula+')':''} — Evaluación remota vía MEDGRUP Telemedicina.</li>`).join('');
+    // Antes se agregaba sola una línea por médico diciendo "Evaluación remota vía MEDGRUP
+    // Telemedicina". Sobraba —los profesionales ya constan al pie con su matrícula— y encima
+    // era falsa cuando la evaluación fue presencial. La metodología la redacta el médico.
+    const integrantesHtml = '';
 
     // Médicos asignados al turno: se listan al pie aunque todavía no hayan firmado ni
     // cargado dictamen propio, con la especialidad y matrícula de su perfil.
@@ -1839,7 +1842,7 @@ li{margin-bottom:5px;}
 
 <h2>II. Metodología adoptada</h2>
 <p style="white-space:pre-wrap;">${metodologia}</p>
-<ul>${integrantesHtml}</ul>
+${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}
 
 ${d.antecedentes?`<h2>III. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
 

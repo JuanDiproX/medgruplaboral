@@ -220,6 +220,9 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 select,input[type=text],input[type=date],input[type=password],textarea{font-family:'DM Sans',sans-serif;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:var(--bg);color:var(--text);outline:none;width:100%;transition:all 0.12s;}
 select:focus,input:focus,textarea:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(58,110,168,0.1);background:white;}
 textarea{resize:vertical;min-height:52px;}
+/* Los bloques del informe son textos largos: se editan mucho mejor con aire y altura */
+.ed-texto-largo{min-height:210px;font-size:14px;line-height:1.75;padding:12px 14px;}
+.ed-texto-largo:focus{border-color:var(--azul);background:white;}
 .divider{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-family:'DM Mono',monospace;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);font-weight:500;}
 .medicos-check-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
 .medico-check{display:flex;align-items:center;gap:9px;padding:9px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);cursor:pointer;transition:all 0.12s;background:var(--bg);}
@@ -1315,17 +1318,28 @@ td.no-label::before{display:none;}
 
 <!-- MODAL EDITAR DICTAMEN COMPLETO (solo admin) -->
 <div class="modal-bg" id="modal-editar-dictamen">
-  <div class="modal" style="max-width:720px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">
+  <div class="modal" style="max-width:1000px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:12px;flex-wrap:wrap;">
       <div>
-        <div class="modal-title" style="margin-bottom:2px;">Editar dictamen</div>
+        <div class="modal-title" style="margin-bottom:2px;">Editar informe</div>
         <div style="font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;" id="ed-numero-badge">—</div>
       </div>
-      <span class="badge b-rosa" style="font-size:11px;">Solo admin — sin límite de tiempo</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <a id="ed-ver-pdf" href="#" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:7px 12px;font-size:12px;text-decoration:none;">Ver el PDF</a>
+        <span class="badge b-rosa" style="font-size:11px;">Solo admin</span>
+      </div>
+    </div>
+
+    <!-- Atajos a cada bloque, para no scrollear todo el formulario por dos campos -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:0.9rem;border-bottom:1px solid var(--border);">
+      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-identificacion')">Identificación</button>
+      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-contenido')">Contenido médico</button>
+      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-aptitud')">Aptitud</button>
+      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-firmante')">Firmante y firmas</button>
     </div>
 
     <!-- Sección: Identificación -->
-    <div class="divider">Identificación</div>
+    <div class="divider" id="ed-sec-identificacion">Identificación</div>
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="form-group full"><label class="form-lbl">Apellido y nombre del paciente (mayúsculas)</label><input type="text" id="ed-apellido-nombre" placeholder="APELLIDO, Nombre completo"/></div>
       <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="ed-dni" placeholder="12345678"/></div>
@@ -1342,16 +1356,18 @@ td.no-label::before{display:none;}
     </div>
 
     <!-- Sección: Contenido médico -->
-    <div class="divider">Contenido médico</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px;">
-      <div class="form-group"><label class="form-lbl">III. Antecedentes médicos y clínicos generales</label><textarea id="ed-antecedentes" style="min-height:80px;" placeholder="Descripción de antecedentes..."></textarea></div>
-      <div class="form-group"><label class="form-lbl">IV. Examen semiológico (hallazgos)</label><textarea id="ed-hallazgos" style="min-height:100px;" placeholder="● Conciencia y Orientación: ..."></textarea></div>
-      <div class="form-group"><label class="form-lbl">V. Análisis médico-legal</label><textarea id="ed-analisis" style="min-height:80px;" placeholder="Análisis de la documentación..."></textarea></div>
-      <div class="form-group"><label class="form-lbl">VI. Conclusiones médico-legales</label><textarea id="ed-conclusion" style="min-height:100px;" placeholder="1. Encuadre Diagnóstico: ..."></textarea></div>
+    <div class="divider" id="ed-sec-contenido">Contenido médico</div>
+    <div style="font-size:12.5px;color:var(--text3);line-height:1.5;margin:-4px 0 12px;">Estos cuatro bloques son el cuerpo del informe. Los recuadros crecen solos a medida que escribís, y podés agrandarlos tirando de la esquina inferior derecha.</div>
+    <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:8px;">
+      <div class="form-group"><label class="form-lbl">II. Metodología adoptada</label><textarea id="ed-metodologia" class="ed-texto-largo" placeholder="Se procedió a la realización de una evaluación pericial semiestructurada..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">III. Antecedentes médicos y clínicos generales</label><textarea id="ed-antecedentes" class="ed-texto-largo" placeholder="Descripción de antecedentes..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">IV. Examen semiológico (hallazgos)</label><textarea id="ed-hallazgos" class="ed-texto-largo" style="min-height:300px;" placeholder="● Conciencia y Orientación: ..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">V. Análisis médico-legal</label><textarea id="ed-analisis" class="ed-texto-largo" placeholder="Análisis de la documentación..."></textarea></div>
+      <div class="form-group"><label class="form-lbl">VI. Conclusiones médico-legales</label><textarea id="ed-conclusion" class="ed-texto-largo" style="min-height:300px;" placeholder="1. Encuadre Diagnóstico: ..."></textarea></div>
     </div>
 
     <!-- Sección: Aptitud y diagnóstico -->
-    <div class="divider">Aptitud y diagnóstico</div>
+    <div class="divider" id="ed-sec-aptitud">Aptitud y diagnóstico</div>
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="form-group">
         <label class="form-lbl">Aptitud laboral</label>
@@ -1372,7 +1388,7 @@ td.no-label::before{display:none;}
     </div>
 
     <!-- Sección: Firma / Médico -->
-    <div class="divider">Datos del médico firmante</div>
+    <div class="divider" id="ed-sec-firmante">Datos del médico firmante</div>
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="form-group full"><label class="form-lbl">Nombre del médico</label><input type="text" id="ed-medico" placeholder="Dr. Barboza, Raúl"/></div>
       <div class="form-group"><label class="form-lbl">Especialidad (aparece en la firma)</label><input type="text" id="ed-especialidad" placeholder="Psiquiatra Forense y Médico del Trabajo"/></div>
@@ -4176,6 +4192,24 @@ async function eliminarEventoActa(eventoId){
   }catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
+// Los bloques del informe crecen con el texto: editar una conclusión larga dentro de un
+// recuadro de cuatro renglones era el principal motivo de queja.
+function edAjustarAlto(el){
+  if(!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.max(el.scrollHeight + 4, parseInt(getComputedStyle(el).minHeight) || 0) + 'px';
+}
+function edPrepararTextosLargos(){
+  document.querySelectorAll('#modal-editar-dictamen .ed-texto-largo').forEach(el => {
+    edAjustarAlto(el);
+    if(!el.dataset.autoAlto){ el.addEventListener('input', () => edAjustarAlto(el)); el.dataset.autoAlto = '1'; }
+  });
+}
+function edIrA(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
 // ===== Firmas del informe (admin) =====
 async function recargarFirmasDictamen(){
   const lista = document.getElementById('ed-firmas-lista');
@@ -4247,6 +4281,7 @@ async function abrirModalEditarDictamen(dictamenId){
   set('ed-empresa',         d.empresa);
   set('ed-obra-social',     d.obra_social);
   set('ed-situacion-lic',   d.situacion_licencia);
+  set('ed-metodologia',     d.metodologia);
   set('ed-antecedentes',    d.antecedentes);
   set('ed-hallazgos',       d.hallazgos);
   set('ed-analisis',        d.analisis);
@@ -4262,7 +4297,12 @@ async function abrirModalEditarDictamen(dictamenId){
   const selAptitud = document.getElementById('ed-aptitud');
   if(selAptitud) selAptitud.value = d.aptitud || 'apto';
 
+  const verPdf = document.getElementById('ed-ver-pdf');
+  if(verPdf) verPdf.href = '/api/dictamenes/' + dictamenId + '/pdf';
+
   document.getElementById('modal-editar-dictamen').classList.add('open');
+  // El alto solo se puede calcular con el modal ya visible
+  setTimeout(edPrepararTextosLargos, 30);
 }
 
 function cerrarModalEditarDictamen(){
@@ -4290,6 +4330,7 @@ async function guardarEdicionDictamen(){
     empresa:            get('ed-empresa'),
     obra_social:        get('ed-obra-social'),
     situacion_licencia: get('ed-situacion-lic'),
+    metodologia:        get('ed-metodologia'),
     antecedentes:       get('ed-antecedentes'),
     hallazgos:          get('ed-hallazgos'),
     analisis:           get('ed-analisis'),
