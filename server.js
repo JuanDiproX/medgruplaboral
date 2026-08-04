@@ -1305,47 +1305,56 @@ async function crearMeetingToken(roomName, userName, isOwner) {
   return data.token;
 }
 
+// Crea la sala de Daily, los links con token a nombre de cada uno y el turno.
+// Lo usan tanto el alta de turnos como el módulo de ausentismo al programar la entrevista.
+async function crearTurnoConVideollamada({ paciente, medicos: ml, tipo, fecha, hora, empresa, motivo,
+  diagnostico_previo, dias_reposo_previo, medico_tratante, telefono, paciente_presencial }) {
+  const nombreSala = `medgrup-${Date.now()}`;
+  const resp = await fetch('https://api.daily.co/v1/rooms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
+    body: JSON.stringify({
+      name: nombreSala,
+      properties: {
+        enable_recording: 'cloud',
+        enable_chat: true,
+        exp: Math.floor(Date.now()/1000)+(60*60*24*30),
+        max_participants: 10,
+        enable_prejoin_ui: false, // salta la pantalla que pide el nombre
+        lang: 'es' // interfaz de la videollamada (botones, chat, config) en español
+      }
+    })
+  });
+  const sala = await resp.json();
+  if (!resp.ok) { const e = new Error('No se pudo crear la sala de videollamada'); e.detalle = sala; throw e; }
+
+  // Cada médico obtiene un link con un token real de moderador (owner) a su nombre
+  const linksMedicos = await Promise.all((ml||[]).map(async n => ({
+    nombre: n,
+    link: `${sala.url}?t=${await crearMeetingToken(sala.name, n, true)}`
+  })));
+  // La paciente obtiene un link con un token real (no moderador) a su nombre
+  const tokenPaciente = await crearMeetingToken(sala.name, paciente, false);
+  const linkPaciente = `${sala.url}?t=${tokenPaciente}`;
+  const linkMedicoGenerico = linksMedicos[0]?.link || sala.url;
+
+  const turnoId = `turno-${Date.now()}`;
+  await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono,paciente_presencial)
+    VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+    [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
+     sala.name, linkPaciente, linkMedicoGenerico, JSON.stringify(linksMedicos), motivo||'',
+     diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'', !!paciente_presencial]);
+  for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
+
+  return { turnoId, sala: sala.name, url: sala.url, linkPaciente, linkMedicoGenerico, linksMedicos };
+}
+
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   try {
-    const { paciente, medicos: ml, tipo, fecha, hora, empresa, motivo, diagnostico_previo, dias_reposo_previo, medico_tratante, telefono, paciente_presencial } = req.body;
-    const nombreSala = `medgrup-${Date.now()}`;
-    const resp = await fetch('https://api.daily.co/v1/rooms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
-      body: JSON.stringify({
-        name: nombreSala,
-        properties: {
-          enable_recording: 'cloud',
-          enable_chat: true,
-          exp: Math.floor(Date.now()/1000)+(60*60*24*30),
-          max_participants: 10,
-          enable_prejoin_ui: false, // salta la pantalla que pide el nombre
-          lang: 'es' // interfaz de la videollamada (botones, chat, config) en español
-        }
-      })
-    });
-    const sala = await resp.json();
-    if (!resp.ok) return res.status(500).json({ error: 'No se pudo crear la sala', detalle: sala });
-
-    // Cada médico obtiene un link con un token real de moderador (owner) a su nombre
-    const linksMedicos = await Promise.all((ml||[]).map(async n => ({
-      nombre: n,
-      link: `${sala.url}?t=${await crearMeetingToken(sala.name, n, true)}`
-    })));
-    // La paciente obtiene un link con un token real (no moderador) a su nombre
-    const tokenPaciente = await crearMeetingToken(sala.name, paciente, false);
-    const linkPaciente = `${sala.url}?t=${tokenPaciente}`;
-    const linkMedicoGenerico = linksMedicos[0]?.link || sala.url;
-
-    const turnoId = `turno-${Date.now()}`;
-    await pool.query(`INSERT INTO turnos (id,paciente,fecha,hora,tipo,empresa,estado,sala,link_paciente,link_medico,links_medicos,motivo,diagnostico_previo,dias_reposo_previo,medico_tratante,telefono,paciente_presencial)
-      VALUES ($1,$2,$3,$4,$5,$6,'pendiente',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-      [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
-       sala.name, linkPaciente, linkMedicoGenerico, JSON.stringify(linksMedicos), motivo||'',
-       diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'', !!paciente_presencial]);
-    for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
-    res.json({ ok: true, sala: sala.name, url: sala.url, url_medico: linkMedicoGenerico, links_medicos: linksMedicos, turno_id: turnoId, paciente });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const r = await crearTurnoConVideollamada(req.body);
+    res.json({ ok: true, sala: r.sala, url: r.url, url_medico: r.linkMedicoGenerico,
+      links_medicos: r.linksMedicos, turno_id: r.turnoId, paciente: req.body.paciente });
+  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
 // ===== LINK DE VIDEOLLAMADA DEL USUARIO AUTENTICADO =====
@@ -2267,6 +2276,45 @@ app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) =
       [estado, req.params.id]);
     res.json({ ok: true, estado });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Programar la entrevista: crea la videollamada y engancha el caso al flujo de turnos ---
+// Lo hace el profesional asignado (o el admin). A partir de acá el caso vive como un turno
+// normal: videollamada, informe, firma y PDF, sin nada especial.
+app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res) => {
+  const { fecha, hora } = req.body;
+  if (!fecha || !hora) return res.status(400).json({ error: 'Indicá fecha y hora de la entrevista' });
+  try {
+    const r = await pool.query(`
+      SELECT c.*, m.nombre AS profesional_nombre
+      FROM casos_ausentismo c LEFT JOIN medicos m ON m.id = c.profesional_id
+      WHERE c.id = $1`, [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const caso = r.rows[0];
+    if (!(await puedeVerCaso(caso, req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+    if (['resuelto', 'cancelado'].includes(caso.estado)) return res.status(400).json({ error: 'El caso ya está cerrado' });
+    if (!caso.profesional_id) return res.status(400).json({ error: 'El caso todavía no tiene profesional asignado' });
+
+    // Reprogramar: si ya tenía entrevista se mueve la fecha, no se crea otra sala
+    if (caso.turno_id) {
+      await pool.query('UPDATE turnos SET fecha=$1, hora=$2 WHERE id=$3', [fecha, hora, caso.turno_id]);
+      const t = await pool.query('SELECT link_paciente FROM turnos WHERE id=$1', [caso.turno_id]);
+      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: t.rows[0]?.link_paciente || null, reprogramado: true });
+    }
+
+    const creado = await crearTurnoConVideollamada({
+      paciente: caso.trabajador_nombre,
+      medicos: [caso.profesional_nombre],
+      tipo: 'Control de ausentismo',
+      fecha, hora,
+      empresa: caso.empresa_nombre,
+      motivo: caso.motivo || '',
+      telefono: caso.trabajador_telefono || ''
+    });
+    await pool.query(`UPDATE casos_ausentismo SET turno_id=$1, estado='programado' WHERE id=$2`,
+      [creado.turnoId, req.params.id]);
+    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: creado.linkPaciente, estado: 'programado' });
+  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
 // --- Facturación: casos resueltos del mes, agrupados por empresa ---
