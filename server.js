@@ -14,6 +14,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // La firma de actas se sumó este día: no la pedimos retroactivamente para turnos previos ya cerrados
 const FIRMA_ACTA_DESDE = '2026-07-31';
+// Cuánto esperamos a que la IA arme el informe antes de cortar y avisar. Generar un informe
+// completo suele tardar entre 30 y 90 segundos, así que el corte va bastante por encima.
+const IA_TIMEOUT_MS = 3 * 60 * 1000;
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -2055,28 +2058,51 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
   try {
     if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key de IA no configurada. Agregá ANTHROPIC_API_KEY en las variables de entorno de Railway.' });
     const { system, messages, max_tokens } = req.body;
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: max_tokens || 3000,
-        system,
-        messages
-      })
-    });
+
+    // Sin límite de tiempo, si la IA no contesta la petición queda colgada para siempre y
+    // al médico le queda el botón girando sin decirle nunca qué pasó.
+    const control = new AbortController();
+    const corte = setTimeout(() => control.abort(), IA_TIMEOUT_MS);
+    const arranque = Date.now();
+    let response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: control.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: max_tokens || 8000,
+          system,
+          messages
+        })
+      });
+    } catch (err) {
+      if (err.name === 'AbortError' || control.signal.aborted) {
+        console.error(`IA: sin respuesta tras ${IA_TIMEOUT_MS/1000}s`);
+        return res.status(504).json({ error: `La IA no respondió en ${Math.round(IA_TIMEOUT_MS/1000)} segundos. Volvé a intentar; si sigue igual, guardá las notas y avisá.` });
+      }
+      throw err;
+    } finally { clearTimeout(corte); }
+
     const data = await response.json();
+    const tardo = Math.round((Date.now() - arranque) / 1000);
     if (!response.ok) {
-      console.error('Anthropic API error:', JSON.stringify(data));
+      console.error(`Anthropic API error (${response.status}, ${tardo}s):`, JSON.stringify(data));
       return res.status(response.status).json({ error: data.error?.message || 'Error de la IA', detalle: data });
     }
-    // Log del texto devuelto para debug
+    // Si se quedó sin espacio, el JSON llega cortado y el navegador no puede leerlo:
+    // conviene decirlo con todas las letras en vez de fallar al interpretarlo.
+    if (data.stop_reason === 'max_tokens') {
+      console.error(`IA: respuesta cortada por max_tokens (${tardo}s)`);
+      return res.status(502).json({ error: 'El informe salió más largo de lo que entra en una respuesta y quedó cortado. Probá acortando las notas o generalo en dos partes.' });
+    }
     const texto = (data.content||[]).map(b=>b.text||'').join('');
-    console.log('IA response preview:', texto.substring(0,300));
+    console.log(`IA OK en ${tardo}s · ${data.usage?.output_tokens||'?'} tokens · ${texto.substring(0,200)}`);
     res.json(data);
   } catch (err) {
     console.error('Proxy IA error:', err.message);

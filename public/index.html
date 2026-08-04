@@ -1562,13 +1562,23 @@ JSON a devolver (todas las claves obligatorias):
   "indicaciones": "vacío o indicaciones"
 }`;
 
+  // Corte propio del navegador: si la conexión se corta sin respuesta, sin esto el botón
+  // se queda girando para siempre y el médico no se entera de nada.
+  const cortarIA = new AbortController();
+  const relojIA = setTimeout(() => cortarIA.abort(), 200000);
+  // Aviso de que sigue trabajando, para que no parezca colgado en las esperas largas
+  const avisoLento = setTimeout(() => {
+    if(btnText) btnText.textContent = 'Generando… puede tardar un minuto';
+  }, 20000);
+
   try{
     const res = await fetch('/api/ia/generar-informe',{
       method:'POST',
       headers:apiHeaders(),
+      signal: cortarIA.signal,
       body: JSON.stringify({
         system: SYSTEM_PROMPT,
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages:[{role:'user',content:`DATOS DE LA CONSULTA:
 - Empresa: ${empresa}
 - Tipo de consulta: ${tipo}
@@ -1582,7 +1592,10 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
     });
 
     const data = await res.json();
+    // Sin esto, un error del servidor terminaba como "formato inesperado" y escondía el motivo real
+    if(!res.ok) throw new Error(data.error || `El servidor respondió ${res.status}`);
     const rawText = (data.content||[]).map(b=>b.text||'').join('').trim();
+    if(!rawText) throw new Error('La IA devolvió una respuesta vacía. Volvé a intentar.');
 
     let info;
     try{ info = JSON.parse(rawText); }
@@ -1658,9 +1671,14 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
     addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
 
   }catch(err){
-    mostrarError('Error: '+err.message);
+    const msg = (err.name === 'AbortError')
+      ? 'La generación tardó demasiado y se cortó. Tus notas siguen guardadas: volvé a intentar.'
+      : 'Error: ' + err.message;
+    mostrarError(msg);
     if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
   } finally {
+    clearTimeout(relojIA);
+    clearTimeout(avisoLento);
     btn.disabled=false;
     if(statusEl) statusEl.style.display='none';
   }
