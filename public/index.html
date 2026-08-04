@@ -1676,10 +1676,35 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
       })
     });
 
-    const data = await res.json();
-    // Sin esto, un error del servidor terminaba como "formato inesperado" y escondía el motivo real
-    if(!res.ok) throw new Error(data.error || `El servidor respondió ${res.status}`);
-    const rawText = (data.content||[]).map(b=>b.text||'').join('').trim();
+    if(!res.ok){
+      // El proxy puede devolver su propio error, con otro nombre de campo
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || d.message || `El servidor respondió ${res.status}`);
+    }
+
+    // El informe llega por partes: se va leyendo mientras se genera, así la conexión nunca
+    // queda callada el tiempo suficiente como para que un proxy la corte.
+    let rawText = '';
+    const lector = res.body.getReader();
+    const decoder = new TextDecoder();
+    let resto = '';
+    while(true){
+      const { done, value } = await lector.read();
+      if(done) break;
+      resto += decoder.decode(value, { stream: true });
+      const lineas = resto.split('\n');
+      resto = lineas.pop();
+      for(const linea of lineas){
+        if(!linea.trim()) continue;
+        let ev; try{ ev = JSON.parse(linea); }catch{ continue; }
+        if(ev.error) throw new Error(ev.error);
+        if(ev.t){
+          rawText += ev.t;
+          if(btnText) btnText.textContent = 'Escribiendo el informe… ' + Math.round(rawText.length/100)/10 + ' mil caracteres';
+        }
+      }
+    }
+    rawText = rawText.trim();
     if(!rawText) throw new Error('La IA devolvió una respuesta vacía. Volvé a intentar.');
 
     let info;

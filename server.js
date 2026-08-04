@@ -2058,6 +2058,8 @@ app.post('/api/dictamenes/:id/informe-completo', authMiddleware, async (req, res
 
 // ===== PROXY ANTHROPIC =====
 app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
+  // Declarado afuera del try para poder cancelarlo en el finally pase lo que pase
+  let corte = null;
   try {
     if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key de IA no configurada. Agregá ANTHROPIC_API_KEY en las variables de entorno de Railway.' });
     const { system, messages, max_tokens } = req.body;
@@ -2065,7 +2067,7 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
     // Sin límite de tiempo, si la IA no contesta la petición queda colgada para siempre y
     // al médico le queda el botón girando sin decirle nunca qué pasó.
     const control = new AbortController();
-    const corte = setTimeout(() => control.abort(), IA_TIMEOUT_MS);
+    corte = setTimeout(() => control.abort(), IA_TIMEOUT_MS);
     const arranque = Date.now();
     let response;
     try {
@@ -2081,7 +2083,10 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
           model: 'claude-sonnet-4-6',
           max_tokens: max_tokens || 8000,
           system,
-          messages
+          messages,
+          // Pedimos la respuesta por partes: si esperamos callados a que termine, el proxy
+          // de Railway corta la conexión por inactividad y devuelve un 502 que no dice nada.
+          stream: true
         })
       });
     } catch (err) {
@@ -2090,27 +2095,67 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
         return res.status(504).json({ error: `La IA no respondió en ${Math.round(IA_TIMEOUT_MS/1000)} segundos. Volvé a intentar; si sigue igual, guardá las notas y avisá.` });
       }
       throw err;
-    } finally { clearTimeout(corte); }
+    }
+    // Ojo: el reloj NO se cancela acá. Tiene que seguir corriendo durante toda la
+    // transmisión, que es donde la generación realmente se puede trabar.
 
-    const data = await response.json();
-    const tardo = Math.round((Date.now() - arranque) / 1000);
     if (!response.ok) {
-      console.error(`Anthropic API error (${response.status}, ${tardo}s):`, JSON.stringify(data));
-      return res.status(response.status).json({ error: data.error?.message || 'Error de la IA', detalle: data });
+      const data = await response.json().catch(() => ({}));
+      console.error(`Anthropic API error (${response.status}):`, JSON.stringify(data));
+      return res.status(response.status).json({ error: data.error?.message || 'Error de la IA' });
     }
-    // Si se quedó sin espacio, el JSON llega cortado y el navegador no puede leerlo:
-    // conviene decirlo con todas las letras en vez de fallar al interpretarlo.
-    if (data.stop_reason === 'max_tokens') {
+
+    // Le vamos pasando el informe al navegador a medida que llega, una línea JSON por vez.
+    // Mientras haya bytes en camino ningún proxy corta la conexión por inactividad.
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    const enviar = obj => res.write(JSON.stringify(obj) + '\n');
+
+    let pendiente = '', texto = '', fin = null, tokens = 0;
+    try {
+      for await (const trozo of response.body) {
+        pendiente += trozo.toString('utf8');
+        const lineas = pendiente.split('\n');
+        pendiente = lineas.pop();
+        for (const linea of lineas) {
+          if (!linea.startsWith('data:')) continue;
+          let ev; try { ev = JSON.parse(linea.slice(5).trim()); } catch { continue; }
+          if (ev.type === 'content_block_delta' && ev.delta?.text) {
+            texto += ev.delta.text;
+            enviar({ t: ev.delta.text });
+          } else if (ev.type === 'message_delta') {
+            if (ev.delta?.stop_reason) fin = ev.delta.stop_reason;
+            if (ev.usage?.output_tokens) tokens = ev.usage.output_tokens;
+          } else if (ev.type === 'error') {
+            fin = 'error';
+            enviar({ error: ev.error?.message || 'Error de la IA durante la generación' });
+          }
+        }
+      }
+    } catch (err) {
+      const aborto = err.name === 'AbortError' || control.signal.aborted;
+      console.error('IA: se cortó la transmisión:', err.message);
+      enviar({ error: aborto
+        ? `La IA no terminó en ${Math.round(IA_TIMEOUT_MS/1000)} segundos. Volvé a intentar.`
+        : 'Se cortó la conexión con la IA antes de terminar el informe.' });
+      return res.end();
+    }
+
+    const tardo = Math.round((Date.now() - arranque) / 1000);
+    if (fin === 'max_tokens') {
       console.error(`IA: respuesta cortada por max_tokens (${tardo}s)`);
-      return res.status(502).json({ error: 'El informe salió más largo de lo que entra en una respuesta y quedó cortado. Probá acortando las notas o generalo en dos partes.' });
+      enviar({ error: 'El informe salió más largo de lo que entra en una respuesta y quedó cortado. Probá acortando las notas o generalo en dos partes.' });
+    } else if (fin !== 'error') {
+      console.log(`IA OK en ${tardo}s · ${tokens||'?'} tokens · ${texto.substring(0,200)}`);
+      enviar({ fin: fin || 'end_turn' });
     }
-    const texto = (data.content||[]).map(b=>b.text||'').join('');
-    console.log(`IA OK en ${tardo}s · ${data.usage?.output_tokens||'?'} tokens · ${texto.substring(0,200)}`);
-    res.json(data);
+    res.end();
   } catch (err) {
     console.error('Proxy IA error:', err.message);
+    if (res.headersSent) { res.write(JSON.stringify({ error: err.message }) + '\n'); return res.end(); }
     res.status(500).json({ error: err.message });
-  }
+  } finally { clearTimeout(corte); }
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC_API_KEY, daily: !!DAILY_API_KEY }));
