@@ -1528,6 +1528,27 @@ Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y en
 
 === FIN DEL MODELO ===
 
+REGLA MÁS IMPORTANTE — NO INVENTES NADA:
+Este es un documento médico-legal. Solo podés escribir lo que el médico dictó en sus notas.
+
+a) El informe modelo de arriba es una guía de ESTRUCTURA, ESTILO y VOCABULARIO. NO es fuente
+   de contenido clínico. No copies sus hallazgos, sus frases descriptivas ni sus ejemplos.
+   En particular, NO uses frases del modelo como "se muestra afable, colaborador formal y
+   activo" salvo que el médico lo haya dictado: si dictó lo contrario, sería falso.
+b) No inventes síntomas, hallazgos semiológicos, antecedentes, estudios, tratamientos,
+   fechas, dosis, diagnósticos ni conclusiones. Si no está en las notas, no existe.
+c) Si el médico no evaluó o no mencionó alguna función psíquica, OMITÍ ese bullet en la
+   sección IV. Nunca la completes con un hallazgo normal por defecto.
+d) No contradigas las notas ni "suavices" lo que dictó el médico. Si describe teatralidad,
+   incongruencia afectiva o conductas llamativas, eso va tal cual, con lenguaje técnico.
+e) Podés reordenar, agrupar y reformular en lenguaje médico-legal formal lo que el médico
+   dictó. Eso no es inventar. Inventar es agregar información clínica nueva.
+f) Las conclusiones de la sección VI deben desprenderse ÚNICAMENTE de lo dictado. Si el
+   médico ya dio su conclusión, su diagnóstico, los días de reposo o la aptitud, respetá
+   exactamente lo que dijo: no lo cambies ni lo completes con criterio propio.
+g) Es correcto que una sección quede más breve que en el modelo. Es preferible un informe
+   corto y fiel antes que uno extenso con datos que el médico nunca dijo.
+
 REGLAS ESTRICTAS:
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
 2. Replicá el estilo formal, técnico y vocabulario médico-legal forense del modelo.
@@ -4347,12 +4368,28 @@ async function guardarDictamen(){
   try{
     let res, data;
     if(dictamenActualId){
+      // Al regenerar con la IA sobre un dictamen que ya existe hay que mandar TAMBIÉN los
+      // campos que llena la IA. Antes solo se enviaban once, así que la metodología, el
+      // análisis, el CIE-10 y los datos personales se quedaban con el texto viejo y parecía
+      // que el informe no se actualizaba.
+      const campoIA = k => document.getElementById('ia-campo-'+k)?.value || undefined;
       res=await fetch('/api/dictamenes/'+dictamenActualId,{
         method:'PATCH',headers:apiHeaders(),
         body:JSON.stringify({
           aptitud,dias_reposo:reposo,derivacion,indicaciones,
           paciente_dni:dni,edad,obra_social:obraSocial,profesion,
-          antecedentes,hallazgos,conclusion
+          antecedentes,hallazgos,conclusion,
+          apellido_nombre: campoIA('apellido_nombre') || pacienteNombre,
+          fecha_nacimiento: campoIA('fecha_nacimiento'),
+          lugar_nacimiento: campoIA('lugar_nacimiento'),
+          estado_civil:     campoIA('estado_civil'),
+          estudios:         campoIA('estudios'),
+          puesto:           campoIA('puesto'),
+          antiguedad:       campoIA('antiguedad'),
+          situacion_licencia: campoIA('situacion_licencia'),
+          metodologia:      campoIA('metodologia'),
+          analisis:         campoIA('analisis'),
+          diagnostico_cie:  campoIA('diagnostico_cie')
         })
       });
       data=await res.json();
