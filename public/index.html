@@ -1461,6 +1461,50 @@ async function doLoginEmpresaDesdeMain(){
   } catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
 }
 
+// Claves que devuelve la IA, en el orden del informe. Sirven de anclas para poder leer la
+// respuesta aunque el JSON esté mal armado.
+const CLAVES_INFORME_IA = ['apellido_nombre','dni','edad','fecha_nacimiento','lugar_nacimiento',
+  'estado_civil','estudios','puesto','antiguedad','obra_social','situacion_licencia','metodologia',
+  'antecedentes','hallazgos','analisis','conclusion','diagnostico_cie','aptitud','dias_reposo',
+  'derivacion','indicaciones'];
+
+// Lee cada campo buscando su clave y cortando recién cuando aparece la clave siguiente. Así una
+// comilla sin escapar en medio de una cita del paciente ya no arruina el informe entero.
+function leerCamposInformeIA(raw){
+  if(!raw) return null;
+  const claves = CLAVES_INFORME_IA.join('|');
+  const siguiente = new RegExp('^\\s*,\\s*"(?:' + claves + ')"\\s*:');
+  const info = {};
+
+  for(const clave of CLAVES_INFORME_IA){
+    const pos = raw.indexOf('"' + clave + '"');
+    if(pos === -1) continue;
+    let i = raw.indexOf(':', pos);
+    if(i === -1) continue;
+    i++;
+    while(i < raw.length && /\s/.test(raw[i])) i++;
+
+    if(raw[i] === '"'){
+      // El valor termina en la comilla seguida del cierre del objeto o de la próxima clave
+      let fin = -1;
+      for(let j = i + 1; j < raw.length; j++){
+        if(raw[j] !== '"' || raw[j-1] === '\\') continue;
+        const resto = raw.slice(j + 1);
+        if(/^\s*\}/.test(resto) || siguiente.test(resto)){ fin = j; break; }
+      }
+      if(fin === -1) continue;
+      info[clave] = raw.slice(i + 1, fin)
+        .replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    } else {
+      const num = raw.slice(i).match(/^-?\d+/);
+      if(num) info[clave] = parseInt(num[0], 10);
+    }
+  }
+  // Sin las secciones de fondo no hay informe que rescatar
+  return (info.conclusion || info.hallazgos) ? info : null;
+}
+
 async function generarInformeIA(){
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
   const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
@@ -1567,6 +1611,10 @@ g) Es correcto que una sección quede más breve que en el modelo. Es preferible
 
 REGLAS ESTRICTAS:
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
+1b. CUIDADO CON LAS COMILLAS: si citás textualmente al paciente, escribí las comillas
+    internas escapadas como \\" (por ejemplo: "refiere \\"no puedo más\\" al describir...").
+    Los saltos de línea dentro de un valor van como \\n, nunca literales. Una comilla sin
+    escapar rompe el informe entero.
 2. Replicá el estilo formal, técnico y vocabulario médico-legal forense del modelo.
 3. En la sección IV usá SIEMPRE los bullets con ● para cada función psíquica.
 4. En la sección VI usá SIEMPRE numeración 1. 2. 3. 4.
@@ -1639,14 +1687,15 @@ Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estil
     catch(e1){
       try{
         const match = rawText.match(/\{[\s\S]*\}/);
-        if(match) info = JSON.parse(match[0]);
-        else {
-          const start = rawText.indexOf('{');
-          const end = rawText.lastIndexOf('}');
-          if(start !== -1 && end !== -1) info = JSON.parse(rawText.substring(start, end+1));
-          else throw new Error('La IA respondió en un formato inesperado.');
-        }
-      } catch(e2){ throw new Error('Error al interpretar la respuesta de la IA: ' + e2.message); }
+        info = JSON.parse(match ? match[0] : rawText);
+      } catch(e2){
+        // Última red: los informes psiquiátricos citan al paciente entre comillas y basta una
+        // sin escapar para romper todo el JSON. Acá se leen los campos uno por uno en vez de
+        // exigir que el texto sea JSON perfecto.
+        info = leerCamposInformeIA(rawText);
+        if(!info) throw new Error('No se pudo leer la respuesta de la IA. Volvé a generar.');
+        console.warn('Informe rescatado con el lector tolerante (el JSON venía mal formado).');
+      }
     }
 
     window._informeIA = info;
