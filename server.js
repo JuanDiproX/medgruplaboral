@@ -187,6 +187,29 @@ async function initDB() {
         creado_por VARCHAR(200),
         creado_en TIMESTAMP DEFAULT NOW()
       );
+
+      -- Control de ausentismo: la empresa abre un caso por cada trabajador ausente, MEDGRUP le
+      -- asigna un profesional y termina en una entrevista con su informe. Se cobra por caso
+      -- resuelto, por eso resuelto_en es lo que después alimenta la facturación del mes.
+      CREATE TABLE IF NOT EXISTS casos_ausentismo (
+        id SERIAL PRIMARY KEY,
+        empresa_id INTEGER REFERENCES empresas_clientes(id),
+        empresa_nombre VARCHAR(200) NOT NULL,
+        trabajador_nombre VARCHAR(200) NOT NULL,
+        trabajador_dni VARCHAR(50),
+        trabajador_telefono VARCHAR(50),
+        motivo TEXT,
+        documentacion TEXT,
+        estado VARCHAR(30) DEFAULT 'nuevo',
+        profesional_id INTEGER REFERENCES medicos(id),
+        turno_id VARCHAR(50) REFERENCES turnos(id),
+        notas_admin TEXT,
+        creado_en TIMESTAMP DEFAULT NOW(),
+        resuelto_en TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
+      CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
+      CREATE INDEX IF NOT EXISTS idx_casos_prof      ON casos_ausentismo (profesional_id);
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -2081,6 +2104,236 @@ app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf'}"`);
     res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== CONTROL DE AUSENTISMO =====
+// La empresa abre un caso, MEDGRUP le asigna un profesional, el profesional entrevista al
+// trabajador y emite el informe. Se cobra por caso resuelto.
+const ESTADOS_CASO = ['nuevo', 'asignado', 'programado', 'en-curso', 'resuelto', 'cancelado'];
+// Un caso avanza por estos caminos; cancelar se permite desde cualquier estado no terminal.
+const TRANSICIONES_CASO = {
+  'nuevo':      ['asignado', 'cancelado'],
+  'asignado':   ['programado', 'nuevo', 'cancelado'],
+  'programado': ['en-curso', 'asignado', 'cancelado'],
+  'en-curso':   ['resuelto', 'programado', 'cancelado'],
+  'resuelto':   [],
+  'cancelado':  ['nuevo']
+};
+
+const SELECT_CASO = `
+  SELECT c.*, m.nombre AS profesional_nombre, m.matricula AS profesional_matricula,
+         m.especialidad AS profesional_especialidad,
+         t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado
+  FROM casos_ausentismo c
+  LEFT JOIN medicos m ON m.id = c.profesional_id
+  LEFT JOIN turnos  t ON t.id = c.turno_id`;
+
+// El profesional se identifica por su perfil de médico, no por el nombre suelto
+async function medicoDelUsuario(usuario) {
+  const r = await pool.query('SELECT id FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [usuario.nombre]);
+  return r.rows[0]?.id || null;
+}
+
+async function puedeVerCaso(caso, req) {
+  if (req.usuario.rol === 'admin') return true;
+  const miId = await medicoDelUsuario(req.usuario);
+  return !!miId && caso.profesional_id === miId;
+}
+
+// --- Listado: el admin ve todo, el médico solo lo que tiene asignado ---
+app.get('/api/ausentismo/casos', authMiddleware, async (req, res) => {
+  try {
+    const cond = [], params = [];
+    if (req.usuario.rol !== 'admin') {
+      const miId = await medicoDelUsuario(req.usuario);
+      if (!miId) return res.json({ ok: true, casos: [] });
+      params.push(miId); cond.push(`c.profesional_id = $${params.length}`);
+    }
+    if (req.query.estado)  { params.push(req.query.estado);  cond.push(`c.estado = $${params.length}`); }
+    if (req.query.empresa) { params.push(req.query.empresa); cond.push(`c.empresa_nombre = $${params.length}`); }
+    if (req.query.mes)     { params.push(req.query.mes);     cond.push(`to_char(c.creado_en,'YYYY-MM') = $${params.length}`); }
+    const where = cond.length ? ' WHERE ' + cond.join(' AND ') : '';
+    const r = await pool.query(`${SELECT_CASO}${where} ORDER BY c.creado_en DESC`, params);
+    res.json({ ok: true, casos: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(`${SELECT_CASO} WHERE c.id = $1`, [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (!(await puedeVerCaso(r.rows[0], req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+    res.json({ ok: true, caso: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Alta desde MEDGRUP (la empresa tiene su propio endpoint más abajo) ---
+app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
+  const { empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin } = req.body;
+  if (!empresa_nombre) return res.status(400).json({ error: 'Falta la empresa' });
+  if (!trabajador_nombre) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
+  try {
+    const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
+    const r = await pool.query(
+      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
+       motivo || '', documentacion || '', notas_admin || '']);
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
+app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
+  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre } = req.body;
+  try {
+    const chk = await pool.query('SELECT id FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!chk.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    let empresaId;
+    if (empresa_nombre) {
+      const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
+      empresaId = emp.rows[0]?.id || null;
+    }
+    await pool.query(
+      `UPDATE casos_ausentismo SET
+         empresa_nombre      = COALESCE($1, empresa_nombre),
+         empresa_id          = CASE WHEN $1::text IS NULL THEN empresa_id ELSE $2 END,
+         trabajador_nombre   = COALESCE($3, trabajador_nombre),
+         trabajador_dni      = COALESCE($4, trabajador_dni),
+         trabajador_telefono = COALESCE($5, trabajador_telefono),
+         motivo              = COALESCE($6, motivo),
+         documentacion       = COALESCE($7, documentacion),
+         notas_admin         = COALESCE($8, notas_admin)
+       WHERE id = $9`,
+      [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
+       trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM casos_ausentismo WHERE id=$1 RETURNING trabajador_nombre', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    res.json({ ok: true, trabajador: r.rows[0].trabajador_nombre });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Asignar o reasignar el profesional ---
+app.post('/api/ausentismo/casos/:id/asignar', adminMiddleware, async (req, res) => {
+  const { profesional_id } = req.body;
+  try {
+    const caso = await pool.query('SELECT estado FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!caso.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (['resuelto', 'cancelado'].includes(caso.rows[0].estado)) {
+      return res.status(400).json({ error: 'El caso ya está cerrado' });
+    }
+    if (!profesional_id) {
+      // Desasignar: vuelve a la bandeja de casos nuevos
+      await pool.query(`UPDATE casos_ausentismo SET profesional_id=NULL, estado='nuevo' WHERE id=$1`, [req.params.id]);
+      return res.json({ ok: true, estado: 'nuevo' });
+    }
+    const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1 AND activo=true', [profesional_id]);
+    if (!m.rows.length) return res.status(400).json({ error: 'Ese profesional no existe o está inactivo' });
+    // Si ya estaba más avanzado, reasignar no lo hace retroceder
+    const nuevoEstado = caso.rows[0].estado === 'nuevo' ? 'asignado' : caso.rows[0].estado;
+    await pool.query('UPDATE casos_ausentismo SET profesional_id=$1, estado=$2 WHERE id=$3',
+      [profesional_id, nuevoEstado, req.params.id]);
+    res.json({ ok: true, profesional: m.rows[0].nombre, estado: nuevoEstado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Cambio de estado, respetando el circuito ---
+app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) => {
+  const { estado } = req.body;
+  if (!ESTADOS_CASO.includes(estado)) return res.status(400).json({ error: 'Estado inválido' });
+  try {
+    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const caso = r.rows[0];
+    if (!(await puedeVerCaso(caso, req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+
+    if (estado === caso.estado) return res.json({ ok: true, estado });
+    if (!TRANSICIONES_CASO[caso.estado].includes(estado)) {
+      return res.status(400).json({ error: `Un caso "${caso.estado}" no puede pasar a "${estado}"` });
+    }
+    if (estado === 'asignado' && !caso.profesional_id) {
+      return res.status(400).json({ error: 'Asigná un profesional antes de avanzar el caso' });
+    }
+    // resuelto_en es lo que después se factura, así que se sella acá y se limpia si vuelve atrás
+    await pool.query(
+      `UPDATE casos_ausentismo SET estado=$1, resuelto_en = CASE WHEN $1='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
+      [estado, req.params.id]);
+    res.json({ ok: true, estado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Facturación: casos resueltos del mes, agrupados por empresa ---
+app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
+  const mes = req.query.mes || new Date().toISOString().slice(0, 7); // YYYY-MM
+  if (!/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ error: 'Mes inválido, se espera AAAA-MM' });
+  try {
+    const r = await pool.query(`
+      SELECT c.id, c.empresa_nombre, c.trabajador_nombre, c.trabajador_dni, c.resuelto_en,
+             m.nombre AS profesional_nombre
+      FROM casos_ausentismo c
+      LEFT JOIN medicos m ON m.id = c.profesional_id
+      WHERE c.estado = 'resuelto' AND to_char(c.resuelto_en,'YYYY-MM') = $1
+      ORDER BY c.empresa_nombre, c.resuelto_en`, [mes]);
+
+    const porEmpresa = {};
+    for (const c of r.rows) {
+      if (!porEmpresa[c.empresa_nombre]) porEmpresa[c.empresa_nombre] = { empresa: c.empresa_nombre, casos: [], cantidad: 0 };
+      porEmpresa[c.empresa_nombre].casos.push(c);
+      porEmpresa[c.empresa_nombre].cantidad++;
+    }
+    res.json({ ok: true, mes, total_casos: r.rows.length, empresas: Object.values(porEmpresa) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Portal de la empresa: abre casos y sigue los suyos ---
+app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res) => {
+  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion } = req.body;
+  if (!trabajador_nombre || !trabajador_nombre.trim()) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
+  if (!motivo || !motivo.trim()) return res.status(400).json({ error: 'Contanos el motivo de la ausencia' });
+  try {
+    const r = await pool.query(
+      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
+      [req.empresa.id, req.empresa.nombre, trabajador_nombre.trim(), trabajador_dni || '',
+       trabajador_telefono || '', motivo.trim(), documentacion || '']);
+    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res) => {
+  try {
+    // La empresa ve el estado y el profesional, pero no las notas internas de MEDGRUP
+    const r = await pool.query(`
+      SELECT c.id, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono, c.motivo,
+             c.documentacion, c.estado, c.creado_en, c.resuelto_en, c.turno_id,
+             m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
+             t.fecha AS turno_fecha, t.hora AS turno_hora,
+             (SELECT d.id FROM dictamenes d WHERE d.turno_id = c.turno_id ORDER BY d.creado_en DESC LIMIT 1) AS dictamen_id
+      FROM casos_ausentismo c
+      LEFT JOIN medicos m ON m.id = c.profesional_id
+      LEFT JOIN turnos  t ON t.id = c.turno_id
+      WHERE c.empresa_nombre = $1
+      ORDER BY c.creado_en DESC`, [req.empresa.nombre]);
+    res.json({ ok: true, casos: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT estado FROM casos_ausentismo WHERE id=$1 AND empresa_nombre=$2',
+      [req.params.id, req.empresa.nombre]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (r.rows[0].estado === 'resuelto') return res.status(400).json({ error: 'El caso ya fue resuelto' });
+    if (r.rows[0].estado === 'cancelado') return res.json({ ok: true, estado: 'cancelado' });
+    await pool.query(`UPDATE casos_ausentismo SET estado='cancelado' WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true, estado: 'cancelado' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
