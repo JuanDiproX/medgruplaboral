@@ -1246,8 +1246,27 @@ app.get('/api/turnos', authMiddleware, async (req, res) => {
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Si el turno viene de un caso de ausentismo, el caso acompaña al turno solo. Siempre avanza,
+// nunca retrocede, y no toca los casos ya resueltos o cancelados.
+async function avanzarCasoDelTurno(turnoId, estado) {
+  if (!turnoId) return;
+  try {
+    if (estado === 'en-curso') {
+      await pool.query(`UPDATE casos_ausentismo SET estado='en-curso'
+        WHERE turno_id=$1 AND estado IN ('asignado','programado')`, [turnoId]);
+    } else if (estado === 'resuelto') {
+      await pool.query(`UPDATE casos_ausentismo SET estado='resuelto', resuelto_en=NOW()
+        WHERE turno_id=$1 AND estado IN ('asignado','programado','en-curso')`, [turnoId]);
+    }
+  } catch (err) { console.error('No se pudo avanzar el caso de ausentismo:', err.message); }
+}
+
 app.patch('/api/turnos/:id/estado', authMiddleware, async (req, res) => {
-  try { await pool.query('UPDATE turnos SET estado=$1 WHERE id=$2', [req.body.estado, req.params.id]); res.json({ ok: true }); }
+  try {
+    await pool.query('UPDATE turnos SET estado=$1 WHERE id=$2', [req.body.estado, req.params.id]);
+    if (req.body.estado === 'en-curso') await avanzarCasoDelTurno(req.params.id, 'en-curso');
+    res.json({ ok: true });
+  }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1516,6 +1535,8 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
        antecedentes||'',hallazgos||'',conclusion||'',matricula||'',especialidad||'Medicina Laboral',
        apellido_nombre||'',fecha_nacimiento||'',lugar_nacimiento||'',estado_civil||'',estudios||'',
        puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'']);
+    // Emitir el informe es lo que cierra un caso de ausentismo: es lo que se factura
+    await avanzarCasoDelTurno(turno_id, 'resuelto');
     res.json({ ok: true, dictamen: r.rows[0], numero });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
