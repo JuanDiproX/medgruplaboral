@@ -49,6 +49,8 @@
   --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
   --rosa:#c0365a;--rosa-dark:#9a2847;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
   --celeste:#7aaed4;--celeste-light:#edf5fb;
+  --verde:#1e6640;--verde-light:#e6f4ec;
+  --amber:#8f5000;--amber-light:#fdf0d8;
   --bg:#eef3f9;--surface:#ffffff;--surface2:#f4f7fb;--surface3:#e6edf5;
   --border:rgba(58,110,168,0.1);--border2:rgba(58,110,168,0.18);
   --text:#1a2433;--text2:#5a6575;--text3:#97a3b4;
@@ -926,6 +928,10 @@ td.no-label::before{display:none;}
               <div class="form-group full"><label class="form-lbl">Trabajador (apellido y nombre)</label><input type="text" id="au-trabajador" placeholder="Apellido, Nombre"/></div>
               <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="au-dni" placeholder="30111222"/></div>
               <div class="form-group"><label class="form-lbl">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456"/></div>
+              <div class="form-group full"><label class="form-lbl">Domicilio donde hace reposo</label>
+                <input type="text" id="au-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
+                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">Al entrar a la entrevista se le pide la ubicación al trabajador y se verifica contra este domicilio. Calle, número, ciudad y provincia.</div>
+              </div>
               <div class="form-group full"><label class="form-lbl">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
               <div class="form-group full"><label class="form-lbl">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
               <div class="form-group full">
@@ -1409,7 +1415,7 @@ td.no-label::before{display:none;}
     </div>
     <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Se crea la videollamada y el caso pasa a la agenda como un turno normal.</div>
     <div id="prog-resultado" style="display:none;margin-top:12px;background:var(--verde-light);border:1px solid var(--verde);border-radius:var(--r-sm);padding:12px 14px;">
-      <div style="font-size:12.5px;color:#1e6640;line-height:1.5;margin-bottom:10px;">Entrevista programada. Mandale el link al trabajador:</div>
+      <div style="font-size:12.5px;color:#1e6640;line-height:1.5;margin-bottom:10px;">Entrevista programada. Mandale el link al trabajador: primero se le pide la ubicación y recién ahí entra a la videollamada.</div>
       <a id="prog-whatsapp" href="#" target="_blank" rel="noopener" class="btn btn-full" style="background:#25D366;color:white;text-decoration:none;justify-content:center;padding:10px;">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
         Enviar por WhatsApp
@@ -1419,6 +1425,40 @@ td.no-label::before{display:none;}
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-programar-caso').classList.remove('open')">Cerrar</button>
       <button class="btn btn-primary" id="btn-prog-confirmar" onclick="confirmarProgramarCaso()">Programar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DOMICILIO DE REPOSO Y CONTROL POR UBICACIÓN -->
+<div class="modal-bg" id="modal-domicilio-caso">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title" style="margin-bottom:4px;">Domicilio de reposo</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="dom-caso-info">—</div>
+
+    <div class="form-group"><label class="form-lbl">Dirección</label>
+      <input type="text" id="dom-direccion" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">Calle, número, ciudad y provincia. Al guardar buscamos las coordenadas solas.</div>
+    </div>
+    <div class="form-grid" style="margin-top:12px;">
+      <div class="form-group"><label class="form-lbl">Latitud</label><input type="text" id="dom-lat" placeholder="-53.7877"/></div>
+      <div class="form-group"><label class="form-lbl">Longitud</label><input type="text" id="dom-lng" placeholder="-67.7093"/></div>
+      <div class="form-group"><label class="form-lbl">Radio permitido (metros)</label><input type="number" id="dom-radio" min="50" max="5000" step="50" placeholder="300"/></div>
+      <div class="form-group" style="display:flex;align-items:flex-end;">
+        <button class="btn btn-ghost btn-full" style="padding:9px;" onclick="buscarCoordenadasDomicilio()">Buscar coordenadas</button>
+      </div>
+    </div>
+    <div style="font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:8px;">300 m es lo recomendado: adentro de una casa el GPS se corre entre 50 y 200 m, y un radio chico rebota a gente que sí está en su domicilio.</div>
+
+    <div id="dom-aviso" style="display:none;margin-top:12px;border-radius:var(--r-sm);padding:10px 13px;font-size:12.5px;line-height:1.5;"></div>
+
+    <div style="margin-top:1.2rem;border-top:1px solid var(--border);padding-top:1rem;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Intentos de ingreso</div>
+      <div id="dom-ingresos" style="font-size:12px;color:var(--text3);">—</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-domicilio-caso').classList.remove('open')">Cerrar</button>
+      <button class="btn btn-primary" id="btn-dom-guardar" onclick="guardarDomicilioCaso()">Guardar</button>
     </div>
   </div>
 </div>
@@ -4481,6 +4521,8 @@ function renderCasosAusentismo(){
 
     const nCert = Number(c.certificados) || 0;
     const acciones = [`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`];
+    if(esAdmin)
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDomicilioCaso(${c.id})">📍 Domicilio</button>`);
     if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirAsignarCaso(${c.id})">${c.profesional_nombre?'Reasignar':'Asignar profesional'}</button>`);
     if(c.profesional_id && ['asignado','programado'].includes(c.estado))
@@ -4499,6 +4541,7 @@ function renderCasosAusentismo(){
         <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
           ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
           : '<span style="color:#c8a800;font-weight:600;">Sin profesional asignado</span>'}</div>
+        ${domicilioTag(c)}
         ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${c.motivo}</div>`:''}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${acciones.join('')}</div>
       </div>
@@ -4507,6 +4550,128 @@ function renderCasosAusentismo(){
 }
 
 function filtrarCasos(estado){ filtroCasos = estado; renderCasosAusentismo(); }
+
+// ----- Domicilio de reposo y control por ubicación -----
+// Sin coordenadas el trabajador no puede entrar a la entrevista, así que la tarjeta del caso
+// tiene que dejar claro de un vistazo si el domicilio está resuelto o no.
+function domicilioTag(c){
+  if(!c.domicilio) return '<div class="turno-meta" style="margin-top:3px;"><span style="color:#c8a800;font-weight:600;">Sin domicilio de reposo — el trabajador no va a poder ingresar</span></div>';
+  const ok = c.domicilio_lat != null;
+  return `<div class="turno-meta" style="margin-top:3px;">
+    <span style="color:${ok?'var(--text3)':'#c8a800'};font-weight:${ok?'400':'600'};">
+      ${ok?'📍':'⚠️'} ${c.domicilio}${ok?` (radio ${c.radio_metros||300} m)`:' — sin coordenadas, no se puede verificar'}
+    </span></div>`;
+}
+
+let casoDomicilioId = null;
+
+function avisoDomicilio(tipo, texto){
+  const el = document.getElementById('dom-aviso');
+  if(!texto){ el.style.display = 'none'; return; }
+  const estilos = {
+    ok:    'background:var(--verde-light);border:1px solid var(--verde);color:#1e6640;',
+    error: 'background:var(--rosa-light);border:1px solid var(--rosa-mid);color:var(--rosa-dark);',
+    info:  'background:var(--azul-light);border:1px solid var(--azul-mid);color:var(--azul-dark);'
+  };
+  el.style.cssText = 'margin-top:12px;border-radius:var(--r-sm);padding:10px 13px;font-size:12.5px;line-height:1.5;display:block;' + (estilos[tipo]||estilos.info);
+  el.textContent = texto;
+}
+
+function abrirDomicilioCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  casoDomicilioId = id;
+  document.getElementById('dom-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre||''}`;
+  document.getElementById('dom-direccion').value = c.domicilio || '';
+  document.getElementById('dom-lat').value = c.domicilio_lat ?? '';
+  document.getElementById('dom-lng').value = c.domicilio_lng ?? '';
+  document.getElementById('dom-radio').value = c.radio_metros || 300;
+  avisoDomicilio('', '');
+  document.getElementById('dom-ingresos').textContent = 'Cargando...';
+  document.getElementById('modal-domicilio-caso').classList.add('open');
+  cargarIngresosCaso(id);
+}
+
+async function buscarCoordenadasDomicilio(){
+  const direccion = document.getElementById('dom-direccion').value.trim();
+  if(!direccion) return avisoDomicilio('error', 'Escribí la dirección primero');
+  avisoDomicilio('info', 'Buscando la dirección...');
+  try{
+    const r = await fetch('/api/geocode', { method:'POST', headers:apiHeaders(), body: JSON.stringify({ direccion }) });
+    const d = await r.json();
+    if(!d.ok) return avisoDomicilio('error', d.error || 'No se pudo ubicar esa dirección');
+    document.getElementById('dom-lat').value = d.lat;
+    document.getElementById('dom-lng').value = d.lng;
+    avisoDomicilio('ok', 'Encontrada: ' + d.direccion_normalizada + '. Dale a Guardar para dejarla fija.');
+  }catch(e){ avisoDomicilio('error', 'Error de conexión'); }
+}
+
+async function guardarDomicilioCaso(){
+  if(!casoDomicilioId) return;
+  const btn = document.getElementById('btn-dom-guardar');
+  const lat = document.getElementById('dom-lat').value.trim();
+  const lng = document.getElementById('dom-lng').value.trim();
+  const cuerpo = {
+    domicilio: document.getElementById('dom-direccion').value.trim(),
+    radio_metros: Number(document.getElementById('dom-radio').value) || 300
+  };
+  // Las coordenadas solo se mandan si están cargadas a mano: si no, el servidor las resuelve
+  if(lat && lng){ cuerpo.domicilio_lat = Number(lat); cuerpo.domicilio_lng = Number(lng); }
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoDomicilioId}`, {
+      method:'PATCH', headers:apiHeaders(), body: JSON.stringify(cuerpo)
+    });
+    const d = await r.json();
+    if(!d.ok){ avisoDomicilio('error', d.error || 'No se pudo guardar'); return; }
+    await cargarCasosAusentismo();
+    const c = casosAusentismo.find(x => x.id === casoDomicilioId);
+    if(c){
+      document.getElementById('dom-lat').value = c.domicilio_lat ?? '';
+      document.getElementById('dom-lng').value = c.domicilio_lng ?? '';
+    }
+    if(cuerpo.domicilio && c && c.domicilio_lat == null){
+      avisoDomicilio('error', 'Se guardó la dirección pero no pudimos ubicarla en el mapa. Agregá ciudad y provincia, o cargá latitud y longitud a mano (se sacan de Google Maps con clic derecho sobre el punto).');
+    } else {
+      avisoDomicilio('ok', cuerpo.domicilio ? 'Domicilio guardado. El control por ubicación ya queda activo.' : 'Domicilio borrado.');
+    }
+  }catch(e){ avisoDomicilio('error', 'Error de conexión'); }
+  finally{ btn.disabled = false; btn.textContent = 'Guardar'; }
+}
+
+const RESULTADO_INGRESO = {
+  aceptado: ['Ingresó', '#1e6640'],
+  fuera_de_rango: ['Fuera del domicilio', '#8f5000'],
+  sin_ubicacion: ['No compartió la ubicación', 'var(--rosa-dark)'],
+  precision_baja: ['Señal muy débil', '#8f5000'],
+  domicilio_sin_coordenadas: ['Domicilio sin coordenadas', 'var(--rosa-dark)'],
+  sin_entrevista: ['Todavía sin entrevista', 'var(--text3)'],
+  caso_cerrado: ['Caso ya cerrado', 'var(--text3)']
+};
+
+async function cargarIngresosCaso(id){
+  const cont = document.getElementById('dom-ingresos');
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/ingresos`, { headers: apiHeaders() });
+    const d = await r.json();
+    if(!d.ok){ cont.textContent = d.error || 'No se pudieron cargar los intentos.'; return; }
+    if(!d.ingresos.length){ cont.textContent = 'Todavía no intentó ingresar.'; return; }
+    cont.innerHTML = d.ingresos.map(i => {
+      const [texto, color] = RESULTADO_INGRESO[i.resultado] || [i.resultado, 'var(--text3)'];
+      const cuando = new Date(i.creado_en).toLocaleString('es-AR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const detalle = [
+        i.distancia_metros != null ? `a ${Math.round(i.distancia_metros)} m del domicilio` : null,
+        i.precision_metros != null ? `margen ${Math.round(i.precision_metros)} m` : null
+      ].filter(Boolean).join(' · ');
+      const mapa = (i.lat != null && i.lng != null)
+        ? ` · <a href="https://www.google.com/maps?q=${i.lat},${i.lng}" target="_blank" rel="noopener" style="color:var(--azul);">ver en el mapa</a>` : '';
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:${color};font-weight:600;">${texto}</span>
+        <span style="color:var(--text3);"> · ${cuando}${detalle?' · '+detalle:''}</span>${mapa}
+      </div>`;
+    }).join('');
+  }catch(e){ cont.textContent = 'Error de conexión.'; }
+}
 
 // ----- Certificados médicos del caso -----
 let casoCertificadosId = null;
@@ -4629,19 +4794,25 @@ async function crearCasoAusentismo(){
       empresa_nombre: empresa, trabajador_nombre: trabajador,
       trabajador_dni: document.getElementById('au-dni').value.trim(),
       trabajador_telefono: document.getElementById('au-telefono').value.trim(),
+      domicilio: document.getElementById('au-domicilio').value.trim(),
       motivo, documentacion: document.getElementById('au-documentacion').value.trim()
     })});
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo abrir el caso'; err.style.display='block'; return; }
 
-    // El caso ya quedó abierto: si algún certificado falla, se avisa pero no se pierde el caso
+    // El caso ya quedó abierto: lo que falle después se avisa, pero no se pierde el caso
+    const avisos = [];
+    if(document.getElementById('au-domicilio').value.trim() && !data.domicilio_ubicado)
+      avisos.push('No pudimos ubicar el domicilio en el mapa; sin coordenadas el trabajador no va a poder entrar a la entrevista. Corregilo desde el botón Domicilio del caso.');
+
     const archivos = [...(document.getElementById('au-certificados')?.files || [])];
     if(archivos.length){
       try{ await subirCertificados(data.id, archivos); }
-      catch(e){ err.textContent = 'El caso se abrió, pero un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'; err.style.display='block'; }
+      catch(e){ avisos.push('Un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'); }
     }
+    if(avisos.length){ err.textContent = 'El caso se abrió. ' + avisos.join(' '); err.style.display='block'; }
 
-    ['au-trabajador','au-dni','au-telefono','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
+    ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
     const inputCert = document.getElementById('au-certificados');
     if(inputCert) inputCert.value = '';
     mostrarToast('✓ Caso abierto','#1e6640');
@@ -4686,8 +4857,16 @@ function abrirProgramarCaso(id){
     ? String(c.turno_fecha).split('T')[0]
     : new Date().toISOString().split('T')[0];
   document.getElementById('prog-resultado').style.display = 'none';
-  document.getElementById('prog-error').style.display = 'none';
   document.getElementById('btn-prog-confirmar').style.display = 'inline-flex';
+  // Sin coordenadas del domicilio el link se genera igual, pero el trabajador queda trabado
+  // en la pantalla de ubicación. Mejor avisarlo acá que descubrirlo el día de la entrevista.
+  const err = document.getElementById('prog-error');
+  if(c.domicilio_lat == null){
+    err.textContent = 'Ojo: este caso no tiene el domicilio de reposo ubicado, así que el trabajador no va a poder entrar a la videollamada. Cargalo desde el botón Domicilio antes de mandarle el link.';
+    err.style.display = 'block';
+  } else {
+    err.style.display = 'none';
+  }
   document.getElementById('modal-programar-caso').classList.add('open');
 }
 
@@ -4709,7 +4888,7 @@ async function confirmarProgramarCaso(){
     const c = casosAusentismo.find(x => x.id === casoProgramandoId);
     if(data.link_paciente && c?.trabajador_telefono){
       const fl = new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}`;
+      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: es un control domiciliario, así que tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
       document.getElementById('prog-whatsapp').href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
       document.getElementById('prog-resultado').style.display = 'block';
       btn.style.display = 'none';

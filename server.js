@@ -19,6 +19,8 @@ const FIRMA_ACTA_DESDE = '2026-07-31';
 const IA_TIMEOUT_MS = 3 * 60 * 1000;
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+// Solo para convertir la dirección del domicilio en coordenadas. Nunca se manda al navegador.
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_FROM = process.env.RESEND_FROM || 'MEDGRUP <onboarding@resend.dev>';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
@@ -210,6 +212,22 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW(),
         resuelto_en TIMESTAMP
       );
+      -- Registro de cada intento de ingreso a la entrevista con la ubicación reportada.
+      -- Se guardan también los rechazados: sirven para auditar después.
+      CREATE TABLE IF NOT EXISTS ingresos_ubicacion (
+        id SERIAL PRIMARY KEY,
+        caso_id INTEGER REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        turno_id VARCHAR(50),
+        lat DOUBLE PRECISION,
+        lng DOUBLE PRECISION,
+        precision_metros DOUBLE PRECISION,
+        distancia_metros DOUBLE PRECISION,
+        resultado VARCHAR(30) NOT NULL,
+        ip VARCHAR(60),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_ingresos_caso ON ingresos_ubicacion (caso_id);
+
       -- Los certificados que presenta el trabajador. Van aparte porque un caso puede tener
       -- varios (certificado inicial, prórrogas, estudios) y se suben en momentos distintos.
       CREATE TABLE IF NOT EXISTS certificados_ausentismo (
@@ -274,6 +292,14 @@ async function initDB() {
       // Hay evaluaciones que no incluyen examen del estado mental. Con esto la sección se
       // apaga para ese informe y no vuelve aunque se regenere con la IA.
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS sin_semiologico BOOLEAN DEFAULT false`,
+      // Control domiciliario: el reposo es en el domicilio del trabajador, así que el caso
+      // guarda esa dirección, sus coordenadas y con cuánto margen se considera "en casa".
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio VARCHAR(400)`,
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio_lat DOUBLE PRECISION`,
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio_lng DOUBLE PRECISION`,
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS radio_metros INTEGER DEFAULT 300`,
+      // El link que se le manda al trabajador no puede ser adivinable: el id del turno sí lo es
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS token_ingreso VARCHAR(64)`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS modalidad VARCHAR(20) DEFAULT 'telemedicina'`,
       // Independiente de "modalidad" (que solo decide si se crea sala de Daily): esto decide si
@@ -2303,30 +2329,48 @@ app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
 
 // --- Alta desde MEDGRUP (la empresa tiene su propio endpoint más abajo) ---
 app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
-  const { empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin } = req.body;
+  const { empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
+          domicilio, domicilio_lat, domicilio_lng, radio_metros } = req.body;
   if (!empresa_nombre) return res.status(400).json({ error: 'Falta la empresa' });
   if (!trabajador_nombre) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
   try {
     const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
+    // Si mandaron la dirección sin coordenadas, se resuelve acá para que el control quede listo
+    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null;
+    if (domicilio && lat == null) {
+      const punto = await geocodificar(domicilio);
+      if (punto) { lat = punto.lat; lng = punto.lng; }
+    }
     const r = await pool.query(
-      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
+                                     domicilio, domicilio_lat, domicilio_lng, radio_metros)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
       [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
-       motivo || '', documentacion || '', notas_admin || '']);
-    res.json({ ok: true, id: r.rows[0].id });
+       motivo || '', documentacion || '', notas_admin || '',
+       domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO]);
+    res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
 app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
-  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre } = req.body;
+  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre,
+          domicilio, domicilio_lat, domicilio_lng, radio_metros } = req.body;
   try {
-    const chk = await pool.query('SELECT id FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    const chk = await pool.query('SELECT id, domicilio FROM casos_ausentismo WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
     let empresaId;
     if (empresa_nombre) {
       const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
       empresaId = emp.rows[0]?.id || null;
+    }
+    // Las coordenadas siguen a la dirección: si cambió el texto y no vinieron a mano, se
+    // vuelven a resolver, y si la dirección se borra las coordenadas se van con ella.
+    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null, tocaCoords = domicilio_lat !== undefined;
+    if (domicilio !== undefined && domicilio !== chk.rows[0].domicilio && domicilio_lat === undefined) {
+      tocaCoords = true;
+      const punto = domicilio ? await geocodificar(domicilio) : null;
+      if (punto) { lat = punto.lat; lng = punto.lng; }
     }
     await pool.query(
       `UPDATE casos_ausentismo SET
@@ -2337,11 +2381,16 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
          trabajador_telefono = COALESCE($5, trabajador_telefono),
          motivo              = COALESCE($6, motivo),
          documentacion       = COALESCE($7, documentacion),
-         notas_admin         = COALESCE($8, notas_admin)
-       WHERE id = $9`,
+         notas_admin         = COALESCE($8, notas_admin),
+         domicilio           = COALESCE($9, domicilio),
+         domicilio_lat       = CASE WHEN $10::boolean THEN $11 ELSE domicilio_lat END,
+         domicilio_lng       = CASE WHEN $10::boolean THEN $12 ELSE domicilio_lng END,
+         radio_metros        = COALESCE($13, radio_metros)
+       WHERE id = $14`,
       [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
-       trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null, req.params.id]);
-    res.json({ ok: true });
+       trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null,
+       domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, req.params.id]);
+    res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2399,6 +2448,133 @@ app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) =
       `UPDATE casos_ausentismo SET estado=$1, resuelto_en = CASE WHEN $1='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
       [estado, req.params.id]);
     res.json({ ok: true, estado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== CONTROL DOMICILIARIO POR UBICACIÓN =====
+// El reposo del trabajador es en su domicilio, así que al entrar a la entrevista se compara
+// la posición que reporta su dispositivo contra la del domicilio que cargó la empresa.
+// La decisión de aceptar o rechazar es SIEMPRE del servidor: el navegador solo aporta el dato.
+const RADIO_POR_DEFECTO = 300;   // metros
+const PRECISION_MAXIMA = 200;    // si el margen de error supera esto, no es una lectura de GPS
+
+// Distancia sobre la superficie terrestre entre dos coordenadas, en metros (Haversine)
+function distanciaMetros(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) ** 2 +
+    Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLng/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Convierte una dirección escrita en coordenadas. La clave vive solo en el servidor.
+// Devuelve null si no se pudo ubicar: el caso igual se guarda, pero sin control por ubicación.
+async function geocodificar(direccion) {
+  if (!direccion || !direccion.trim() || !GOOGLE_MAPS_API_KEY) return null;
+  try {
+    const url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' +
+      encodeURIComponent(direccion.trim()) + '&region=ar&key=' + GOOGLE_MAPS_API_KEY;
+    const r = await fetch(url);
+    const data = await r.json();
+    if (data.status !== 'OK' || !data.results?.length) return null;
+    const loc = data.results[0].geometry.location;
+    return { lat: loc.lat, lng: loc.lng, normalizada: data.results[0].formatted_address };
+  } catch (err) { return null; }
+}
+
+app.post('/api/geocode', authMedgrupOEmpresa, async (req, res) => {
+  const { direccion } = req.body;
+  if (!direccion || !direccion.trim()) return res.status(400).json({ error: 'Escribí la dirección' });
+  if (!GOOGLE_MAPS_API_KEY) {
+    return res.status(503).json({ code:'SIN_CLAVE', error: 'Falta configurar GOOGLE_MAPS_API_KEY en Railway. Mientras tanto podés pegar las coordenadas a mano.' });
+  }
+  const punto = await geocodificar(direccion);
+  if (!punto) return res.status(400).json({ code:'NO_ENCONTRADA', error: 'No se pudo ubicar esa dirección. Probá agregando la ciudad y la provincia.' });
+  res.json({ ok: true, lat: punto.lat, lng: punto.lng, direccion_normalizada: punto.normalizada });
+});
+
+// Página a la que entra el trabajador. El link lleva un token al azar porque el id del turno
+// es adivinable, y sin esto cualquiera podría probar entradas ajenas.
+app.get('/ingreso/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ingreso.html')));
+
+app.get('/api/ingreso/:token', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, t.fecha, t.hora
+      FROM casos_ausentismo c LEFT JOIN turnos t ON t.id = c.turno_id
+      WHERE c.token_ingreso=$1`, [req.params.token]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Este link no es válido o ya venció.' });
+    const c = r.rows[0];
+    res.json({ ok: true, trabajador: c.trabajador_nombre, fecha: c.fecha, hora: c.hora,
+      domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null,
+      cerrado: ['resuelto','cancelado'].includes(c.estado) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/ingreso/:token/verificar', async (req, res) => {
+  const { lat, lng, precision } = req.body || {};
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '';
+  let caso = null;
+  const registrar = (resultado, distancia) => pool.query(
+    `INSERT INTO ingresos_ubicacion (caso_id, turno_id, lat, lng, precision_metros, distancia_metros, resultado, ip)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [caso?.id || null, caso?.turno_id || null, lat ?? null, lng ?? null, precision ?? null,
+     distancia ?? null, resultado, ip]).catch(()=>{});
+  try {
+    const r = await pool.query(`
+      SELECT c.*, t.link_paciente
+      FROM casos_ausentismo c LEFT JOIN turnos t ON t.id = c.turno_id
+      WHERE c.token_ingreso=$1`, [req.params.token]);
+    if (!r.rows.length) return res.status(404).json({ code:'LINK_INVALIDO', error: 'Este link no es válido o ya venció.' });
+    caso = r.rows[0];
+
+    if (['resuelto','cancelado'].includes(caso.estado)) {
+      await registrar('caso_cerrado', null);
+      return res.status(403).json({ code:'CASO_CERRADO', error: 'Esta entrevista ya está cerrada.' });
+    }
+    if (!caso.link_paciente) {
+      await registrar('sin_entrevista', null);
+      return res.status(403).json({ code:'SIN_ENTREVISTA', error: 'Todavía no hay una entrevista programada. Aguardá a que te avisemos.' });
+    }
+    if (caso.domicilio_lat == null || caso.domicilio_lng == null) {
+      await registrar('domicilio_sin_coordenadas', null);
+      return res.status(403).json({ code:'SIN_DOMICILIO', error: 'Tu domicilio todavía no está verificado en el sistema. Avisale a tu empresa.' });
+    }
+    if (lat == null || lng == null) {
+      await registrar('sin_ubicacion', null);
+      return res.status(403).json({ code:'SIN_UBICACION', error: 'No pudimos obtener tu ubicación. Activá el GPS y permití el acceso a la ubicación para poder ingresar.' });
+    }
+    if (precision != null && precision > PRECISION_MAXIMA) {
+      await registrar('precision_baja', null);
+      return res.status(403).json({ code:'PRECISION_BAJA', precision: Math.round(precision),
+        error: `La señal de ubicación es muy débil (margen de ${Math.round(precision)} m). Salí al exterior o acercate a una ventana y volvé a intentar.` });
+    }
+
+    const radio = caso.radio_metros || RADIO_POR_DEFECTO;
+    const distancia = distanciaMetros(lat, lng, caso.domicilio_lat, caso.domicilio_lng);
+    if (distancia > radio) {
+      await registrar('fuera_de_rango', distancia);
+      return res.status(403).json({ code:'FUERA_DE_RANGO', distancia: Math.round(distancia), radio,
+        error: `Estás a ${Math.round(distancia)} m de tu domicilio. El control es domiciliario, así que tenés que estar a menos de ${radio} m para ingresar.` });
+    }
+
+    await registrar('aceptado', distancia);
+    res.json({ ok: true, link: caso.link_paciente, distancia: Math.round(distancia) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Historial de intentos: es la prueba de que el trabajador estaba (o no) en su domicilio,
+// así que el profesional que lleva el caso lo tiene a mano al redactar el informe.
+app.get('/api/ausentismo/casos/:id/ingresos', authMiddleware, async (req, res) => {
+  try {
+    const c = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!c.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (!(await puedeVerCaso(c.rows[0], req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+    const r = await pool.query(
+      `SELECT id, lat, lng, precision_metros, distancia_metros, resultado, ip, creado_en
+       FROM ingresos_ubicacion WHERE caso_id=$1 ORDER BY creado_en DESC`, [req.params.id]);
+    res.json({ ok: true, ingresos: r.rows, radio: c.rows[0].radio_metros || RADIO_POR_DEFECTO });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2505,11 +2681,19 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     if (['resuelto', 'cancelado'].includes(caso.estado)) return res.status(400).json({ error: 'El caso ya está cerrado' });
     if (!caso.profesional_id) return res.status(400).json({ error: 'El caso todavía no tiene profesional asignado' });
 
+    // El trabajador entra por una página nuestra, no directo a la videollamada: ahí se le
+    // pide la ubicación. Si tuviera el link de Daily se saltearía el control domiciliario.
+    let token = caso.token_ingreso;
+    if (!token) {
+      token = crypto.randomBytes(24).toString('hex');
+      await pool.query('UPDATE casos_ausentismo SET token_ingreso=$1 WHERE id=$2', [token, req.params.id]);
+    }
+    const linkIngreso = `${req.protocol}://${req.get('host')}/ingreso/${token}`;
+
     // Reprogramar: si ya tenía entrevista se mueve la fecha, no se crea otra sala
     if (caso.turno_id) {
       await pool.query('UPDATE turnos SET fecha=$1, hora=$2 WHERE id=$3', [fecha, hora, caso.turno_id]);
-      const t = await pool.query('SELECT link_paciente FROM turnos WHERE id=$1', [caso.turno_id]);
-      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: t.rows[0]?.link_paciente || null, reprogramado: true });
+      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: linkIngreso, reprogramado: true });
     }
 
     const creado = await crearTurnoConVideollamada({
@@ -2523,7 +2707,9 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     });
     await pool.query(`UPDATE casos_ausentismo SET turno_id=$1, estado='programado' WHERE id=$2`,
       [creado.turnoId, req.params.id]);
-    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: creado.linkPaciente, estado: 'programado' });
+    // Se devuelve el link de ingreso, no el de Daily: el de Daily se entrega recién
+    // cuando el trabajador confirma que está en su domicilio.
+    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: linkIngreso, estado: 'programado' });
   } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
@@ -2552,16 +2738,22 @@ app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
 
 // --- Portal de la empresa: abre casos y sigue los suyos ---
 app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res) => {
-  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion } = req.body;
+  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, domicilio } = req.body;
   if (!trabajador_nombre || !trabajador_nombre.trim()) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
   if (!motivo || !motivo.trim()) return res.status(400).json({ error: 'Contanos el motivo de la ausencia' });
   try {
+    // El reposo es domiciliario, así que la dirección que carga la empresa se resuelve a
+    // coordenadas ya en el alta. Si no se puede ubicar, el caso se abre igual y avisamos.
+    const punto = domicilio ? await geocodificar(domicilio) : null;
     const r = await pool.query(
-      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
+      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion,
+                                     domicilio, domicilio_lat, domicilio_lng)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, creado_en`,
       [req.empresa.id, req.empresa.nombre, trabajador_nombre.trim(), trabajador_dni || '',
-       trabajador_telefono || '', motivo.trim(), documentacion || '']);
-    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
+       trabajador_telefono || '', motivo.trim(), documentacion || '',
+       (domicilio || '').trim(), punto?.lat ?? null, punto?.lng ?? null]);
+    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en,
+      domicilio_ubicado: !!punto, domicilio_normalizado: punto?.normalizada || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2571,6 +2763,7 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
     const r = await pool.query(`
       SELECT c.id, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono, c.motivo,
              c.documentacion, c.estado, c.creado_en, c.resuelto_en, c.turno_id,
+             c.domicilio, (c.domicilio_lat IS NOT NULL) AS domicilio_ubicado,
              m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
              t.fecha AS turno_fecha, t.hora AS turno_hora,
              (SELECT d.id FROM dictamenes d WHERE d.turno_id = c.turno_id ORDER BY d.creado_en DESC LIMIT 1) AS dictamen_id

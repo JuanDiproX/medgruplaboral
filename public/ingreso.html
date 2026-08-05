@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Ingreso a la entrevista — MEDGRUP</title>
+<link rel="icon" href="/favicon.ico" sizes="any"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="theme-color" content="#3a6ea8"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
+  --rosa:#c0365a;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
+  --verde:#1e6640;--verde-light:#eaf5f0;
+  --amber:#8f5000;--amber-light:#fdf6e3;--amber-mid:#e8d59a;
+  --bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;
+  --text:#1a1916;--text2:#4a4740;--text3:#8a8780;--border:#e4e9f0;--border2:#d4dce8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.caja{background:var(--surface);border-radius:18px;padding:2rem;width:100%;max-width:440px;
+  box-shadow:0 20px 50px rgba(20,40,80,.12);}
+.logo{text-align:center;margin-bottom:1.5rem;}
+.logo img{height:44px;width:auto;object-fit:contain;}
+h1{font-family:'Syne',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.4px;text-align:center;}
+.sub{font-size:13.5px;color:var(--text3);text-align:center;margin-top:6px;line-height:1.55;}
+.datos{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;margin:1.4rem 0;font-size:13.5px;line-height:1.7;}
+.datos b{color:var(--text);}
+.aviso{border-radius:12px;padding:13px 15px;font-size:13px;line-height:1.6;margin-bottom:1.2rem;}
+.aviso-info{background:var(--azul-light);border:1px solid var(--azul-mid);color:var(--azul-dark);}
+.aviso-error{background:var(--rosa-light);border:1px solid var(--rosa-mid);color:var(--rosa);}
+.aviso-alerta{background:var(--amber-light);border:1px solid var(--amber-mid);color:var(--amber);}
+.aviso-ok{background:var(--verde-light);border:1px solid var(--verde);color:var(--verde);}
+button{width:100%;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:600;
+  font-family:'DM Sans',sans-serif;cursor:pointer;background:linear-gradient(135deg,var(--azul),var(--azul-dark));
+  color:#fff;transition:transform .12s,box-shadow .12s;}
+button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,110,168,.3);}
+button:disabled{opacity:.6;cursor:default;}
+.link-llamada{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--verde),#2d8a5a);
+  color:#fff;border-radius:12px;padding:15px;font-size:15px;font-weight:600;margin-top:4px;}
+.pie{font-size:11.5px;color:var(--text3);text-align:center;margin-top:1.2rem;line-height:1.6;}
+.cargando{display:none;align-items:center;justify-content:center;gap:9px;color:var(--text3);font-size:13.5px;padding:14px;}
+.spin{width:15px;height:15px;border:2px solid var(--azul-mid);border-top-color:var(--azul);
+  border-radius:50%;animation:girar .7s linear infinite;}
+@keyframes girar{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="caja">
+  <div class="logo"><img src="/logo.png" alt="MEDGRUP"/></div>
+  <h1 id="titulo">Ingreso a la entrevista</h1>
+  <div class="sub" id="subtitulo">Verificando el link...</div>
+
+  <div class="datos" id="datos" style="display:none;"></div>
+  <div id="aviso"></div>
+
+  <div class="cargando" id="cargando"><div class="spin"></div><span id="cargando-txt">Verificando tu ubicación...</span></div>
+
+  <button id="btn" style="display:none;" onclick="verificar()">Verificar mi ubicación e ingresar</button>
+  <a class="link-llamada" id="link-llamada" style="display:none;" href="#">Entrar a la videollamada</a>
+
+  <div class="pie" id="pie">Se te va a pedir permiso para acceder a tu ubicación. Es necesario porque el control de ausentismo es domiciliario: solo se usa para verificar que estás en el domicilio informado, y queda registrado junto a esta entrevista.</div>
+</div>
+
+<script>
+const token = location.pathname.split('/').filter(Boolean).pop();
+const $ = id => document.getElementById(id);
+
+function aviso(tipo, texto){
+  $('aviso').innerHTML = texto ? `<div class="aviso aviso-${tipo}">${texto}</div>` : '';
+}
+
+async function cargar(){
+  try{
+    const r = await fetch('/api/ingreso/' + encodeURIComponent(token));
+    const d = await r.json();
+    if(!d.ok){ $('subtitulo').textContent=''; aviso('error', d.error || 'Este link no es válido.'); return; }
+
+    $('subtitulo').textContent = 'Hola ' + d.trabajador + ', te esperamos en la entrevista médica.';
+    if(d.fecha){
+      const f = String(d.fecha).split('T')[0].split('-').reverse().join('/');
+      $('datos').innerHTML = `<div><b>Fecha:</b> ${f}${d.hora?' a las '+d.hora+' hs':''}</div>` +
+        (d.domicilio?`<div><b>Domicilio informado:</b> ${d.domicilio}</div>`:'');
+      $('datos').style.display = 'block';
+    }
+    if(d.cerrado){ aviso('alerta','Esta entrevista ya está cerrada.'); return; }
+    if(!d.tiene_domicilio){
+      aviso('alerta','Tu domicilio todavía no está verificado en el sistema. Avisale a tu empresa antes de la entrevista.');
+      return;
+    }
+    aviso('info','Para ingresar necesitamos confirmar que estás en tu domicilio. Si estás en el celular, activá el GPS.');
+    $('btn').style.display = 'block';
+  }catch(e){ aviso('error','No pudimos conectarnos. Revisá tu internet y recargá la página.'); }
+}
+
+function ubicacionActual(){
+  return new Promise(resolve => {
+    if(!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat:p.coords.latitude, lng:p.coords.longitude, precision:p.coords.accuracy }),
+      () => resolve(null),
+      // Se fuerza el GPS y se descarta cualquier lectura vieja guardada por el navegador
+      { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
+    );
+  });
+}
+
+async function verificar(){
+  $('btn').disabled = true;
+  $('btn').style.display = 'none';
+  $('cargando').style.display = 'flex';
+  aviso('', '');
+  try{
+    const pos = await ubicacionActual();
+    $('cargando-txt').textContent = 'Confirmando...';
+    const r = await fetch('/api/ingreso/' + encodeURIComponent(token) + '/verificar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(pos || {})
+    });
+    const d = await r.json();
+    $('cargando').style.display = 'none';
+
+    if(d.ok){
+      aviso('ok','Listo, confirmamos que estás en tu domicilio. Ya podés entrar.');
+      $('link-llamada').href = d.link;
+      $('link-llamada').style.display = 'block';
+      $('pie').textContent = 'Tocá el botón verde para entrar. Quedate en el domicilio durante toda la entrevista.';
+      return;
+    }
+    aviso(d.code === 'FUERA_DE_RANGO' ? 'alerta' : 'error', d.error || 'No pudimos verificar tu ubicación.');
+    $('btn').textContent = 'Volver a intentar';
+    $('btn').disabled = false;
+    $('btn').style.display = 'block';
+  }catch(e){
+    $('cargando').style.display = 'none';
+    aviso('error','No pudimos conectarnos. Revisá tu internet y volvé a intentar.');
+    $('btn').disabled = false;
+    $('btn').style.display = 'block';
+  }
+}
+
+cargar();
+</script>
+</body>
+</html>

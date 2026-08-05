@@ -634,6 +634,10 @@ tbody tr:hover .avatar{transform:scale(1.08);}
             <div><label class="login-lbl">DNI</label><input class="login-input" type="text" id="ca-dni" placeholder="30111222"/></div>
             <div><label class="login-lbl">WhatsApp del trabajador</label><input class="login-input" type="text" id="ca-telefono" placeholder="5492901123456"/></div>
           </div>
+          <div style="margin-top:12px;"><label class="login-lbl">Domicilio donde hace reposo</label>
+            <input class="login-input" type="text" id="ca-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:5px;">Al entrar a la entrevista le pedimos la ubicación al trabajador y verificamos que esté en este domicilio. Poné calle, número, ciudad y provincia.</div>
+          </div>
           <div style="margin-top:12px;"><label class="login-lbl">Motivo de la ausencia</label>
             <textarea class="login-input" id="ca-motivo" style="min-height:80px;resize:vertical;" placeholder="Faltó 3 días sin aviso. Presentó certificado por..."></textarea>
           </div>
@@ -835,12 +839,18 @@ function renderCasosEmpresa(){
       : '';
     const cancelar = ['nuevo','asignado','programado'].includes(c.estado)
       ? `<button class="btn btn-ghost" onclick="cancelarCasoEmpresa(${c.id})">Cancelar</button>` : '';
+    // El control es domiciliario: si la dirección no quedó ubicada, no se puede verificar nada
+    const domicilio = c.domicilio
+      ? `<div style="font-size:12px;color:${c.domicilio_ubicado?'var(--text3)':'var(--amber)'};margin-top:4px;">
+           ${c.domicilio_ubicado?'📍':'⚠️'} ${c.domicilio}${c.domicilio_ubicado?'':' — no pudimos ubicarla en el mapa, avisanos para corregirla'}
+         </div>`
+      : `<div style="font-size:12px;color:var(--text3);margin-top:4px;">Sin domicilio de reposo cargado</div>`;
     return `<div style="border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
           <div style="font-size:14.5px;font-weight:600;">${c.trabajador_nombre}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">${c.trabajador_dni?'DNI '+c.trabajador_dni+' · ':''}Informado el ${abierto}</div>
-          ${prof}${entrevista}
+          ${prof}${entrevista}${domicilio}
         </div>
         <span class="badge ${est.clase}">${est.texto}</span>
       </div>
@@ -890,19 +900,31 @@ async function crearCasoEmpresa(){
         trabajador_nombre: trabajador,
         trabajador_dni: document.getElementById('ca-dni').value.trim(),
         trabajador_telefono: document.getElementById('ca-telefono').value.trim(),
+        domicilio: document.getElementById('ca-domicilio').value.trim(),
         motivo
       })
     });
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo informar la ausencia'; err.style.display='block'; return; }
 
-    // El caso ya quedó abierto: si un certificado falla, se avisa pero no se pierde
+    // El caso ya quedó abierto: lo que falle después se avisa, pero no se pierde nada
+    const avisos = [];
+
+    // Sin coordenadas no hay control domiciliario
+    if(document.getElementById('ca-domicilio').value.trim() && !data.domicilio_ubicado){
+      avisos.push('No pudimos ubicar el domicilio en el mapa, así que todavía no se puede verificar la ubicación del trabajador. Avisanos para corregirlo con calle, número, ciudad y provincia.');
+    }
+
     const archivos = [...(document.getElementById('ca-certificados')?.files || [])];
     if(archivos.length){
       try{ await subirCertificadosEmpresaA(data.id, archivos); }
-      catch(e){ err.textContent = 'La ausencia quedó informada, pero un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'; err.style.display='block'; }
+      catch(e){ avisos.push('Un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'); }
     }
-    ['ca-trabajador','ca-dni','ca-telefono','ca-motivo'].forEach(id=>document.getElementById(id).value='');
+    if(avisos.length){
+      err.textContent = 'La ausencia quedó informada. ' + avisos.join(' ');
+      err.style.display = 'block';
+    }
+    ['ca-trabajador','ca-dni','ca-telefono','ca-domicilio','ca-motivo'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('ca-certificados').value = '';
     await cargarCasosEmpresa();
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
