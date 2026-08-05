@@ -210,6 +210,20 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW(),
         resuelto_en TIMESTAMP
       );
+      -- Los certificados que presenta el trabajador. Van aparte porque un caso puede tener
+      -- varios (certificado inicial, prórrogas, estudios) y se suben en momentos distintos.
+      CREATE TABLE IF NOT EXISTS certificados_ausentismo (
+        id SERIAL PRIMARY KEY,
+        caso_id INTEGER NOT NULL REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        nombre_archivo VARCHAR(300) NOT NULL,
+        tipo_mime VARCHAR(100),
+        tamano_bytes INTEGER,
+        archivo_base64 TEXT NOT NULL,
+        subido_por VARCHAR(200),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_cert_caso ON certificados_ausentismo (caso_id);
+
       CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
       CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
       CREATE INDEX IF NOT EXISTS idx_casos_prof      ON casos_ausentismo (profesional_id);
@@ -2221,7 +2235,8 @@ const TRANSICIONES_CASO = {
 const SELECT_CASO = `
   SELECT c.*, m.nombre AS profesional_nombre, m.matricula AS profesional_matricula,
          m.especialidad AS profesional_especialidad,
-         t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado
+         t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado,
+         (SELECT COUNT(*) FROM certificados_ausentismo ce WHERE ce.caso_id = c.id) AS certificados
   FROM casos_ausentismo c
   LEFT JOIN medicos m ON m.id = c.profesional_id
   LEFT JOIN turnos  t ON t.id = c.turno_id`;
@@ -2363,6 +2378,92 @@ app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) =
       `UPDATE casos_ausentismo SET estado=$1, resuelto_en = CASE WHEN $1='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
       [estado, req.params.id]);
     res.json({ ok: true, estado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Certificados médicos adjuntos al caso ---
+// Los sube tanto la empresa (que es quien los recibe del trabajador) como MEDGRUP, así que
+// estos endpoints aceptan las dos sesiones y después se fija quién puede ver ese caso.
+const CERT_MAX_BYTES = 5 * 1024 * 1024;
+const CERT_TIPOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
+function authMedgrupOEmpresa(req, res, next) {
+  const t = req.headers['x-session-token'];
+  const e = req.headers['x-empresa-token'];
+  if (t && sessions[t]) { req.usuario = sessions[t]; return next(); }
+  if (e && empresaSessions[e]) { req.empresa = empresaSessions[e]; return next(); }
+  return res.status(401).json({ error: 'No autorizado', needsLogin: true });
+}
+
+// Devuelve el caso si quien pregunta puede verlo, false si no, y null si no existe
+async function casoVisiblePara(casoId, req) {
+  const r = await pool.query('SELECT id, empresa_nombre, profesional_id, trabajador_nombre FROM casos_ausentismo WHERE id=$1', [casoId]);
+  if (!r.rows.length) return null;
+  const caso = r.rows[0];
+  if (req.empresa) return caso.empresa_nombre === req.empresa.nombre ? caso : false;
+  if (req.usuario.rol === 'admin') return caso;
+  const miId = await medicoDelUsuario(req.usuario);
+  return (miId && caso.profesional_id === miId) ? caso : false;
+}
+
+app.post('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    const caso = await casoVisiblePara(req.params.id, req);
+    if (caso === null) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (caso === false) return res.status(403).json({ error: 'No tenés acceso a este caso' });
+
+    const { nombre_archivo, tipo_mime, archivo_base64 } = req.body;
+    if (!archivo_base64 || !nombre_archivo) return res.status(400).json({ error: 'Falta el archivo' });
+    if (tipo_mime && !CERT_TIPOS.includes(tipo_mime)) {
+      return res.status(400).json({ error: 'Solo se aceptan archivos PDF, JPG, PNG o WEBP' });
+    }
+    const limpio = archivo_base64.replace(/^data:[^;]+;base64,/, '');
+    const bytes = Math.round(limpio.length * 3 / 4);
+    if (bytes > CERT_MAX_BYTES) {
+      return res.status(413).json({ error: `El archivo pesa ${(bytes/1024/1024).toFixed(1)} MB y el máximo es 5 MB. Sacale una foto con menos calidad o comprimí el PDF.` });
+    }
+    const quien = req.empresa ? `${req.empresa.nombre} (empresa)` : req.usuario.nombre;
+    const r = await pool.query(
+      `INSERT INTO certificados_ausentismo (caso_id, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, creado_en`,
+      [req.params.id, String(nombre_archivo).slice(0, 300), tipo_mime || '', bytes, limpio, quien]);
+    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    const caso = await casoVisiblePara(req.params.id, req);
+    if (caso === null) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (caso === false) return res.status(403).json({ error: 'No tenés acceso a este caso' });
+    // Sin el archivo: el listado tiene que ser liviano
+    const r = await pool.query(
+      `SELECT id, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
+       FROM certificados_ausentismo WHERE caso_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
+    res.json({ ok: true, certificados: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/ausentismo/certificados/:certId', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM certificados_ausentismo WHERE id=$1', [req.params.certId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Certificado no encontrado' });
+    const cert = r.rows[0];
+    const caso = await casoVisiblePara(cert.caso_id, req);
+    if (!caso) return res.status(403).json({ error: 'No tenés acceso a este certificado' });
+
+    const buf = Buffer.from(cert.archivo_base64, 'base64');
+    res.setHeader('Content-Type', cert.tipo_mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${(cert.nombre_archivo||'certificado').replace(/"/g,'')}"`);
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/ausentismo/certificados/:certId', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM certificados_ausentismo WHERE id=$1 RETURNING nombre_archivo', [req.params.certId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Certificado no encontrado' });
+    res.json({ ok: true, nombre: r.rows[0].nombre_archivo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

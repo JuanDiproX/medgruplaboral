@@ -928,6 +928,11 @@ td.no-label::before{display:none;}
               <div class="form-group"><label class="form-lbl">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456"/></div>
               <div class="form-group full"><label class="form-lbl">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
               <div class="form-group full"><label class="form-lbl">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
+              <div class="form-group full">
+                <label class="form-lbl">Certificado médico (opcional)</label>
+                <input type="file" id="au-certificados" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;"/>
+                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">PDF o foto, hasta 5 MB cada uno. Podés adjuntar varios y también sumar más después.</div>
+              </div>
             </div>
             <div id="au-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
             <button class="btn btn-primary btn-full" style="margin-top:1rem;padding:12px;" onclick="crearCasoAusentismo()">
@@ -1352,6 +1357,24 @@ td.no-label::before{display:none;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
         Ver acta actualizada
       </a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CERTIFICADOS DE UN CASO DE AUSENTISMO -->
+<div class="modal-bg" id="modal-certificados">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title" style="margin-bottom:4px;">Certificados médicos</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="cert-caso-info">—</div>
+    <div id="cert-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
+    <div class="form-group full">
+      <label class="form-lbl">Adjuntar otro</label>
+      <input type="file" id="cert-nuevo" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;" onchange="subirCertificadosCaso()"/>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:5px;">PDF o foto, hasta 5 MB cada uno.</div>
+    </div>
+    <div id="cert-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-certificados').classList.remove('open')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -4456,7 +4479,8 @@ function renderCasosAusentismo(){
       ? `<span>·</span><span>Entrevista: ${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')} ${c.turno_hora||''}</span>`
       : '';
 
-    const acciones = [];
+    const nCert = Number(c.certificados) || 0;
+    const acciones = [`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`];
     if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirAsignarCaso(${c.id})">${c.profesional_nombre?'Reasignar':'Asignar profesional'}</button>`);
     if(c.profesional_id && ['asignado','programado'].includes(c.estado))
@@ -4483,6 +4507,100 @@ function renderCasosAusentismo(){
 }
 
 function filtrarCasos(estado){ filtroCasos = estado; renderCasosAusentismo(); }
+
+// ----- Certificados médicos del caso -----
+let casoCertificadosId = null;
+
+function leerArchivoBase64(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = () => reject(new Error('No se pudo leer ' + file.name));
+    fr.readAsDataURL(file);
+  });
+}
+
+async function subirCertificados(casoId, archivos){
+  const subidos = [];
+  for(const file of archivos){
+    if(file.size > 5 * 1024 * 1024) throw new Error(`"${file.name}" pesa ${(file.size/1024/1024).toFixed(1)} MB y el máximo es 5 MB.`);
+    const archivo_base64 = await leerArchivoBase64(file);
+    const r = await fetch(`/api/ausentismo/casos/${casoId}/certificados`, {
+      method:'POST', headers:apiHeaders(),
+      body: JSON.stringify({ nombre_archivo: file.name, tipo_mime: file.type, archivo_base64 })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error || `No se pudo subir "${file.name}"`);
+    subidos.push(file.name);
+  }
+  return subidos;
+}
+
+async function abrirCertificadosCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  casoCertificadosId = id;
+  document.getElementById('cert-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre}`;
+  document.getElementById('cert-error').style.display = 'none';
+  document.getElementById('cert-nuevo').value = '';
+  document.getElementById('modal-certificados').classList.add('open');
+  await recargarCertificadosCaso();
+}
+
+async function recargarCertificadosCaso(){
+  const lista = document.getElementById('cert-lista');
+  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoCertificadosId}/certificados`, {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error);
+    if(!data.certificados.length){
+      lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay certificados adjuntos.</div>';
+      return;
+    }
+    const esAdmin = usuarioActual?.rol === 'admin';
+    lista.innerHTML = data.certificados.map(cert => {
+      const peso = cert.tamano_bytes ? (cert.tamano_bytes/1024 < 1024 ? Math.round(cert.tamano_bytes/1024)+' KB' : (cert.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
+      const cuando = cert.creado_en ? new Date(cert.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:600;word-break:break-all;">${cert.nombre_archivo}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}${cuando?' · '+cuando:''}${cert.subido_por?' · '+cert.subido_por:''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <a href="/api/ausentismo/certificados/${cert.id}" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 11px;font-size:12px;text-decoration:none;">Ver</a>
+          ${esAdmin?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);" onclick="borrarCertificado(${cert.id})">Quitar</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa-dark);">No se pudieron cargar los certificados.</div>'; }
+}
+
+async function subirCertificadosCaso(){
+  const input = document.getElementById('cert-nuevo');
+  const err = document.getElementById('cert-error');
+  err.style.display = 'none';
+  if(!input.files.length) return;
+  try{
+    const subidos = await subirCertificados(casoCertificadosId, [...input.files]);
+    input.value = '';
+    mostrarToast(`✓ ${subidos.length} certificado(s) adjunto(s)`,'#1e6640');
+    await recargarCertificadosCaso();
+    await cargarCasosAusentismo();
+  }catch(e){ err.textContent = e.message; err.style.display = 'block'; }
+}
+
+async function borrarCertificado(certId){
+  if(!(await confirmar('Se va a quitar este certificado del caso.', { titulo:'Quitar certificado', textoConfirmar:'Quitar', danger:true }))) return;
+  try{
+    const r = await fetch('/api/ausentismo/certificados/'+certId, { method:'DELETE', headers:apiHeaders() });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error||'No se pudo quitar'); return; }
+    mostrarToast('Certificado quitado','#2a5080');
+    await recargarCertificadosCaso();
+    await cargarCasosAusentismo();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
 
 async function cargarEmpresasSelectAusentismo(){
   const sel = document.getElementById('au-empresa');
@@ -4515,7 +4633,17 @@ async function crearCasoAusentismo(){
     })});
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo abrir el caso'; err.style.display='block'; return; }
+
+    // El caso ya quedó abierto: si algún certificado falla, se avisa pero no se pierde el caso
+    const archivos = [...(document.getElementById('au-certificados')?.files || [])];
+    if(archivos.length){
+      try{ await subirCertificados(data.id, archivos); }
+      catch(e){ err.textContent = 'El caso se abrió, pero un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'; err.style.display='block'; }
+    }
+
     ['au-trabajador','au-dni','au-telefono','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
+    const inputCert = document.getElementById('au-certificados');
+    if(inputCert) inputCert.value = '';
     mostrarToast('✓ Caso abierto','#1e6640');
     addLog('blue','Caso de ausentismo abierto', `${trabajador} · ${empresa}`);
     await cargarCasosAusentismo();
