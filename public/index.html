@@ -558,6 +558,7 @@ td.no-label::before{display:none;}
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
       <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>Presupuestos</div>
+      <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--azul);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Firmas
         <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
@@ -896,6 +897,45 @@ td.no-label::before{display:none;}
         </div>
         <button class="btn btn-primary" id="pe-btn-agregar" style="display:none;margin-top:10px;" onclick="agregarPacienteEmpresa()">Agregar trabajador</button>
         <div id="pe-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CONTROL DE AUSENTISMO ===== -->
+  <div id="sec-ausentismo" style="display:none;">
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Casos de ausentismo</div>
+            <span class="badge b-blue" id="badge-casos">0</span>
+          </div>
+          <div style="padding:0 1.1rem 0.9rem;display:flex;gap:6px;flex-wrap:wrap;" id="au-filtros"></div>
+          <div id="casos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+        </div>
+      </div>
+      <div id="au-panel-alta">
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Nuevo caso</div></div>
+          <div class="card-body">
+            <div style="font-size:12.5px;color:var(--text3);line-height:1.5;margin-bottom:12px;">Normalmente lo abre la empresa desde su portal. Cargalo acá si te lo avisaron por otra vía.</div>
+            <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Empresa</label>
+                <select id="au-empresa"><option value="">Cargando empresas...</option></select>
+              </div>
+              <div class="form-group full"><label class="form-lbl">Trabajador (apellido y nombre)</label><input type="text" id="au-trabajador" placeholder="Apellido, Nombre"/></div>
+              <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="au-dni" placeholder="30111222"/></div>
+              <div class="form-group"><label class="form-lbl">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456"/></div>
+              <div class="form-group full"><label class="form-lbl">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
+              <div class="form-group full"><label class="form-lbl">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
+            </div>
+            <div id="au-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+            <button class="btn btn-primary btn-full" style="margin-top:1rem;padding:12px;" onclick="crearCasoAusentismo()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Abrir caso
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1312,6 +1352,50 @@ td.no-label::before{display:none;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
         Ver acta actualizada
       </a>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ASIGNAR PROFESIONAL A UN CASO DE AUSENTISMO -->
+<div class="modal-bg" id="modal-asignar-caso">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title" style="margin-bottom:4px;">Asignar profesional</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="asig-caso-info">—</div>
+    <div class="form-group full">
+      <label class="form-lbl">Profesional a cargo</label>
+      <select id="asig-profesional"><option value="">Elegí un profesional...</option></select>
+    </div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Al asignarlo, el caso le aparece en su cuenta y él programa la entrevista.</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-asignar-caso').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAsignacionCaso()">Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROGRAMAR LA ENTREVISTA DE UN CASO -->
+<div class="modal-bg" id="modal-programar-caso">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title" style="margin-bottom:4px;">Programar la entrevista</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="prog-caso-info">—</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="prog-fecha"/></div>
+      <div class="form-group"><label class="form-lbl">Hora</label>
+        <select id="prog-hora"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>14:00</option><option>15:00</option><option selected>16:00</option><option>17:00</option></select>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Se crea la videollamada y el caso pasa a la agenda como un turno normal.</div>
+    <div id="prog-resultado" style="display:none;margin-top:12px;background:var(--verde-light);border:1px solid var(--verde);border-radius:var(--r-sm);padding:12px 14px;">
+      <div style="font-size:12.5px;color:#1e6640;line-height:1.5;margin-bottom:10px;">Entrevista programada. Mandale el link al trabajador:</div>
+      <a id="prog-whatsapp" href="#" target="_blank" rel="noopener" class="btn btn-full" style="background:#25D366;color:white;text-decoration:none;justify-content:center;padding:10px;">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+        Enviar por WhatsApp
+      </a>
+    </div>
+    <div id="prog-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-programar-caso').classList.remove('open')">Cerrar</button>
+      <button class="btn btn-primary" id="btn-prog-confirmar" onclick="confirmarProgramarCaso()">Programar</button>
     </div>
   </div>
 </div>
@@ -2084,7 +2168,7 @@ function actualizarBotonMenu(){
 window.addEventListener('resize', actualizarBotonMenu);
 
 function showSection(id,el){
-  ['agenda','medicos','perfil','empresas','presupuestos'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
+  ['agenda','medicos','perfil','empresas','presupuestos','ausentismo'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
   secActiva.style.display='block';
@@ -2093,12 +2177,13 @@ function showSection(id,el){
   secActiva.classList.add('sec-anim');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
   if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
+  if(id==='ausentismo'){cargarCasosAusentismo();cargarEmpresasSelectAusentismo();}
   if(id==='presupuestos'){cargarPresupuestos();cargarServiciosCatalogo();cargarEmpresasSelectPresupuesto();if(!document.getElementById('pr-items').children.length)agregarItemPresupuesto();}
   window.scrollTo({top:0,behavior:'smooth'});
   if(esMobile()){
@@ -4301,6 +4386,232 @@ function edToggleSemiologico(){
 function edIrA(id){
   const el = document.getElementById(id);
   if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ===== CONTROL DE AUSENTISMO =====
+let casosAusentismo = [];
+let filtroCasos = '';        // '' = todos
+let casoAsignandoId = null;
+let casoProgramandoId = null;
+
+const ESTADO_CASO = {
+  'nuevo':      { texto:'Nuevo',      clase:'b-gray'  },
+  'asignado':   { texto:'Asignado',   clase:'b-blue'  },
+  'programado': { texto:'Programado', clase:'b-amber' },
+  'en-curso':   { texto:'En curso',   clase:'b-rosa'  },
+  'resuelto':   { texto:'Resuelto',   clase:'b-green' },
+  'cancelado':  { texto:'Cancelado',  clase:'b-gray'  }
+};
+
+async function cargarCasosAusentismo(){
+  const lista = document.getElementById('casos-lista');
+  // El alta de casos es cosa del admin: el médico solo ve los suyos
+  const panelAlta = document.getElementById('au-panel-alta');
+  if(panelAlta) panelAlta.style.display = usuarioActual?.rol === 'admin' ? '' : 'none';
+  // El equipo médico solo se carga al entrar a "Médicos": sin esto el desplegable
+  // para asignar profesional aparece vacío si se entra directo a Ausentismo.
+  if(!medicosData?.length) await cargarMedicos();
+  try{
+    const r = await fetch('/api/ausentismo/casos', {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error||'Error al cargar');
+    casosAusentismo = data.casos || [];
+    renderCasosAusentismo();
+  }catch(e){
+    lista.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">No se pudieron cargar los casos. Recargá la página.</div>';
+  }
+}
+
+function renderCasosAusentismo(){
+  const lista = document.getElementById('casos-lista');
+  const filtros = document.getElementById('au-filtros');
+  const abiertos = casosAusentismo.filter(c => !['resuelto','cancelado'].includes(c.estado));
+
+  document.getElementById('badge-casos').textContent = casosAusentismo.length;
+  // Aviso en el menú: casos que todavía no tienen profesional
+  const badgeNav = document.getElementById('nav-ausentismo-badge');
+  const sinAsignar = casosAusentismo.filter(c => c.estado === 'nuevo').length;
+  if(badgeNav){
+    badgeNav.textContent = sinAsignar;
+    badgeNav.style.display = (sinAsignar && usuarioActual?.rol === 'admin') ? 'inline-flex' : 'none';
+  }
+
+  const cuenta = e => casosAusentismo.filter(c => c.estado === e).length;
+  filtros.innerHTML = [['','Todos',casosAusentismo.length], ['nuevo','Nuevos',cuenta('nuevo')],
+    ['asignado','Asignados',cuenta('asignado')], ['programado','Programados',cuenta('programado')],
+    ['resuelto','Resueltos',cuenta('resuelto')]]
+    .map(([v,t,n]) => `<button class="btn ${filtroCasos===v?'btn-primary':'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="filtrarCasos('${v}')">${t} (${n})</button>`).join('');
+
+  const visibles = filtroCasos ? casosAusentismo.filter(c => c.estado === filtroCasos) : casosAusentismo;
+  if(!visibles.length){
+    lista.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">${casosAusentismo.length?'No hay casos con ese estado.':'Todavía no hay casos de ausentismo.'}</div>`;
+    return;
+  }
+
+  const esAdmin = usuarioActual?.rol === 'admin';
+  lista.innerHTML = visibles.map(c => {
+    const est = ESTADO_CASO[c.estado] || { texto:c.estado, clase:'b-gray' };
+    const creado = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+    const turno = c.turno_fecha
+      ? `<span>·</span><span>Entrevista: ${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')} ${c.turno_hora||''}</span>`
+      : '';
+
+    const acciones = [];
+    if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirAsignarCaso(${c.id})">${c.profesional_nombre?'Reasignar':'Asignar profesional'}</button>`);
+    if(c.profesional_id && ['asignado','programado'].includes(c.estado))
+      acciones.push(`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="abrirProgramarCaso(${c.id})">${c.turno_id?'Reprogramar':'Programar entrevista'}</button>`);
+    if(c.estado === 'programado')
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="cambiarEstadoCaso(${c.id},'en-curso')">Marcar en curso</button>`);
+    if(c.estado === 'en-curso')
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e6640;" onclick="cambiarEstadoCaso(${c.id},'resuelto')">Marcar resuelto</button>`);
+    if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="cancelarCaso(${c.id})">Cancelar</button>`);
+
+    return `<div class="turno-item" style="align-items:flex-start;">
+      <div class="turno-info" style="flex:1;">
+        <div class="turno-paciente"><span>${c.trabajador_nombre}</span><span class="badge ${est.clase}">${est.texto}</span></div>
+        <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+c.trabajador_dni:'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
+        <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
+          ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
+          : '<span style="color:#c8a800;font-weight:600;">Sin profesional asignado</span>'}</div>
+        ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${c.motivo}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${acciones.join('')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarCasos(estado){ filtroCasos = estado; renderCasosAusentismo(); }
+
+async function cargarEmpresasSelectAusentismo(){
+  const sel = document.getElementById('au-empresa');
+  if(!sel) return;
+  try{
+    const r = await fetch('/api/empresas-nombres', {headers:apiHeaders()});
+    const data = await r.json();
+    const todas = [...new Set([...(data.empresas||[]), ...EMPRESAS_HISTORICAS])].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML = '<option value="">Elegí una empresa...</option>' + todas.map(e=>`<option value="${e}">${e}</option>`).join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">Elegí una empresa...</option>' + EMPRESAS_HISTORICAS.map(e=>`<option value="${e}">${e}</option>`).join('');
+  }
+}
+
+async function crearCasoAusentismo(){
+  const err = document.getElementById('au-error');
+  err.style.display = 'none';
+  const empresa = document.getElementById('au-empresa').value;
+  const trabajador = document.getElementById('au-trabajador').value.trim();
+  const motivo = document.getElementById('au-motivo').value.trim();
+  if(!empresa){ err.textContent='Elegí la empresa'; err.style.display='block'; return; }
+  if(!trabajador){ err.textContent='Escribí el nombre del trabajador'; err.style.display='block'; return; }
+  if(!motivo){ err.textContent='Contá el motivo de la ausencia'; err.style.display='block'; return; }
+  try{
+    const r = await fetch('/api/ausentismo/casos', { method:'POST', headers:apiHeaders(), body: JSON.stringify({
+      empresa_nombre: empresa, trabajador_nombre: trabajador,
+      trabajador_dni: document.getElementById('au-dni').value.trim(),
+      trabajador_telefono: document.getElementById('au-telefono').value.trim(),
+      motivo, documentacion: document.getElementById('au-documentacion').value.trim()
+    })});
+    const data = await r.json();
+    if(!data.ok){ err.textContent = data.error||'No se pudo abrir el caso'; err.style.display='block'; return; }
+    ['au-trabajador','au-dni','au-telefono','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
+    mostrarToast('✓ Caso abierto','#1e6640');
+    addLog('blue','Caso de ausentismo abierto', `${trabajador} · ${empresa}`);
+    await cargarCasosAusentismo();
+  }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+}
+
+function abrirAsignarCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  casoAsignandoId = id;
+  document.getElementById('asig-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre}`;
+  const sel = document.getElementById('asig-profesional');
+  sel.innerHTML = '<option value="">Elegí un profesional...</option>' +
+    (medicosData||[]).map(m => `<option value="${m.id}"${m.id===c.profesional_id?' selected':''}>${m.nombre}</option>`).join('');
+  document.getElementById('modal-asignar-caso').classList.add('open');
+}
+
+async function confirmarAsignacionCaso(){
+  const profesional_id = document.getElementById('asig-profesional').value;
+  if(!profesional_id){ mostrarError('Elegí un profesional'); return; }
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoAsignandoId}/asignar`, {
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ profesional_id: parseInt(profesional_id) })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error||'No se pudo asignar'); return; }
+    document.getElementById('modal-asignar-caso').classList.remove('open');
+    mostrarToast('✓ Asignado a '+data.profesional,'#1e6640');
+    addLog('blue','Caso asignado', data.profesional);
+    await cargarCasosAusentismo();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+function abrirProgramarCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  casoProgramandoId = id;
+  document.getElementById('prog-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre}`;
+  document.getElementById('prog-fecha').value = c.turno_fecha
+    ? String(c.turno_fecha).split('T')[0]
+    : new Date().toISOString().split('T')[0];
+  document.getElementById('prog-resultado').style.display = 'none';
+  document.getElementById('prog-error').style.display = 'none';
+  document.getElementById('btn-prog-confirmar').style.display = 'inline-flex';
+  document.getElementById('modal-programar-caso').classList.add('open');
+}
+
+async function confirmarProgramarCaso(){
+  const err = document.getElementById('prog-error');
+  err.style.display = 'none';
+  const fecha = document.getElementById('prog-fecha').value;
+  const hora = document.getElementById('prog-hora').value;
+  if(!fecha){ err.textContent='Elegí la fecha'; err.style.display='block'; return; }
+  const btn = document.getElementById('btn-prog-confirmar');
+  btn.disabled = true;
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoProgramandoId}/programar`, {
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ fecha, hora })
+    });
+    const data = await r.json();
+    if(!data.ok){ err.textContent = data.error||'No se pudo programar'; err.style.display='block'; return; }
+
+    const c = casosAusentismo.find(x => x.id === casoProgramandoId);
+    if(data.link_paciente && c?.trabajador_telefono){
+      const fl = new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}`;
+      document.getElementById('prog-whatsapp').href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+      document.getElementById('prog-resultado').style.display = 'block';
+      btn.style.display = 'none';
+    } else {
+      document.getElementById('modal-programar-caso').classList.remove('open');
+    }
+    mostrarToast(data.reprogramado ? '✓ Entrevista reprogramada' : '✓ Entrevista programada','#1e6640');
+    addLog('blue','Entrevista de ausentismo programada', `${fecha} ${hora}`);
+    await cargarCasosAusentismo();
+    cargarTurnos();
+  }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+  finally{ btn.disabled = false; }
+}
+
+async function cambiarEstadoCaso(id, estado){
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/estado`, {
+      method:'PATCH', headers:apiHeaders(), body: JSON.stringify({ estado })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error||'No se pudo cambiar el estado'); return; }
+    mostrarToast('✓ Caso '+(ESTADO_CASO[estado]?.texto||estado).toLowerCase(),'#1e6640');
+    await cargarCasosAusentismo();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+async function cancelarCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!(await confirmar(`Se va a cancelar el caso de ${c?.trabajador_nombre||''}. No se borra: queda registrado como cancelado.`, { titulo:'Cancelar caso', textoConfirmar:'Cancelar el caso', danger:true }))) return;
+  await cambiarEstadoCaso(id, 'cancelado');
 }
 
 // ===== Firmas del informe (admin) =====
