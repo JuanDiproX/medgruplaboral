@@ -561,12 +561,18 @@ tbody tr:hover .avatar{transform:scale(1.08);}
   <div class="main">
     <div class="page-header">
       <div class="page-header-left">
-        <div class="page-title">Evaluaciones médicas</div>
-        <div class="page-sub">Historial completo de evaluaciones de su personal con acceso a informes y actas</div>
+        <div class="page-title" id="page-title">Evaluaciones médicas</div>
+        <div class="page-sub" id="page-sub">Historial completo de evaluaciones de su personal con acceso a informes y actas</div>
       </div>
       <div class="today-chip" id="today-chip">—</div>
     </div>
 
+    <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="tab-evaluaciones" onclick="mostrarVistaEmpresa('evaluaciones')">Evaluaciones médicas</button>
+      <button class="btn btn-ghost" id="tab-ausentismo" onclick="mostrarVistaEmpresa('ausentismo')">Control de ausentismo</button>
+    </div>
+
+    <div id="vista-evaluaciones">
     <div class="stats-row">
       <div class="stat-card stat-blue">
         <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
@@ -609,6 +615,68 @@ tbody tr:hover .avatar{transform:scale(1.08);}
         </select>
       </div>
       <div id="turnos-tabla"></div>
+    </div>
+    </div>
+
+    <!-- ===== CONTROL DE AUSENTISMO ===== -->
+    <div id="vista-ausentismo" style="display:none;">
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-hdr">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Informar una ausencia
+          </div>
+        </div>
+        <div style="padding:1.1rem;">
+          <div style="font-size:12.5px;color:var(--text3);line-height:1.55;margin-bottom:14px;">Contanos quién se ausentó y por qué. Nosotros asignamos un profesional, coordinamos la entrevista con el trabajador y te devolvemos el informe.</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+            <div><label class="login-lbl">Trabajador (apellido y nombre)</label><input class="login-input" type="text" id="ca-trabajador" placeholder="Apellido, Nombre"/></div>
+            <div><label class="login-lbl">DNI</label><input class="login-input" type="text" id="ca-dni" placeholder="30111222"/></div>
+            <div><label class="login-lbl">WhatsApp del trabajador</label><input class="login-input" type="text" id="ca-telefono" placeholder="5492901123456"/></div>
+          </div>
+          <div style="margin-top:12px;"><label class="login-lbl">Motivo de la ausencia</label>
+            <textarea class="login-input" id="ca-motivo" style="min-height:80px;resize:vertical;" placeholder="Faltó 3 días sin aviso. Presentó certificado por..."></textarea>
+          </div>
+          <div style="margin-top:12px;"><label class="login-lbl">Certificado médico (opcional)</label>
+            <input type="file" id="ca-certificados" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;width:100%;"/>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:5px;">PDF o foto, hasta 5 MB cada uno. Podés adjuntar varios.</div>
+          </div>
+          <div id="ca-error" style="display:none;margin-top:12px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa);"></div>
+          <button class="btn btn-primary" style="margin-top:14px;padding:11px 20px;" onclick="crearCasoEmpresa()">Informar la ausencia</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Casos informados
+          </div>
+          <span class="card-count" id="badge-casos-empresa">0</span>
+        </div>
+        <div id="casos-empresa-lista" style="padding:1.1rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CERTIFICADOS (portal empresa) -->
+<div class="modal-bg" id="modal-cert-empresa">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div>
+          <div class="modal-title">Certificados médicos</div>
+          <div class="modal-subtitle" id="ce-caso-info">—</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-cert-empresa').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="ce-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
+      <label class="login-lbl">Adjuntar otro</label>
+      <input type="file" id="ce-nuevo" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;width:100%;" onchange="subirCertificadosEmpresa()"/>
+      <div id="ce-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa);"></div>
     </div>
   </div>
 </div>
@@ -705,6 +773,194 @@ async function doLoginEmpresa(){
     localStorage.setItem('medgrup_empresa_nombre', data.empresa.nombre);
     mostrarPortal();
   } catch(e){ errEl.textContent='Error de conexión'; errEl.style.display='block'; }
+}
+
+// ===== CONTROL DE AUSENTISMO (portal empresa) =====
+let casosEmpresa = [];
+let casoCertEmpresaId = null;
+
+const ESTADO_CASO_EMPRESA = {
+  'nuevo':      { texto:'Recibido',    clase:'b-gris',  ayuda:'Lo recibimos. Estamos asignando el profesional.' },
+  'asignado':   { texto:'Asignado',    clase:'b-blue',  ayuda:'Ya tiene profesional. Estamos coordinando la entrevista.' },
+  'programado': { texto:'Programado',  clase:'b-amber', ayuda:'La entrevista con el trabajador está agendada.' },
+  'en-curso':   { texto:'En curso',    clase:'b-rosa',  ayuda:'La evaluación está en proceso.' },
+  'resuelto':   { texto:'Resuelto',    clase:'b-verde', ayuda:'Listo. El informe está disponible.' },
+  'cancelado':  { texto:'Cancelado',   clase:'b-gris',  ayuda:'El caso fue cancelado.' }
+};
+
+function mostrarVistaEmpresa(cual){
+  const esAus = cual === 'ausentismo';
+  document.getElementById('vista-evaluaciones').style.display = esAus ? 'none' : 'block';
+  document.getElementById('vista-ausentismo').style.display  = esAus ? 'block' : 'none';
+  document.getElementById('tab-evaluaciones').className = 'btn ' + (esAus ? 'btn-ghost' : 'btn-primary');
+  document.getElementById('tab-ausentismo').className   = 'btn ' + (esAus ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('page-title').textContent = esAus ? 'Control de ausentismo' : 'Evaluaciones médicas';
+  document.getElementById('page-sub').textContent = esAus
+    ? 'Informe las ausencias de su personal y siga el estado de cada caso'
+    : 'Historial completo de evaluaciones de su personal con acceso a informes y actas';
+  if(esAus) cargarCasosEmpresa();
+}
+
+async function cargarCasosEmpresa(){
+  const lista = document.getElementById('casos-empresa-lista');
+  try{
+    const r = await fetch('/api/empresa/ausentismo/casos', {headers:empresaHeaders()});
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error);
+    casosEmpresa = data.casos || [];
+    renderCasosEmpresa();
+  }catch(e){
+    lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--rosa);font-size:13px;">No se pudieron cargar los casos. Recargá la página.</div>';
+  }
+}
+
+function renderCasosEmpresa(){
+  const lista = document.getElementById('casos-empresa-lista');
+  document.getElementById('badge-casos-empresa').textContent = casosEmpresa.length;
+  if(!casosEmpresa.length){
+    lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:13px;">Todavía no informaste ninguna ausencia.</div>';
+    return;
+  }
+  lista.innerHTML = casosEmpresa.map(c => {
+    const est = ESTADO_CASO_EMPRESA[c.estado] || { texto:c.estado, clase:'b-gris', ayuda:'' };
+    const abierto = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+    const entrevista = c.turno_fecha
+      ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">Entrevista: ${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')}${c.turno_hora?' a las '+c.turno_hora+' hs':''}</div>`
+      : '';
+    const prof = c.profesional_nombre
+      ? `<div style="font-size:12px;color:var(--azul);font-weight:600;margin-top:4px;">${c.profesional_nombre}${c.profesional_especialidad?' · '+c.profesional_especialidad:''}</div>`
+      : '';
+    const informe = c.dictamen_id
+      ? `<a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${c.dictamen_id}/pdf" target="_blank" rel="noopener">Ver informe</a>`
+      : '';
+    const cancelar = ['nuevo','asignado','programado'].includes(c.estado)
+      ? `<button class="btn btn-ghost" onclick="cancelarCasoEmpresa(${c.id})">Cancelar</button>` : '';
+    return `<div style="border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:14.5px;font-weight:600;">${c.trabajador_nombre}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${c.trabajador_dni?'DNI '+c.trabajador_dni+' · ':''}Informado el ${abierto}</div>
+          ${prof}${entrevista}
+        </div>
+        <span class="badge ${est.clase}">${est.texto}</span>
+      </div>
+      ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.5;">${c.motivo}</div>`:''}
+      <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">${est.ayuda}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
+        <button class="btn btn-ghost" onclick="abrirCertificadosEmpresa(${c.id})">📎 Certificados</button>
+        ${informe}${cancelar}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function leerBase64Empresa(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = () => reject(new Error('No se pudo leer ' + file.name));
+    fr.readAsDataURL(file);
+  });
+}
+
+async function subirCertificadosEmpresaA(casoId, archivos){
+  for(const file of archivos){
+    if(file.size > 5 * 1024 * 1024) throw new Error(`"${file.name}" pesa ${(file.size/1024/1024).toFixed(1)} MB y el máximo es 5 MB.`);
+    const archivo_base64 = await leerBase64Empresa(file);
+    const r = await fetch(`/api/ausentismo/casos/${casoId}/certificados`, {
+      method:'POST', headers:empresaHeaders(),
+      body: JSON.stringify({ nombre_archivo:file.name, tipo_mime:file.type, archivo_base64 })
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error || `No se pudo subir "${file.name}"`);
+  }
+}
+
+async function crearCasoEmpresa(){
+  const err = document.getElementById('ca-error');
+  err.style.display = 'none';
+  const trabajador = document.getElementById('ca-trabajador').value.trim();
+  const motivo = document.getElementById('ca-motivo').value.trim();
+  if(!trabajador){ err.textContent='Escribí el nombre del trabajador'; err.style.display='block'; return; }
+  if(!motivo){ err.textContent='Contanos el motivo de la ausencia'; err.style.display='block'; return; }
+  try{
+    const r = await fetch('/api/empresa/ausentismo/casos', {
+      method:'POST', headers:empresaHeaders(),
+      body: JSON.stringify({
+        trabajador_nombre: trabajador,
+        trabajador_dni: document.getElementById('ca-dni').value.trim(),
+        trabajador_telefono: document.getElementById('ca-telefono').value.trim(),
+        motivo
+      })
+    });
+    const data = await r.json();
+    if(!data.ok){ err.textContent = data.error||'No se pudo informar la ausencia'; err.style.display='block'; return; }
+
+    // El caso ya quedó abierto: si un certificado falla, se avisa pero no se pierde
+    const archivos = [...(document.getElementById('ca-certificados')?.files || [])];
+    if(archivos.length){
+      try{ await subirCertificadosEmpresaA(data.id, archivos); }
+      catch(e){ err.textContent = 'La ausencia quedó informada, pero un certificado no se pudo adjuntar: ' + e.message + ' Podés sumarlo desde el botón Certificados.'; err.style.display='block'; }
+    }
+    ['ca-trabajador','ca-dni','ca-telefono','ca-motivo'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ca-certificados').value = '';
+    await cargarCasosEmpresa();
+  }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+}
+
+async function abrirCertificadosEmpresa(id){
+  const c = casosEmpresa.find(x => x.id === id);
+  if(!c) return;
+  casoCertEmpresaId = id;
+  document.getElementById('ce-caso-info').textContent = c.trabajador_nombre;
+  document.getElementById('ce-error').style.display = 'none';
+  document.getElementById('ce-nuevo').value = '';
+  document.getElementById('modal-cert-empresa').classList.add('open');
+  await recargarCertificadosEmpresa();
+}
+
+async function recargarCertificadosEmpresa(){
+  const lista = document.getElementById('ce-lista');
+  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoCertEmpresaId}/certificados`, {headers:empresaHeaders()});
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error);
+    if(!data.certificados.length){
+      lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay certificados adjuntos.</div>';
+      return;
+    }
+    lista.innerHTML = data.certificados.map(cert => {
+      const peso = cert.tamano_bytes ? (cert.tamano_bytes/1024 < 1024 ? Math.round(cert.tamano_bytes/1024)+' KB' : (cert.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
+      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${cert.nombre_archivo}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}</div></div>
+        <a class="btn btn-ghost" style="text-decoration:none;" href="/api/ausentismo/certificados/${cert.id}" target="_blank" rel="noopener">Ver</a>
+      </div>`;
+    }).join('');
+  }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa);">No se pudieron cargar los certificados.</div>'; }
+}
+
+async function subirCertificadosEmpresa(){
+  const input = document.getElementById('ce-nuevo');
+  const err = document.getElementById('ce-error');
+  err.style.display = 'none';
+  if(!input.files.length) return;
+  try{
+    await subirCertificadosEmpresaA(casoCertEmpresaId, [...input.files]);
+    input.value = '';
+    await recargarCertificadosEmpresa();
+    await cargarCasosEmpresa();
+  }catch(e){ err.textContent = e.message; err.style.display='block'; }
+}
+
+async function cancelarCasoEmpresa(id){
+  if(!confirm('¿Cancelar este caso? Si ya no hace falta la evaluación, avisanos así no lo seguimos.')) return;
+  try{
+    const r = await fetch(`/api/empresa/ausentismo/casos/${id}/cancelar`, { method:'POST', headers:empresaHeaders() });
+    const data = await r.json();
+    if(!data.ok){ alert(data.error||'No se pudo cancelar'); return; }
+    await cargarCasosEmpresa();
+  }catch(e){ alert('Error de conexión'); }
 }
 
 function doLogoutEmpresa(){
