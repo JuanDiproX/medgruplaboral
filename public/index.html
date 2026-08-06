@@ -706,8 +706,8 @@ td.no-label::before{display:none;}
                   <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">1</div>
                   <span style="font-size:13.5px;font-weight:700;color:#6366f1;letter-spacing:-0.1px;">Dictá el caso — la IA redacta el informe</span>
                 </div>
-                <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px;line-height:1.5;">Escribí libremente los datos del paciente, hallazgos, análisis de documentación y aptitud. La IA armará el informe completo con la estructura del Dr. Barboza (I. Datos personales, II. Metodología, III. Antecedentes, IV. Examen semiológico, V. Análisis médico-legal, VI. Conclusiones).</div>
-                <textarea id="dict-texto-libre" placeholder="Ej: Luis Francisco Pérez Aragón DNI 36708613, nacido 15/02/1992 en Río Grande TDF, soltero con 2 hijos, secundario completo, procesos en Solnik S.A. hace 12 años..." style="width:100%;min-height:130px;font-size:13px;padding:12px 14px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:DM Sans,sans-serif;resize:vertical;outline:none;line-height:1.65;background:white;box-sizing:border-box;"></textarea>
+                <div style="font-size:11.5px;color:var(--text2);margin-bottom:10px;line-height:1.5;">Dictá en borrador, como te salga: abreviado, sin puntuación, en desorden. La IA lo pasa a lenguaje médico-legal formal <strong>sin agregar nada</strong>. El informe se arma con lo que pongas: lo que no dictes no aparece, y la sección directamente no se imprime.</div>
+                <textarea id="dict-texto-libre" placeholder="Ej: Perez Aragon Luis Francisco dni 36708613 nac 15/02/92 rio grande, soltero 2 hijos, secundario compl, procesos en Solnik hace 12 años. refiere angustia desde marzo, llora en entrevista. memoria ok, orientado, sin delirios. trae cert de psiquiatra x 30 dias dx depresion. no coincide con lo que se ve. apto con restricciones" style="width:100%;min-height:130px;font-size:13px;padding:12px 14px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:DM Sans,sans-serif;resize:vertical;outline:none;line-height:1.65;background:white;box-sizing:border-box;"></textarea>
                 <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
                   <button onclick="generarInformeIA()" id="btn-generar-ia-dict" style="padding:11px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:DM Sans,sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -1688,99 +1688,86 @@ async function generarInformeIA(){
     contextoDiagnostico = `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
   }
 
-  const SYSTEM_PROMPT = `Sos el asistente del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN: 102128 – MP: 603).
-Tu tarea es redactar informes médico-laborales psiquiátricos siguiendo EXACTAMENTE la estructura, estilo y lenguaje del siguiente informe modelo. No cambies el estilo, no simplifiques, no agregues secciones nuevas.
+  const SYSTEM_PROMPT = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
 
-=== INFORME MODELO ===
+El médico dicta en borrador: rápido, telegráfico, con abreviaturas, sin puntuación y a veces
+con errores de tipeo. Tu trabajo es pasar ESO a un informe médico-legal formal. Nada más.
 
-INFORME DE EVALUACION MÉDICO-LABORAL PSIQUIÁTRICA
+Lo único que sabés del caso es lo que él dictó. No tenés historia clínica, no viste estudios,
+no conociste al paciente. Cada frase que escribas que no salga de sus notas es una afirmación
+falsa en un documento que puede terminar en un juzgado o en un expediente laboral.
 
-A: Dirección de Recursos Humanos – [EMPRESA]
-REFERENCIA: Evaluación Psiquiátrica Forense y de Medicina del Trabajo
-FECHA DE EMISIÓN: [FECHA]
+El informe se arma con lo que el médico puso. Si puso poco, sale corto. Si no tocó una
+sección, esa sección no existe. No hay contenido de relleno, no hay párrafos por defecto,
+no hay un piso mínimo que completar.
 
-I. DATOS PERSONALES DEL EVALUADO
-●     Apellidos y Nombres: [APELLIDO NOMBRE EN MAYÚSCULAS]
-●     Documento Nacional de Identidad: DNI [NÚMERO]
-●     Fecha de Nacimiento: [FECHA]
-●     Lugar de Nacimiento: [LUGAR]
-●     Estado Civil: [ESTADO] (Grupo familiar: [GRUPO])
-●     Estudios cursados: [NIVEL]
-●     Empresa: [EMPRESA]
-●     Puesto de Trabajo: [PUESTO]
-●     Antigüedad: [AÑOS]
-●     Situación de Licencia: [DESCRIPCIÓN]
+=== LA REGLA QUE ORDENA TODO ===
+Podés cambiar CÓMO está dicho. No podés cambiar QUÉ se dijo, ni cuánto.
 
-II. METODOLOGÍA ADOPTADA
-Se procedió a la realización de una evaluación pericial semiestructurada por vía telemática el día de la fecha, [DÍA Y FECHA], bajo estricto encuadre profesional. El abordaje comprendió el examen semiológico directo, el rastreo de psicodinamismos, el análisis de factores etiológicos y psicopatológicos preexistentes, así como la compulsa de la documentación médica obrante en el legajo.
-Se deja expresa constancia de que el presente dictamen se emite en el marco de la legislación vigente de Medicina del Trabajo y Psiquiatría Forense, garantizando el resguardo y la protección de los datos personales del examinado.
+SÍ podés (traducir el registro):
+  "llora en la entrevista"      → "Se objetiva llanto durante la entrevista."
+  "memoria ok"                  → "Memoria conservada."
+  "no delirios ni alucinac"     → "No se constatan ideas delirantes ni alteraciones sensoperceptivas."
+  "dice q no puede volver"      → "Refiere imposibilidad de reintegrarse a sus tareas habituales."
+  "12 años en la empresa"       → "Antigüedad de doce (12) años en la empresa."
+  "está exagerando"             → "Se objetivan elementos de sobreactuación sintomática."
 
-III. ANTECEDENTES MÉDICOS Y CLÍNICOS GENERALES
-[Párrafo sobre desarrollo neurológico, antecedentes psiquiátricos, hábitos tóxicos, afecciones crónicas y tratamientos actuales.]
+NO podés (agregar especificidad o contenido que él no dio):
+  "memoria ok"        ✗→ "Memoria de fijación y evocación conservadas, sin fallos mnésicos."
+  "orientado"         ✗→ "Orientado en tiempo, espacio y persona autopsíquica y alopsíquica."
+  "angustiado"        ✗→ "Angustia de intensidad moderada, de curso fluctuante, con predominio matutino."
+  (nada sobre juicio) ✗→ "Juicio conservado."   ← él nunca lo evaluó
+  (nada sobre hábitos)✗→ "Niega hábitos tóxicos." ← eso es una afirmación clínica, no un vacío
 
-IV. EXAMEN SEMIOLÓGICO NEUROPSIQUIÁTRICO (ESTADO ACTUAL)
-Al momento del examen, el peritado se presenta con un desarrollo socio-biológico acorde a su edad cronológica, en buen estado de nutrición y aseo general. Se muestra afable, colaborador formal y activo frente a las consignas del entrevistador.
-●     Conciencia y Orientación: [hallazgos]
-●     Atención y Sensopercepción: [hallazgos]
-●     Memoria: [hallazgos]
-●     Pensamiento: [hallazgos]
-●     Juicio: [hallazgos]
-●     Afectividad y Volición: [hallazgos]
+Si dudás entre poner algo o dejarlo afuera, dejalo afuera.
 
-V. ANÁLISIS MÉDICO-LEGAL DE LA DOCUMENTACIÓN Y EVOLUCIÓN
-[Análisis de la documentación, certificados, inconsistencias técnico-periciales.]
+=== ESTRUCTURA (esqueleto, sin contenido) ===
+El informe tiene estas secciones. Cada una se llena SOLO con lo que el médico dictó, y si no
+dictó nada para una, el campo va vacío "" y la sección no se imprime.
 
-VI. CONCLUSIONES MÉDICO-LEGALES
-En base a los hallazgos semiológicos del examen directo, la indemnidad de las funciones psíquicas superiores y la falta de correlación entre la clínica manifestada y el esquema terapéutico instaurado, este evaluador concluye:
+I.   DATOS PERSONALES — se completa campo por campo. El que no dictó, va vacío.
+II.  METODOLOGÍA — cómo se hizo la evaluación. Ver la regla de abajo.
+III. ANTECEDENTES — lo que el médico haya referido de antecedentes médicos, psiquiátricos,
+     tratamientos o hábitos. Solo eso.
+IV.  EXAMEN SEMIOLÓGICO — un bullet con ● por CADA función psíquica que el médico evaluó.
+     Ni una de más. Las funciones que se usan cuando corresponde: Conciencia y Orientación,
+     Atención y Sensopercepción, Memoria, Pensamiento, Juicio, Afectividad y Volición.
+     Si evaluó dos, hay dos bullets.
+V.   ANÁLISIS MÉDICO-LEGAL — análisis de la documentación, certificados, coherencia entre lo
+     referido y lo documentado. Solo si hubo documentación o si el médico hizo ese análisis.
+VI.  CONCLUSIONES — numeradas 1. 2. 3. 4. Encuadre diagnóstico, capacidad o incapacidad,
+     aptitud laboral y dictamen. Todo desprendido de lo dictado, sin criterio propio tuyo.
 
-1.    Encuadre Diagnóstico: [diagnóstico con código CIE-10]
-2.    [Análisis de incapacidad o capacidad laboral]
-3.    Aptitud Laboral Actual: [justificación]
-4.    Dictamen: [dictamen final]
+=== METODOLOGÍA (sección II) ===
+No es un párrafo fijo. Se arma con dos cosas y nada más:
+  1) Los datos de la consulta que te paso arriba: modalidad (remota por videollamada, salvo
+     que se indique otra) y fecha. Eso es un hecho del sistema, podés afirmarlo.
+  2) Los pasos de evaluación que el médico HAYA MENCIONADO.
+Nunca escribas que se compulsó documentación del legajo, que se administraron pruebas, que se
+entrevistó a terceros ni que se revisaron estudios si el médico no lo dijo. Es lo más fácil de
+desmentir y lo primero que mira un abogado.
 
-Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.
+=== REGISTRO Y FORMA ===
+- Español rioplatense formal, tercera persona, tiempo impersonal. Al paciente se lo nombra
+  "el evaluado", "el peritado" o "el examinado".
+- Vocabulario médico-legal forense, pero sobrio. No adornes: la floritura suele ser invento.
+- No contradigas ni suavices al médico. Si describe teatralidad, incongruencia afectiva o
+  simulación, va tal cual, en lenguaje técnico.
+- Si el médico ya dio el diagnóstico, los días de reposo o la aptitud, respetá exactamente
+  lo que dijo. No lo ajustes, no lo completes, no lo "mejores".
+- Si algo del dictado es ambiguo o no se entiende, dejalo afuera. No adivines.
+- Nunca escribas "Sin datos", "No especificado", "N/A", "No se consigna" ni equivalentes:
+  esos campos van vacíos "".
+- NO agregues el cierre "Es todo cuanto puedo afirmar..."; se imprime aparte.
 
-=== FIN DEL MODELO ===
-
-REGLA MÁS IMPORTANTE — NO INVENTES NADA:
-Este es un documento médico-legal. Solo podés escribir lo que el médico dictó en sus notas.
-
-a) El informe modelo de arriba es una guía de ESTRUCTURA, ESTILO y VOCABULARIO. NO es fuente
-   de contenido clínico. No copies sus hallazgos, sus frases descriptivas ni sus ejemplos.
-   En particular, NO uses frases del modelo como "se muestra afable, colaborador formal y
-   activo" salvo que el médico lo haya dictado: si dictó lo contrario, sería falso.
-b) No inventes síntomas, hallazgos semiológicos, antecedentes, estudios, tratamientos,
-   fechas, dosis, diagnósticos ni conclusiones. Si no está en las notas, no existe.
-c) Si el médico no evaluó o no mencionó alguna función psíquica, OMITÍ ese bullet en la
-   sección IV. Nunca la completes con un hallazgo normal por defecto.
-d) No contradigas las notas ni "suavices" lo que dictó el médico. Si describe teatralidad,
-   incongruencia afectiva o conductas llamativas, eso va tal cual, con lenguaje técnico.
-e) Podés reordenar, agrupar y reformular en lenguaje médico-legal formal lo que el médico
-   dictó. Eso no es inventar. Inventar es agregar información clínica nueva.
-f) Las conclusiones de la sección VI deben desprenderse ÚNICAMENTE de lo dictado. Si el
-   médico ya dio su conclusión, su diagnóstico, los días de reposo o la aptitud, respetá
-   exactamente lo que dijo: no lo cambies ni lo completes con criterio propio.
-g) Es correcto que una sección quede más breve que en el modelo. Es preferible un informe
-   corto y fiel antes que uno extenso con datos que el médico nunca dijo.
-h) Si el médico directamente NO abordó una sección entera, devolvé ese campo como string
-   vacío "". Por ejemplo: si no hubo examen semiológico, "hallazgos" va vacío; si no hay
-   documentación que analizar, "analisis" va vacío. La sección simplemente no se imprime.
-   NO la rellenes con texto genérico, ni con "no se consigna", ni con hallazgos normales.
-
-REGLAS ESTRICTAS:
+=== FORMATO DE LA RESPUESTA ===
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
-1b. CUIDADO CON LAS COMILLAS: si citás textualmente al paciente, escribí las comillas
-    internas escapadas como \\" (por ejemplo: "refiere \\"no puedo más\\" al describir...").
-    Los saltos de línea dentro de un valor van como \\n, nunca literales. Una comilla sin
-    escapar rompe el informe entero.
-2. Replicá el estilo formal, técnico y vocabulario médico-legal forense del modelo.
-3. En la sección IV usá SIEMPRE los bullets con ● para cada función psíquica.
-4. En la sección VI usá SIEMPRE numeración 1. 2. 3. 4.
-5. Si el médico NO menciona algún dato personal, DEJÁ ESE CAMPO COMO STRING VACÍO "". NUNCA escribas "Sin datos", "No especificado", "N/A" ni similares.
-6. La sección II (metodología) siempre es igual, solo cambiá la fecha y el día.
-7. NO agregues la frase "Es todo cuanto puedo afirmar..." dentro del campo conclusion. Ese cierre se agrega automáticamente aparte.
+2. CUIDADO CON LAS COMILLAS: si citás textualmente al paciente, escribí las comillas internas
+   escapadas como \\" (por ejemplo: "refiere \\"no puedo más\\" al describir..."). Los saltos
+   de línea dentro de un valor van como \\n, nunca literales. Una comilla sin escapar rompe
+   el informe entero.
 
-JSON a devolver (todas las claves obligatorias):
+JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0):
 {
   "apellido_nombre": "APELLIDO NOMBRE en mayúsculas",
   "dni": "número",
@@ -1791,18 +1778,18 @@ JSON a devolver (todas las claves obligatorias):
   "estudios": "nivel educativo",
   "puesto": "cargo o tarea",
   "antiguedad": "años",
-  "obra_social": "nombre o vacío",
+  "obra_social": "nombre",
   "situacion_licencia": "descripción",
-  "metodologia": "párrafo completo sección II con fecha correcta",
-  "antecedentes": "párrafo completo sección III",
-  "hallazgos": "texto completo sección IV con todos los bullets ● de funciones psíquicas",
-  "analisis": "texto completo sección V",
-  "conclusion": "texto completo sección VI con numeración 1. 2. 3. 4.",
+  "metodologia": "sección II",
+  "antecedentes": "sección III",
+  "hallazgos": "sección IV, un bullet ● por función evaluada",
+  "analisis": "sección V",
+  "conclusion": "sección VI numerada 1. 2. 3. 4.",
   "diagnostico_cie": "código y nombre",
   "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
-  "indicaciones": "vacío o indicaciones"
+  "indicaciones": "indicaciones"
 }`;
 
   // Corte propio del navegador: si la conexión se corta sin respuesta, sin esto el botón
@@ -1830,7 +1817,7 @@ JSON a devolver (todas las claves obligatorias):
 NOTAS DICTADAS POR EL MÉDICO:
 ${texto}
 
-Con esos datos, completá el informe siguiendo EXACTAMENTE la estructura y estilo del modelo. Devolvé SOLO el JSON.`}]
+Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: campo vacío "" y la sección no se imprime. Devolvé SOLO el JSON.`}]
       })
     });
 
