@@ -2814,7 +2814,13 @@ async function eliminarTurno(id){
     if(!data.ok){ mostrarError('Error al eliminar: '+(data.error||'—')); return; }
     await cargarTurnos();
     addLog('rosa','Turno eliminado',t.paciente);
-    mostrarToast('✓ Turno eliminado','#9a2847');
+    // El caso de ausentismo sobrevive al turno: conviene que el admin sepa dónde quedó
+    if(data.caso_desenganchado){
+      mostrarToast('✓ Turno eliminado · el caso quedó pendiente de coordinar','#2a5080');
+      if(typeof cargarCasosAusentismo === 'function') cargarCasosAusentismo();
+    } else {
+      mostrarToast('✓ Turno eliminado','#9a2847');
+    }
   }catch(e){ mostrarError('Error de conexión: '+e.message); }
 }
 
@@ -4520,6 +4526,8 @@ function renderCasosAusentismo(){
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e6640;" onclick="cambiarEstadoCaso(${c.id},'resuelto')">Marcar resuelto</button>`);
     if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="cancelarCaso(${c.id})">Cancelar</button>`);
+    if(esAdmin)
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="eliminarCaso(${c.id})">Eliminar</button>`);
 
     return `<div class="turno-item" style="align-items:flex-start;">
       <div class="turno-info" style="flex:1;">
@@ -4908,6 +4916,37 @@ async function cancelarCaso(id){
   const c = casosAusentismo.find(x => x.id === id);
   if(!(await confirmar(`Se va a cancelar el caso de ${c?.trabajador_nombre||''}. No se borra: queda registrado como cancelado.`, { titulo:'Cancelar caso', textoConfirmar:'Cancelar el caso', danger:true }))) return;
   await cambiarEstadoCaso(id, 'cancelado');
+}
+
+// Borrado de verdad, para limpiar pruebas. Antes de preguntar se consulta qué se lleva
+// puesto: un informe firmado no se puede recuperar y el admin tiene que verlo escrito.
+async function eliminarCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  let detalle = '';
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/impacto-borrado`, {headers:apiHeaders()});
+    const d = await r.json();
+    if(d.ok){
+      const seVa = [];
+      if(d.tiene_turno)    seVa.push('la entrevista y su acta');
+      if(d.informes)       seVa.push(d.informes === 1 ? 'el informe emitido' : `${d.informes} informes emitidos`);
+      if(d.firmas)         seVa.push(d.firmas === 1 ? 'una firma' : `${d.firmas} firmas`);
+      if(d.certificados)   seVa.push(d.certificados === 1 ? 'un certificado adjunto' : `${d.certificados} certificados adjuntos`);
+      detalle = seVa.length ? ` Se borran también ${seVa.join(', ')}.` : '';
+    }
+  }catch(e){ /* si no se pudo consultar, igual se avisa que es definitivo */ }
+
+  const aviso = `Se va a eliminar definitivamente el caso de ${c?.trabajador_nombre||''}.${detalle} Esto no se puede deshacer. Si solo querés darlo de baja, usá Cancelar.`;
+  if(!(await confirmar(aviso, { titulo:'Eliminar caso', textoConfirmar:'Eliminar definitivamente', danger:true }))) return;
+  try{
+    const r = await fetch('/api/ausentismo/casos/'+id, { method:'DELETE', headers:apiHeaders() });
+    const d = await r.json();
+    if(!d.ok){ mostrarError(d.error||'No se pudo eliminar'); return; }
+    mostrarToast('✓ Caso eliminado','#2a5080');
+    addLog('rosa','Caso de ausentismo eliminado', d.trabajador||'');
+    await cargarCasosAusentismo();
+    if(d.turno_borrado) cargarTurnos();
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 // ===== Firmas del informe (admin) =====

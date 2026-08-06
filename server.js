@@ -1373,19 +1373,39 @@ app.patch('/api/turnos/:id', adminMiddleware, async (req, res) => {
 });
 
 // ===== ELIMINAR TURNO (solo admin) =====
-// Borra en cascada: eventos, dictámenes, médicos asignados y el turno.
+// Todo lo que cuelga del turno se va con él: eventos, informes, firmas y médicos asignados.
+// El orden importa porque las firmas apuntan al informe y el informe al turno.
 // La sala Daily se deja intacta (expira sola por su exp property).
+async function borrarTurnoEnCascada(turnoId) {
+  await pool.query(
+    'DELETE FROM firmas_dictamen WHERE dictamen_id IN (SELECT id FROM dictamenes WHERE turno_id=$1)', [turnoId]);
+  await pool.query('DELETE FROM firmas_acta   WHERE turno_id=$1', [turnoId]);
+  await pool.query('DELETE FROM eventos_turno WHERE turno_id=$1', [turnoId]);
+  await pool.query('DELETE FROM dictamenes    WHERE turno_id=$1', [turnoId]);
+  await pool.query('DELETE FROM turno_medicos WHERE turno_id=$1', [turnoId]);
+  await pool.query('DELETE FROM turnos        WHERE id=$1',       [turnoId]);
+}
+
 app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
   try {
     const chk = await pool.query('SELECT paciente FROM turnos WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
 
-    await pool.query('DELETE FROM eventos_turno WHERE turno_id=$1', [req.params.id]);
-    await pool.query('DELETE FROM dictamenes    WHERE turno_id=$1', [req.params.id]);
-    await pool.query('DELETE FROM turno_medicos WHERE turno_id=$1', [req.params.id]);
-    await pool.query('DELETE FROM turnos        WHERE id=$1',       [req.params.id]);
+    // El caso de ausentismo no se borra con el turno: es un pedido de la empresa y sigue
+    // existiendo. Se le suelta la entrevista y vuelve a quedar pendiente de coordinar.
+    const caso = await pool.query(
+      `UPDATE casos_ausentismo
+          SET turno_id = NULL,
+              estado = CASE WHEN estado IN ('resuelto','cancelado') THEN estado
+                            WHEN profesional_id IS NOT NULL THEN 'asignado'
+                            ELSE 'nuevo' END
+        WHERE turno_id = $1
+        RETURNING id, trabajador_nombre, estado`, [req.params.id]);
 
-    res.json({ ok: true, paciente: chk.rows[0].paciente });
+    await borrarTurnoEnCascada(req.params.id);
+
+    res.json({ ok: true, paciente: chk.rows[0].paciente,
+      caso_desenganchado: caso.rows[0] || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2430,11 +2450,40 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Borra el caso de verdad, para limpiar pruebas o altas cargadas por error. Cancelar es lo
+// habitual; esto es la puerta de atrás. La entrevista se creó por y para este caso, así que
+// se va con él junto al informe, las firmas y los certificados.
 app.delete('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
   try {
-    const r = await pool.query('DELETE FROM casos_ausentismo WHERE id=$1 RETURNING trabajador_nombre', [req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
-    res.json({ ok: true, trabajador: r.rows[0].trabajador_nombre });
+    const chk = await pool.query('SELECT trabajador_nombre, turno_id FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!chk.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const { trabajador_nombre, turno_id } = chk.rows[0];
+
+    // Primero el caso: certificados e intentos de ingreso caen solos por ON DELETE CASCADE,
+    // y así el turno queda sin nadie apuntándolo.
+    await pool.query('DELETE FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (turno_id) await borrarTurnoEnCascada(turno_id);
+
+    res.json({ ok: true, trabajador: trabajador_nombre, turno_borrado: !!turno_id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Qué se va a perder si se borra el caso: se lo muestra antes de confirmar
+app.get('/api/ausentismo/casos/:id/impacto-borrado', adminMiddleware, async (req, res) => {
+  try {
+    const c = await pool.query('SELECT trabajador_nombre, turno_id FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!c.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const { trabajador_nombre, turno_id } = c.rows[0];
+    const contar = async (sql, p) => Number((await pool.query(sql, p)).rows[0].count);
+
+    const certificados = await contar('SELECT COUNT(*) FROM certificados_ausentismo WHERE caso_id=$1', [req.params.id]);
+    let informes = 0, firmas = 0;
+    if (turno_id) {
+      informes = await contar('SELECT COUNT(*) FROM dictamenes WHERE turno_id=$1', [turno_id]);
+      firmas = await contar(
+        `SELECT COUNT(*) FROM firmas_dictamen WHERE dictamen_id IN (SELECT id FROM dictamenes WHERE turno_id=$1)`, [turno_id]);
+    }
+    res.json({ ok: true, trabajador: trabajador_nombre, tiene_turno: !!turno_id, certificados, informes, firmas });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
