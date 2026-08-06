@@ -30,7 +30,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const ZONA_ARG = 'America/Argentina/Buenos_Aires';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+// Postgres también corre en UTC en Railway. Sin esto, NOW() guarda el reloj UTC y to_char()
+// arma los meses en UTC, así que una consulta de las 22 hs caía en el mes siguiente.
+pool.on('connect', c => c.query(`SET TIME ZONE '${ZONA_ARG}'`));
 
 function hashPassword(p) { return crypto.createHmac('sha256', SESSION_SECRET).update(p).digest('hex'); }
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
@@ -324,8 +328,37 @@ async function initDB() {
       `ALTER TABLE IF EXISTS turnos ALTER COLUMN hora TYPE VARCHAR(20)`,
     ]) await client.query(q).catch(()=>{});
 
+    await migrarTimestampsAZonaHoraria(client);
+
     console.log('✓ Base de datos lista');
   } catch (err) { console.error('Error DB:', err.message); } finally { client.release(); }
+}
+
+// Las columnas de fecha/hora nacieron como TIMESTAMP sin zona horaria. Postgres las guardaba
+// con el reloj UTC de Railway y Node las leía como si ya fueran hora argentina, así que todo
+// quedaba 3 horas adelantado: un acta firmada a las 23:41 se imprimía a las 02:41 del día
+// siguiente. Pasarlas a TIMESTAMPTZ diciendo que lo guardado era UTC corrige el historial y
+// deja de haber ambigüedad de acá en adelante.
+// Es idempotente: una vez convertida, la columna ya no aparece en la consulta.
+async function migrarTimestampsAZonaHoraria(client) {
+  const pendientes = await client.query(`
+    SELECT table_name, column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND data_type = 'timestamp without time zone'
+    ORDER BY table_name, column_name`);
+  if (!pendientes.rows.length) return;
+
+  for (const { table_name, column_name } of pendientes.rows) {
+    try {
+      await client.query(
+        `ALTER TABLE "${table_name}" ALTER COLUMN "${column_name}" TYPE TIMESTAMPTZ
+         USING "${column_name}" AT TIME ZONE 'UTC'`);
+      console.log(`  · ${table_name}.${column_name} pasó a TIMESTAMPTZ`);
+    } catch (err) {
+      console.error(`  ⚠ no se pudo convertir ${table_name}.${column_name}:`, err.message);
+    }
+  }
+  console.log(`✓ ${pendientes.rows.length} columna(s) de fecha/hora corregidas a hora argentina`);
 }
 
 // ===== AUTH MEDGRUP =====
