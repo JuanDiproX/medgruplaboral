@@ -2336,10 +2336,10 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
   try {
     const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
     // Si mandaron la dirección sin coordenadas, se resuelve acá para que el control quede listo
-    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null;
+    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null, motivoGeo = null;
     if (domicilio && lat == null) {
-      const punto = await geocodificar(domicilio);
-      if (punto) { lat = punto.lat; lng = punto.lng; }
+      const g = await geocodificar(domicilio);
+      if (g.punto) { lat = g.punto.lat; lng = g.punto.lng; } else { motivoGeo = g.motivo; }
     }
     const r = await pool.query(
       `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
@@ -2348,7 +2348,7 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
       [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
        motivo || '', documentacion || '', notas_admin || '',
        domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO]);
-    res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null });
+    res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2366,11 +2366,14 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
     }
     // Las coordenadas siguen a la dirección: si cambió el texto y no vinieron a mano, se
     // vuelven a resolver, y si la dirección se borra las coordenadas se van con ella.
-    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null, tocaCoords = domicilio_lat !== undefined;
+    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null, motivoGeo = null;
+    let tocaCoords = domicilio_lat !== undefined;
     if (domicilio !== undefined && domicilio !== chk.rows[0].domicilio && domicilio_lat === undefined) {
       tocaCoords = true;
-      const punto = domicilio ? await geocodificar(domicilio) : null;
-      if (punto) { lat = punto.lat; lng = punto.lng; }
+      if (domicilio) {
+        const g = await geocodificar(domicilio);
+        if (g.punto) { lat = g.punto.lat; lng = g.punto.lng; } else { motivoGeo = g.motivo; }
+      }
     }
     await pool.query(
       `UPDATE casos_ausentismo SET
@@ -2390,7 +2393,7 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
       [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
        trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null,
        domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, req.params.id]);
-    res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined });
+    res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2468,19 +2471,40 @@ function distanciaMetros(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Un problema de configuración de la clave y una dirección mal escrita fallan igual desde
+// afuera, así que se traduce el estado que devuelve Google en algo accionable.
+const MOTIVOS_GEOCODE = {
+  ZERO_RESULTS:            'No se pudo ubicar esa dirección. Probá agregando la ciudad y la provincia.',
+  REQUEST_DENIED:          'Google rechazó la consulta. Suele ser porque la Geocoding API no está habilitada en el proyecto, porque falta activar la facturación, o porque la clave quedó restringida a "Sitios web" (tiene que ser una clave de servidor, sin restricción por URL).',
+  OVER_QUERY_LIMIT:        'Se agotó la cuota de Google por hoy. Cargá las coordenadas a mano y revisá la facturación del proyecto.',
+  OVER_DAILY_LIMIT:        'Google no está aceptando consultas con esta clave. Revisá que el proyecto tenga la facturación activa.',
+  INVALID_REQUEST:         'La dirección quedó vacía o mal formada.',
+  UNKNOWN_ERROR:           'Google tuvo un problema momentáneo. Probá de nuevo en unos segundos.'
+};
+
 // Convierte una dirección escrita en coordenadas. La clave vive solo en el servidor.
-// Devuelve null si no se pudo ubicar: el caso igual se guarda, pero sin control por ubicación.
+// Devuelve siempre { punto, motivo }: punto en null significa que no se pudo ubicar, y el
+// caso igual se guarda, pero sin control por ubicación.
 async function geocodificar(direccion) {
-  if (!direccion || !direccion.trim() || !GOOGLE_MAPS_API_KEY) return null;
+  if (!direccion || !direccion.trim()) return { punto: null, motivo: MOTIVOS_GEOCODE.INVALID_REQUEST };
+  if (!GOOGLE_MAPS_API_KEY) return { punto: null, motivo: 'Falta configurar GOOGLE_MAPS_API_KEY en Railway.' };
   try {
     const url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' +
       encodeURIComponent(direccion.trim()) + '&region=ar&key=' + GOOGLE_MAPS_API_KEY;
     const r = await fetch(url);
     const data = await r.json();
-    if (data.status !== 'OK' || !data.results?.length) return null;
+    if (data.status !== 'OK' || !data.results?.length) {
+      // El detalle de Google (error_message) solo se loguea: puede filtrar datos del proyecto
+      console.error('Geocode falló:', data.status, data.error_message || '');
+      return { punto: null, estado: data.status,
+        motivo: MOTIVOS_GEOCODE[data.status] || `Google respondió "${data.status}".` };
+    }
     const loc = data.results[0].geometry.location;
-    return { lat: loc.lat, lng: loc.lng, normalizada: data.results[0].formatted_address };
-  } catch (err) { return null; }
+    return { punto: { lat: loc.lat, lng: loc.lng, normalizada: data.results[0].formatted_address } };
+  } catch (err) {
+    console.error('Geocode sin respuesta:', err.message);
+    return { punto: null, motivo: 'No pudimos comunicarnos con Google. Probá de nuevo.' };
+  }
 }
 
 app.post('/api/geocode', authMedgrupOEmpresa, async (req, res) => {
@@ -2489,8 +2513,8 @@ app.post('/api/geocode', authMedgrupOEmpresa, async (req, res) => {
   if (!GOOGLE_MAPS_API_KEY) {
     return res.status(503).json({ code:'SIN_CLAVE', error: 'Falta configurar GOOGLE_MAPS_API_KEY en Railway. Mientras tanto podés pegar las coordenadas a mano.' });
   }
-  const punto = await geocodificar(direccion);
-  if (!punto) return res.status(400).json({ code:'NO_ENCONTRADA', error: 'No se pudo ubicar esa dirección. Probá agregando la ciudad y la provincia.' });
+  const { punto, motivo, estado } = await geocodificar(direccion);
+  if (!punto) return res.status(400).json({ code: estado === 'ZERO_RESULTS' ? 'NO_ENCONTRADA' : 'GEOCODE_FALLO', error: motivo });
   res.json({ ok: true, lat: punto.lat, lng: punto.lng, direccion_normalizada: punto.normalizada });
 });
 
@@ -2744,16 +2768,16 @@ app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res
   try {
     // El reposo es domiciliario, así que la dirección que carga la empresa se resuelve a
     // coordenadas ya en el alta. Si no se puede ubicar, el caso se abre igual y avisamos.
-    const punto = domicilio ? await geocodificar(domicilio) : null;
+    const g = domicilio ? await geocodificar(domicilio) : { punto: null };
     const r = await pool.query(
       `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion,
                                      domicilio, domicilio_lat, domicilio_lng)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, creado_en`,
       [req.empresa.id, req.empresa.nombre, trabajador_nombre.trim(), trabajador_dni || '',
        trabajador_telefono || '', motivo.trim(), documentacion || '',
-       (domicilio || '').trim(), punto?.lat ?? null, punto?.lng ?? null]);
+       (domicilio || '').trim(), g.punto?.lat ?? null, g.punto?.lng ?? null]);
     res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en,
-      domicilio_ubicado: !!punto, domicilio_normalizado: punto?.normalizada || null });
+      domicilio_ubicado: !!g.punto, domicilio_normalizado: g.punto?.normalizada || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

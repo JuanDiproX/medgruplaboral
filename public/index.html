@@ -4631,7 +4631,8 @@ async function guardarDomicilioCaso(){
       document.getElementById('dom-lng').value = c.domicilio_lng ?? '';
     }
     if(cuerpo.domicilio && c && c.domicilio_lat == null){
-      avisoDomicilio('error', 'Se guardó la dirección pero no pudimos ubicarla en el mapa. Agregá ciudad y provincia, o cargá latitud y longitud a mano (se sacan de Google Maps con clic derecho sobre el punto).');
+      avisoDomicilio('error', 'Se guardó la dirección pero no pudimos ubicarla en el mapa. ' +
+        (d.motivo_geocode || '') + ' También podés cargar latitud y longitud a mano: se sacan de Google Maps con clic derecho sobre el punto.');
     } else {
       avisoDomicilio('ok', cuerpo.domicilio ? 'Domicilio guardado. El control por ubicación ya queda activo.' : 'Domicilio borrado.');
     }
@@ -4803,7 +4804,8 @@ async function crearCasoAusentismo(){
     // El caso ya quedó abierto: lo que falle después se avisa, pero no se pierde el caso
     const avisos = [];
     if(document.getElementById('au-domicilio').value.trim() && !data.domicilio_ubicado)
-      avisos.push('No pudimos ubicar el domicilio en el mapa; sin coordenadas el trabajador no va a poder entrar a la entrevista. Corregilo desde el botón Domicilio del caso.');
+      avisos.push('No pudimos ubicar el domicilio en el mapa; sin coordenadas el trabajador no va a poder entrar a la entrevista. ' +
+        (data.motivo_geocode || '') + ' Corregilo desde el botón Domicilio del caso.');
 
     const archivos = [...(document.getElementById('au-certificados')?.files || [])];
     if(archivos.length){
