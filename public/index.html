@@ -623,6 +623,7 @@ td.no-label::before{display:none;}
       <div class="video-bottombar">
         <div class="video-timer" id="video-timer">00:00:00</div>
         <div style="display:flex;gap:8px;">
+          <button class="btn" id="btn-cert-llamada" onclick="abrirCertificadosDeLlamada()" style="display:none;background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-cert-llamada-txt">Certificado</span></button>
           <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Notas</button>
           <button class="btn btn-danger" onclick="finalizarConsulta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Finalizar consulta</button>
         </div>
@@ -3364,8 +3365,56 @@ async function iniciarTurno(id){
   document.getElementById('links-body').innerHTML=buildLinksHtml(t);
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
+  cargarCasoDeLlamada(id);
   addLog('blue','Consulta iniciada',t.paciente+' · '+t.hora);
   document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
+}
+
+// ----- Certificado del caso, a mano durante la videollamada -----
+// En un control de ausentismo lo que el trabajador refiere hay que contrastarlo con el
+// certificado que presentó, y el médico no tiene el módulo de ausentismo a la vista mientras
+// atiende. Si el turno no viene de un caso, el botón ni aparece.
+let casoDeLaLlamada = null;
+
+async function cargarCasoDeLlamada(turnoId){
+  casoDeLaLlamada = null;
+  const btn = document.getElementById('btn-cert-llamada');
+  if(btn) btn.style.display = 'none';
+  try{
+    const r = await fetch(`/api/turnos/${encodeURIComponent(turnoId)}/caso`, {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok || !d.caso) return;
+    casoDeLaLlamada = d;
+    if(btn){
+      const n = (d.certificados||[]).length;
+      document.getElementById('btn-cert-llamada-txt').textContent = n ? `Certificado (${n})` : 'Certificado';
+      btn.style.display = 'inline-flex';
+    }
+  }catch(e){ /* si esto falla la consulta sigue igual: no se corta la llamada por el adjunto */ }
+}
+
+function abrirCertificadosDeLlamada(){
+  if(!casoDeLaLlamada?.caso) return;
+  const c = casoDeLaLlamada.caso, v = casoDeLaLlamada.verificacion;
+  casoCertificadosId = c.id;
+
+  // Junto al certificado va el contexto que necesita para leerlo: qué denunció la empresa y
+  // si el trabajador estaba efectivamente en su domicilio.
+  const partes = [`${c.trabajador_nombre}${c.empresa_nombre?' · '+c.empresa_nombre:''}`];
+  if(c.motivo) partes.push(`<b>Motivo informado por la empresa:</b> ${c.motivo}`);
+  if(c.documentacion) partes.push(`<b>Documentación declarada:</b> ${c.documentacion}`);
+  if(c.domicilio) partes.push(`<b>Domicilio informado:</b> ${c.domicilio}`);
+  partes.push(v
+    ? `<b>Ubicación verificada:</b> a ${Math.round(v.distancia_metros)} m del domicilio (radio admitido ${c.radio_metros} m), ${new Date(v.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})} hs`
+    : `<b>Ubicación:</b> sin verificación registrada para este control`);
+  const info = document.getElementById('cert-caso-info');
+  info.style.lineHeight = '1.7';
+  info.innerHTML = partes.join('<br>');
+
+  document.getElementById('cert-error').style.display = 'none';
+  document.getElementById('cert-nuevo').value = '';
+  document.getElementById('modal-certificados').classList.add('open');
+  recargarCertificadosCaso();
 }
 
 let dictamenActualId=null;
@@ -4755,6 +4804,12 @@ async function recargarCertificadosCaso(){
     const r = await fetch(`/api/ausentismo/casos/${casoCertificadosId}/certificados`, {headers:apiHeaders()});
     const data = await r.json();
     if(!data.ok) throw new Error(data.error);
+    // Si es el caso de la llamada en curso, el contador del botón sigue lo que hay ahora
+    const btnTxt = document.getElementById('btn-cert-llamada-txt');
+    if(btnTxt && casoDeLaLlamada?.caso?.id === casoCertificadosId){
+      casoDeLaLlamada.certificados = data.certificados;
+      btnTxt.textContent = data.certificados.length ? `Certificado (${data.certificados.length})` : 'Certificado';
+    }
     if(!data.certificados.length){
       lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay certificados adjuntos.</div>';
       return;

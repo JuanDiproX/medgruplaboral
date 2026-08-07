@@ -2776,6 +2776,42 @@ app.get('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Lo que la empresa cargó al abrir el caso, visto desde la videollamada. Durante el control
+// el médico necesita el certificado a mano —es lo que tiene que contrastar con lo que le
+// refiere el trabajador—, y ahí no tiene el módulo de ausentismo a la vista.
+app.get('/api/turnos/:id/caso', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.params.id]);
+    if (!r.rows.length) return res.json({ ok: true, caso: null });
+    const caso = r.rows[0];
+
+    // Lo ve el profesional que lleva el caso, cualquier médico sentado en ese turno (juntas)
+    // o el admin. Un médico ajeno al turno no tiene por qué ver el certificado de nadie.
+    if (req.usuario.rol !== 'admin') {
+      const miId = await medicoDelUsuario(req.usuario);
+      const enElTurno = await pool.query(
+        'SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [req.params.id, req.usuario.nombre]);
+      if (!(miId && caso.profesional_id === miId) && !enElTurno.rows.length) {
+        return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+      }
+    }
+
+    const certificados = (await pool.query(
+      `SELECT id, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
+       FROM certificados_ausentismo WHERE caso_id=$1 ORDER BY creado_en ASC`, [caso.id])).rows;
+    // El resultado del control domiciliario: el médico lo tiene que poder afirmar en el informe
+    const v = await pool.query(
+      `SELECT distancia_metros, creado_en FROM ingresos_ubicacion
+       WHERE caso_id=$1 AND resultado='aceptado' ORDER BY creado_en DESC LIMIT 1`, [caso.id]);
+
+    res.json({ ok: true, certificados, verificacion: v.rows[0] || null,
+      caso: { id: caso.id, trabajador_nombre: caso.trabajador_nombre, empresa_nombre: caso.empresa_nombre,
+              motivo: caso.motivo, documentacion: caso.documentacion, domicilio: caso.domicilio,
+              radio_metros: caso.radio_metros || RADIO_POR_DEFECTO,
+              tipo_control: caso.tipo_control || TIPO_CONTROL_DEFECTO } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/ausentismo/certificados/:certId', authMedgrupOEmpresa, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM certificados_ausentismo WHERE id=$1', [req.params.certId]);
