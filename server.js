@@ -336,6 +336,19 @@ async function initDB() {
       `ALTER TABLE IF EXISTS turnos ALTER COLUMN hora TYPE VARCHAR(20)`,
     ]) await client.query(q).catch(()=>{});
 
+    // La razón social correcta es C.E.Me.P S.R.L, no "CEMEP". El nombre viaja como texto por
+    // seis tablas y es lo que une a la empresa con sus casos: si se corrige solo en el
+    // desplegable, los casos nuevos dejan de aparecer en su portal. Se renombra en todas.
+    for (const q of [
+      `UPDATE empresas_clientes SET nombre='C.E.Me.P S.R.L'
+         WHERE nombre='CEMEP' AND NOT EXISTS (SELECT 1 FROM empresas_clientes WHERE nombre='C.E.Me.P S.R.L')`,
+      `UPDATE casos_ausentismo  SET empresa_nombre='C.E.Me.P S.R.L' WHERE empresa_nombre='CEMEP'`,
+      `UPDATE turnos            SET empresa='C.E.Me.P S.R.L' WHERE empresa='CEMEP'`,
+      `UPDATE dictamenes        SET empresa='C.E.Me.P S.R.L' WHERE empresa='CEMEP'`,
+      `UPDATE pacientes_empresa SET empresa='C.E.Me.P S.R.L' WHERE empresa='CEMEP'`,
+      `UPDATE presupuestos      SET empresa='C.E.Me.P S.R.L' WHERE empresa='CEMEP'`,
+    ]) await client.query(q).catch(err => console.error('No se pudo renombrar CEMEP:', err.message));
+
     await migrarTimestampsAZonaHoraria(client);
 
     console.log('✓ Base de datos lista');

@@ -833,7 +833,7 @@ td.no-label::before{display:none;}
               <div><div style="font-size:16px;font-weight:600;letter-spacing:-0.3px;" id="perfil-nombre">—</div><div style="font-size:13px;color:var(--text3);margin-top:2px;" id="perfil-email">—</div><div style="margin-top:7px;" id="perfil-rol-badge"></div></div>
             </div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;font-size:13px;line-height:1.9;color:var(--text2);">
-              <div><strong style="color:var(--text);">Empresas:</strong> LOGANT, Huinoil, CEMEP, Grupo L</div>
+              <div><strong style="color:var(--text);">Empresas:</strong> LOGANT, Huinoil, C.E.Me.P S.R.L, Grupo L</div>
               <div><strong style="color:var(--text);">Plataforma:</strong> MEDGRUP Servicio Médico</div>
             </div>
           </div>
@@ -1595,7 +1595,9 @@ td.no-label::before{display:none;}
 </div>
 
 <script>
-const EMPRESAS={'LOGANT S.A.':'emp-logant','Huinoil S.A.':'emp-huinoil','CEMEP':'emp-cemep','Grupo L':'emp-grupol'};
+// "CEMEP" queda como alias: los registros viejos se renombran al arrancar el server, pero si
+// alguno quedó sin migrar no tiene por qué perder su color.
+const EMPRESAS={'LOGANT S.A.':'emp-logant','Huinoil S.A.':'emp-huinoil','C.E.Me.P S.R.L':'emp-cemep','CEMEP':'emp-cemep','Grupo L':'emp-grupol'};
 function empresaTag(emp){return`<span class="empresa-tag ${EMPRESAS[emp]||'emp-otra'}">${emp||'—'}</span>`;}
 
 let sessionToken=localStorage.getItem('medgrup_token');
@@ -3152,7 +3154,7 @@ function onModalidadTurnoChange(){
   if(presencial) document.getElementById('t-paciente-presencial').checked = false;
 }
 
-const EMPRESAS_HISTORICAS=['LOGANT S.A.','Gloker Trucks S.A.','Huinoil S.A.','CEMEP','Grupo L'];
+const EMPRESAS_HISTORICAS=['LOGANT S.A.','Gloker Trucks S.A.','Huinoil S.A.','C.E.Me.P S.R.L','Grupo L'];
 
 async function cargarEmpresasSelect(){
   const sel=document.getElementById('t-empresa');
