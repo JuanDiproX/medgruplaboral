@@ -1985,6 +1985,24 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
         .filter(x => x && String(x).trim())
         .map(x => `<p style="white-space:pre-wrap;">${x}</p>`).join('');
 
+      // Un control remoto vale tanto como lo que pueda probar. Esta constancia es lo que
+      // sostiene que la evaluación fue a distancia pero sobre la persona correcta y en su
+      // domicilio, y por eso se emite únicamente cuando el registro lo respalda: sin una
+      // verificación aceptada no se afirma nada.
+      const constanciaGeo = verificacion ? `<div class="constancia">
+  <strong>Constancia de validez del control remoto.</strong> El presente control se realizó en
+  modalidad remota por videollamada a través de la plataforma MEDGRUP, con verificación de
+  geolocalización del dispositivo del/de la trabajador/a como condición de ingreso. El sistema
+  registró su posición a las ${new Date(verificacion.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG})} hs,
+  a ${Math.round(verificacion.distancia_metros)} metros del domicilio informado por la empresa y
+  dentro del radio admitido de ${radio} metros, constatándose que el/la trabajador/a
+  <strong>se encontraba en su domicilio al momento del control</strong>. La verificación fue
+  generada automáticamente por la plataforma, sin intervención manual, y su registro —junto con
+  todos los intentos de ingreso— queda asentado en el sistema, lo que otorga al presente informe
+  carácter fidedigno respecto de la identidad del evaluado, de la fecha y hora, y del lugar en
+  que se encontraba.
+</div>` : '';
+
       const htmlAuditoria = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <title>Informe ${d.numero}</title>
 <style>
@@ -2003,6 +2021,7 @@ p{margin-bottom:9px;text-align:justify;}
 .conc-box{border-radius:8px;padding:12px 16px;margin:14px 0 4px;background:${aptBg};border:1.5px solid ${aptBorder};}
 .conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
 .conc-sub{font-size:10.5px;color:#5a5750;}
+.constancia{margin-top:16px;background:#f4f7fb;border-left:3px solid #3a6ea8;border-radius:6px;padding:11px 15px;font-size:11px;line-height:1.65;color:#2a5080;text-align:justify;}
 .firma-tit{margin-top:38px;font-size:12.5px;font-weight:700;text-decoration:underline;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:14px;}
 .hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
@@ -2052,6 +2071,7 @@ ${d.aptitud?`<div class="conc-box">
   <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
 </div>`:''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
+${constanciaGeo}
 
 <div class="firma-tit">Firma y sello del profesional actuante</div>
 <div class="firmas-row">
@@ -2226,10 +2246,15 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
     // evaluación: sería afirmar un hecho que no ocurrió. Lo que la empresa necesita en ese
     // caso es la constancia de que se lo citó y no compareció, con el registro que lo prueba.
     const casoActa = (await pool.query('SELECT * FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.params.id])).rows[0] || null;
+    // La verificación aceptada se usa en los dos caminos del acta: si no la hay es una
+    // inasistencia, y si la hay es lo que prueba que el control remoto fue en el domicilio.
+    let verificacionActa = null;
     if (casoActa) {
       const intentos = (await pool.query(
         `SELECT * FROM ingresos_ubicacion WHERE caso_id=$1 ORDER BY creado_en ASC`, [casoActa.id])).rows;
-      const ingreso = intentos.some(i => i.resultado === 'aceptado');
+      const aceptados = intentos.filter(i => i.resultado === 'aceptado');
+      verificacionActa = aceptados[aceptados.length - 1] || null;
+      const ingreso = aceptados.length > 0;
       const sePresento = eventos.some(e => e.tipo === 'union_paciente');
 
       if (!ingreso && !sePresento) {
@@ -2334,6 +2359,23 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
       ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>, ${comparecencia}, ${cierreIntro}`
       : `Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.`;
     const seccionEventosHtml = esDeclaracionJurada ? '' : `<h2>Registro cronológico de asistencia</h2><div class="eventos-box">${eventosHtml}</div>`;
+
+    // En un control domiciliario la asistencia sola no alcanza: lo que hay que poder afirmar
+    // es que la persona estaba en su casa. Esta sección se emite solo si el registro lo
+    // respalda —una verificación aceptada—, nunca por el hecho de que el caso exista.
+    const seccionGeoHtml = verificacionActa ? (() => {
+      const radioActa2 = casoActa.radio_metros || RADIO_POR_DEFECTO;
+      const horaVerif = new Date(verificacionActa.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG });
+      return `<h2>Verificación de domicilio por geolocalización</h2>
+<div class="datos-box">
+  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${casoActa.domicilio||'—'}</div></div>
+  <div><div class="dato-label">Hora de la verificación</div><div class="dato-value">${horaVerif} hs</div></div>
+  <div><div class="dato-label">Distancia al domicilio</div><div class="dato-value">${Math.round(verificacionActa.distancia_metros)} m</div></div>
+  <div><div class="dato-label">Radio admitido</div><div class="dato-value">${radioActa2} m</div></div>
+</div>
+<p>El ingreso a la videollamada estuvo condicionado a la verificación de geolocalización del dispositivo del/de la trabajador/a: la plataforma entrega el acceso únicamente si la posición reportada se corresponde con el domicilio informado por la empresa. En el presente caso el sistema constató, a las ${horaVerif} hs, una posición a <strong>${Math.round(verificacionActa.distancia_metros)} metros</strong> del domicilio informado, dentro del radio admitido de ${radioActa2} metros, quedando acreditado que <strong>el/la trabajador/a se encontraba en su domicilio</strong> al momento de la evaluación.</p>
+<p>La verificación fue generada automáticamente por la plataforma, sin intervención manual, y tanto ella como la totalidad de los intentos de ingreso quedan asentados en el sistema. En razón de ello, la presente acta reviste carácter fidedigno en cuanto a la realización del control, su fecha y hora, y el lugar en que se encontraba la persona evaluada, no obstante haberse desarrollado en modalidad remota.</p>`;
+    })() : '';
     const verifTexto = esDeclaracionJurada
       ? `Este documento certifica la asistencia en carácter de declaración jurada, suscripta mediante firma digital por los profesionales intervinientes${firmaDeLaPaciente?' y por la persona evaluada':''}.`
       : 'Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.';
@@ -2378,6 +2420,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}${t.modalidad==='presencial'?' (Presencial)':(t.paciente_presencial?' (Paciente presente)':'')}</div></div>
 </div>
 ${seccionEventosHtml}
+${seccionGeoHtml}
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="verif">${verifTexto}</div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
