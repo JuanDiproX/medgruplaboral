@@ -1319,7 +1319,11 @@ async function avanzarCasoDelTurno(turnoId, estado) {
   if (!turnoId) return;
   try {
     if (estado === 'en-curso') {
-      await pool.query(`UPDATE casos_ausentismo SET estado='en-curso'
+      // La hora real del control queda sellada la primera vez que arranca, se haya disparado
+      // desde el botón de control inmediato o desde la agenda. Después no se vuelve a tocar:
+      // si la consulta se reanuda, el control no empezó de nuevo.
+      await pool.query(`UPDATE casos_ausentismo
+        SET estado='en-curso', control_iniciado_en = COALESCE(control_iniciado_en, NOW())
         WHERE turno_id=$1 AND estado IN ('asignado','programado')`, [turnoId]);
     } else if (estado === 'resuelto') {
       await pool.query(`UPDATE casos_ausentismo SET estado='resuelto', resuelto_en=NOW()
@@ -2180,6 +2184,94 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
         : `<div class="firma-linea"></div>`;
       return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${t.paciente}</div>${fp?'<div class="firma-esp">Paciente evaluado/a</div>':'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
     })() : '');
+    // ===== ACTA DE INASISTENCIA (controles domiciliarios) =====
+    // Si el trabajador nunca entró al control, el acta no puede decir que se realizó una
+    // evaluación: sería afirmar un hecho que no ocurrió. Lo que la empresa necesita en ese
+    // caso es la constancia de que se lo citó y no compareció, con el registro que lo prueba.
+    const casoActa = (await pool.query('SELECT * FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.params.id])).rows[0] || null;
+    if (casoActa) {
+      const intentos = (await pool.query(
+        `SELECT * FROM ingresos_ubicacion WHERE caso_id=$1 ORDER BY creado_en ASC`, [casoActa.id])).rows;
+      const ingreso = intentos.some(i => i.resultado === 'aceptado');
+      const sePresento = eventos.some(e => e.tipo === 'union_paciente');
+
+      if (!ingreso && !sePresento) {
+        const radioActa = casoActa.radio_metros || RADIO_POR_DEFECTO;
+        const hs = f => new Date(f).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:ZONA_ARG });
+        // Un control sorpresa no tiene "hora citada": tiene la hora en que se lo inició. Si el
+        // control sí estaba pactado, se cae a la hora del turno, que ahí sí es la que se avisó.
+        const inicioActa = casoActa.control_iniciado_en ? new Date(casoActa.control_iniciado_en) : null;
+        const horaActa = inicioActa
+          ? inicioActa.toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG })
+          : (t.hora || '');
+        const etiquetaHora = inicioActa ? 'Control iniciado a las' : 'Hora citada';
+        // Cada rechazo se explica en castellano: "fuera_de_rango" no le dice nada a nadie
+        const motivoIntento = i => ({
+          fuera_de_rango:            `Rechazado — a ${Math.round(i.distancia_metros)} m del domicilio informado (máximo admitido: ${radioActa} m)`,
+          sin_ubicacion:             'Rechazado — no se obtuvo la ubicación del dispositivo',
+          precision_baja:            `Rechazado — señal de ubicación insuficiente (margen de ${Math.round(i.precision_metros)} m)`,
+          domicilio_sin_coordenadas: 'Rechazado — el domicilio no tenía coordenadas cargadas',
+          sin_entrevista:            'Intento previo a la programación de la entrevista',
+          caso_cerrado:              'Intento sobre un caso ya cerrado'
+        })[i.resultado] || i.resultado;
+
+        const intentosHtml = intentos.length
+          ? intentos.map(i => `<div class="ev-row"><div class="ev-hora">${hs(i.creado_en)}</div><div class="ev-icon">✕</div><div class="ev-desc">${motivoIntento(i)}</div></div>`).join('')
+          : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">No se registró ningún intento de ingreso al control.</div>`;
+
+        const htmlInasistencia = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta de inasistencia - ${t.paciente}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
+.logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
+.subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
+.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;}
+.dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
+h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
+.ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}.ev-row:last-child{border-bottom:none;}
+.ev-hora{font-family:'DM Mono',sans-serif;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
+.ev-icon{width:22px;height:22px;border-radius:50%;background:#faedf1;color:#c0365a;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.ev-desc{font-size:12.5px;}
+.eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
+.verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;}
+.firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:34px;padding-top:16px;border-top:1.5px solid #e8e4de;}
+.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
+.firma-nombre{font-size:11.5px;font-weight:700;}
+.firma-esp{font-size:10px;color:#5a5750;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
+.wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+@media print{body{padding:26px 32px;}}</style></head><body>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:11px;">
+    <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
+    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Salud Ocupacional, Seguridad e Higiene del Trabajo</div></div>
+  </div>
+  <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
+</div>
+<h1>Acta de Inasistencia — ${t.tipo||'Control de ausentismo'}</h1>
+<div class="subt">Constancia de no comparecencia al control domiciliario</div>
+<p>Se deja constancia de que en el día de la fecha se ${inicioActa?'inició':'citó'}, a solicitud de <strong>${t.empresa||'—'}</strong>, un <strong>${(t.tipo||'control de ausentismo').toLowerCase()}</strong> de carácter domiciliario respecto del/de la Sr./Sra. <strong>${t.paciente}</strong>${horaActa?`, ${inicioActa?'a las':'a realizarse a las'} ${horaActa} hs`:''}, mediante videollamada a través de la plataforma MEDGRUP, y que el/la trabajador/a <strong>no compareció al mismo</strong>.</p>
+<p>El ingreso al control requiere que el/la trabajador/a confirme su ubicación desde su propio dispositivo y que ésta se corresponda con el domicilio informado por la empresa. A continuación se detalla el registro de intentos de ingreso obrante en el sistema.</p>
+<div class="datos-box">
+  <div><div class="dato-label">Trabajador/a</div><div class="dato-value">${t.paciente}</div></div>
+  <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
+  <div><div class="dato-label">Fecha del control</div><div class="dato-value">${fecha}</div></div>
+  <div><div class="dato-label">${etiquetaHora}</div><div class="dato-value">${horaActa||'—'} hs</div></div>
+  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${casoActa.domicilio||'—'}</div></div>
+  <div><div class="dato-label">Radio admitido</div><div class="dato-value">${radioActa} m</div></div>
+</div>
+<h2>Registro de intentos de ingreso</h2>
+<div class="eventos-box">${intentosHtml}</div>
+${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
+<div class="verif">Este documento certifica la inasistencia mediante el registro automático de intentos de ingreso del sistema MEDGRUP, generado por la plataforma sin intervención manual.</div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Acta de inasistencia · ${t.id}</div>
+<script>window.onload=function(){window.print();}</script></body></html>`;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(htmlInasistencia);
+      }
+    }
+
     const esDeclaracionJurada = t.paciente_presencial === true;
     const tipoLabel = { inicio_medico:'Inicio de videoconsulta', union_medico:'Médico se incorporó a la consulta', union_paciente:'Paciente se incorporó a la consulta', fin_consulta:'Finalización de la consulta' };
     const tipoIcon = { inicio_medico:'▶', union_medico:'＋', union_paciente:'＋', fin_consulta:'■' };
@@ -2966,9 +3058,19 @@ app.delete('/api/ausentismo/certificados/:certId', adminMiddleware, async (req, 
 // --- Programar la entrevista: crea la videollamada y engancha el caso al flujo de turnos ---
 // Lo hace el profesional asignado (o el admin). A partir de acá el caso vive como un turno
 // normal: videollamada, informe, firma y PDF, sin nada especial.
+// Con "ahora" el control arranca en el momento, sin horario pactado: es la modalidad sorpresa,
+// que es la que le da sentido al control de ausentismo. El turno igual necesita fecha y hora
+// para vivir en la agenda, así que se toman del reloj.
 app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res) => {
-  const { fecha, hora } = req.body;
+  const { tipo_control, ahora } = req.body;
+  let { fecha, hora } = req.body;
+  if (ahora) {
+    const ahoraArg = new Date(new Date().toLocaleString('en-US', { timeZone: ZONA_ARG }));
+    fecha = `${ahoraArg.getFullYear()}-${String(ahoraArg.getMonth()+1).padStart(2,'0')}-${String(ahoraArg.getDate()).padStart(2,'0')}`;
+    hora  = `${String(ahoraArg.getHours()).padStart(2,'0')}:${String(ahoraArg.getMinutes()).padStart(2,'0')}`;
+  }
   if (!fecha || !hora) return res.status(400).json({ error: 'Indicá fecha y hora de la entrevista' });
+  if (tipo_control && !TIPOS_CONTROL[tipo_control]) return res.status(400).json({ error: 'Tipo de control desconocido' });
   try {
     const r = await pool.query(`
       SELECT c.*, m.nombre AS profesional_nombre
@@ -2989,16 +3091,32 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     }
     const linkIngreso = `${req.protocol}://${req.get('host')}/ingreso/${token}`;
 
+    // El tipo se puede corregir al programar: es el último momento en que se elige cómo se va
+    // a llamar esta entrevista en el acta y en el informe.
+    const tipoCaso = tipo_control || caso.tipo_control || TIPO_CONTROL_DEFECTO;
+    if (tipo_control && tipo_control !== caso.tipo_control) {
+      await pool.query('UPDATE casos_ausentismo SET tipo_control=$1 WHERE id=$2', [tipo_control, req.params.id]);
+    }
+
+    // El instante real del control: se sella acá cuando se dispara inmediato, y si no lo hace
+    // después avanzarCasoDelTurno al pasar a "en-curso". Una vez sellado no se pisa.
+    if (ahora) {
+      await pool.query(
+        `UPDATE casos_ausentismo SET control_iniciado_en = COALESCE(control_iniciado_en, NOW()) WHERE id=$1`,
+        [req.params.id]);
+    }
+
     // Reprogramar: si ya tenía entrevista se mueve la fecha, no se crea otra sala
     if (caso.turno_id) {
-      await pool.query('UPDATE turnos SET fecha=$1, hora=$2 WHERE id=$3', [fecha, hora, caso.turno_id]);
-      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: linkIngreso, reprogramado: true });
+      await pool.query('UPDATE turnos SET fecha=$1, hora=$2, tipo=$3 WHERE id=$4',
+        [fecha, hora, etiquetaControl(tipoCaso), caso.turno_id]);
+      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: linkIngreso, reprogramado: true, hora, fecha });
     }
 
     const creado = await crearTurnoConVideollamada({
       paciente: caso.trabajador_nombre,
       medicos: [caso.profesional_nombre],
-      tipo: 'Control de ausentismo',
+      tipo: etiquetaControl(tipoCaso),
       fecha, hora,
       empresa: caso.empresa_nombre,
       motivo: caso.motivo || '',
@@ -3008,8 +3126,40 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
       [creado.turnoId, req.params.id]);
     // Se devuelve el link de ingreso, no el de Daily: el de Daily se entrega recién
     // cuando el trabajador confirma que está en su domicilio.
-    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: linkIngreso, estado: 'programado' });
+    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: linkIngreso, estado: 'programado', hora, fecha });
   } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
+});
+
+// --- Cierre por inasistencia ---
+// El trabajador no entró al control. No hay informe que emitir —no se lo pudo evaluar—, así
+// que el caso se cierra acá y el único documento que queda es el acta que lo deja asentado.
+app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const caso = r.rows[0];
+    if (!(await puedeVerCaso(caso, req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+    if (!caso.turno_id) return res.status(400).json({ error: 'Todavía no se inició el control, así que no hay inasistencia que registrar' });
+    if (['resuelto', 'cancelado'].includes(caso.estado)) return res.status(400).json({ error: 'El caso ya está cerrado' });
+
+    // Contra el registro no se discute: si el trabajador entró, no hay inasistencia que
+    // declarar. El acta saldría contradiciendo sus propios datos.
+    const entro = await pool.query(
+      `SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado='aceptado' LIMIT 1`, [caso.id]);
+    if (entro.rows.length) return res.status(409).json({
+      error: 'El trabajador confirmó su ubicación e ingresó al control, así que no se puede registrar inasistencia.' });
+    const seSumo = await pool.query(
+      `SELECT 1 FROM eventos_turno WHERE turno_id=$1 AND tipo='union_paciente' LIMIT 1`, [caso.turno_id]);
+    if (seSumo.rows.length) return res.status(409).json({
+      error: 'El trabajador se sumó a la videollamada, así que no se puede registrar inasistencia.' });
+
+    await pool.query(`UPDATE turnos SET estado='completado' WHERE id=$1`, [caso.turno_id]);
+    await pool.query(
+      `UPDATE casos_ausentismo
+       SET estado='resuelto', resuelto_en=NOW(), control_iniciado_en = COALESCE(control_iniciado_en, NOW())
+       WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true, acta: `/api/turnos/${caso.turno_id}/acta` });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- Facturación: casos resueltos del mes, agrupados por empresa ---

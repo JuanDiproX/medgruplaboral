@@ -4710,8 +4710,16 @@ function renderCasosAusentismo(){
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDomicilioCaso(${c.id})">📍 Domicilio</button>`);
     if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirAsignarCaso(${c.id})">${c.profesional_nombre?'Reasignar':'Asignar profesional'}</button>`);
+    if(c.profesional_id && ['asignado','programado'].includes(c.estado) && !c.turno_id)
+      acciones.push(`<button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="iniciarControlAhora(${c.id})">⚡ Iniciar control ahora</button>`);
     if(c.profesional_id && ['asignado','programado'].includes(c.estado))
       acciones.push(`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="abrirProgramarCaso(${c.id})">${c.turno_id?'Reprogramar':'Programar entrevista'}</button>`);
+    // El acta se decide sola según el registro: si el trabajador entró sale la de asistencia,
+    // y si no compareció sale la de inasistencia. Por eso alcanza con un solo link.
+    if(c.turno_id)
+      acciones.push(`<a href="/api/turnos/${c.turno_id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Ver acta</a>`);
+    if(c.turno_id && ['programado','en-curso'].includes(c.estado))
+      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="registrarInasistencia(${c.id})">No compareció</button>`);
     if(c.estado === 'programado')
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="cambiarEstadoCaso(${c.id},'en-curso')">Marcar en curso</button>`);
     if(c.estado === 'en-curso')
@@ -5064,6 +5072,79 @@ async function confirmarAsignacionCaso(){
     mostrarToast('✓ Asignado a '+data.profesional,'#1e6640');
     addLog('blue','Caso asignado', data.profesional);
     await cargarCasosAusentismo();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+// El trabajador no entró al control. Cierra el caso y abre el acta que lo deja asentado; el
+// servidor rechaza el pedido si el registro muestra que sí ingresó.
+async function registrarInasistencia(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  if(!(await confirmar(
+      `Se va a dejar asentado que ${c.trabajador_nombre} no compareció al control. Se emite el acta de inasistencia con el registro de intentos de ingreso y el caso queda cerrado.`,
+      { titulo:'Registrar inasistencia', textoConfirmar:'Registrar y ver el acta', danger:true }))) return;
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/inasistencia`, { method:'POST', headers:apiHeaders() });
+    const d = await r.json();
+    if(!d.ok){ mostrarError(d.error || 'No se pudo registrar la inasistencia'); return; }
+    // Si el navegador bloquea la pestaña, el acta igual queda a un click desde "Ver acta"
+    if(!window.open(d.acta, '_blank')) mostrarToast('Acta lista — abrila con el botón "Ver acta"','#2a5080');
+    mostrarToast('✓ Inasistencia registrada','#c0365a');
+    addLog('rosa','Inasistencia registrada', c.trabajador_nombre);
+    await cargarCasosAusentismo();
+    cargarTurnos();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+// Control sorpresa: se dispara en el momento, sin horario pactado. Ese disparo es el que
+// después figura como hora del control en el acta y en el informe — no la hora del turno,
+// que acá es apenas el casillero que la agenda necesita para mostrarlo.
+async function iniciarControlAhora(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+
+  const aviso = c.domicilio_lat == null
+    ? { texto: `${c.trabajador_nombre} no tiene el domicilio ubicado en el mapa, así que no va a poder entrar a la videollamada. Cargalo desde el botón Domicilio antes de iniciar.`,
+        titulo: 'Sin domicilio verificado', confirmar: 'Iniciar igual', danger: true }
+    : { texto: `Se crea la videollamada en este momento y el control queda registrado con la hora actual. Después mandale el link a ${c.trabajador_nombre}.`,
+        titulo: 'Iniciar control ahora', confirmar: 'Iniciar', danger: false };
+  if(!(await confirmar(aviso.texto, { titulo: aviso.titulo, textoConfirmar: aviso.confirmar, danger: aviso.danger }))) return;
+
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/programar`, {
+      method:'POST', headers:apiHeaders(),
+      body: JSON.stringify({ ahora: true, tipo_control: c.tipo_control || 'ausentismo' })
+    });
+    const data = await r.json();
+    if(!data.ok){ mostrarError(data.error || 'No se pudo iniciar el control'); return; }
+
+    casoProgramandoId = id;
+    document.getElementById('prog-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre||''}`;
+    document.querySelector('#modal-programar-caso .modal-title').textContent = 'Control iniciado';
+    document.getElementById('prog-form').style.display = 'none';
+    document.getElementById('prog-error').style.display = 'none';
+    document.getElementById('btn-prog-confirmar').style.display = 'none';
+    document.getElementById('prog-resultado-txt').textContent =
+      `Control iniciado${data.hora?' a las '+data.hora+' hs':''}. Mandale el link ahora: primero se le pide la ubicación y recién ahí entra a la videollamada. Después entrá a la llamada desde la agenda.`;
+
+    // Sin teléfono cargado el WhatsApp no sirve de nada, así que queda el link a la vista
+    const wa = document.getElementById('prog-whatsapp');
+    if(c.trabajador_telefono){
+      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Estamos realizando en este momento un control médico domiciliario. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
+      wa.href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+      wa.style.display = '';
+    } else {
+      wa.style.display = 'none';
+    }
+    document.getElementById('prog-link').value = data.link_paciente || '';
+    document.getElementById('prog-link-wrap').style.display = 'block';
+    document.getElementById('prog-resultado').style.display = 'block';
+    document.getElementById('modal-programar-caso').classList.add('open');
+
+    mostrarToast('✓ Control iniciado','#1e6640');
+    addLog('rosa','Control de ausentismo iniciado', `${c.trabajador_nombre}${data.hora?' · '+data.hora+' hs':''}`);
+    await cargarCasosAusentismo();
+    cargarTurnos();
   }catch(e){ mostrarError('Error de conexión'); }
 }
 
