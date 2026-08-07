@@ -659,7 +659,7 @@ table.items td{padding:8px 10px;border-bottom:1px solid #e8e4de;font-size:12px;}
 .validez-box{margin-top:16px;background:#fdf5e8;border:1px solid #e8c988;border-radius:8px;padding:10px 14px;font-size:11.5px;color:#8f5000;}
 .notas{margin-top:14px;font-size:11.5px;color:#5a5750;white-space:pre-wrap;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:50px;padding-top:16px;border-top:1.5px solid #e8e4de;}
-.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .wm{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
@@ -1895,7 +1895,9 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
       const firmaImg = m.img
         ? `<img src="data:image/png;base64,${m.img}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>`;
-      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${rotuloMatricula(m.matricula)}</div></div>`;
+      // break-inside: sin esto la impresión parte el bloque y el renglón de firma queda en una
+      // hoja con el nombre y la matrícula en la siguiente
+      return `<div style="text-align:center;flex:1;min-width:180px;break-inside:avoid;page-break-inside:avoid;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${rotuloMatricula(m.matricula)}</div></div>`;
     }).join('');
 
     // Trazabilidad de firmas de junta para el pie del documento
@@ -2018,11 +2020,14 @@ h2{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3p
 p{margin-bottom:9px;text-align:justify;}
 .dato{margin-bottom:3px;}
 .dato-lbl{font-weight:700;text-decoration:underline;}
-.conc-box{border-radius:8px;padding:12px 16px;margin:14px 0 4px;background:${aptBg};border:1.5px solid ${aptBorder};}
+.conc-box{border-radius:8px;padding:12px 16px;margin:14px 0 4px;background:${aptBg};border:1.5px solid ${aptBorder};break-inside:avoid;page-break-inside:avoid;}
 .conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
 .conc-sub{font-size:10.5px;color:#5a5750;}
-.constancia{margin-top:16px;background:#f4f7fb;border-left:3px solid #3a6ea8;border-radius:6px;padding:11px 15px;font-size:11px;line-height:1.65;color:#2a5080;text-align:justify;}
-.firma-tit{margin-top:38px;font-size:12.5px;font-weight:700;text-decoration:underline;}
+.constancia{margin-top:16px;background:#f4f7fb;border-left:3px solid #3a6ea8;border-radius:6px;padding:11px 15px;font-size:11px;line-height:1.65;color:#2a5080;text-align:justify;break-inside:avoid;page-break-inside:avoid;}
+/* El pie de firma se imprime entero o pasa completo a la hoja siguiente: un renglón de firma
+   separado de su nombre y matrícula no identifica a nadie. */
+.bloque-firmas{margin-top:38px;break-inside:avoid;page-break-inside:avoid;}
+.firma-tit{font-size:12.5px;font-weight:700;text-decoration:underline;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:14px;}
 .hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
 .wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
@@ -2073,9 +2078,11 @@ ${d.aptitud?`<div class="conc-box">
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
 ${constanciaGeo}
 
-<div class="firma-tit">Firma y sello del profesional actuante</div>
-<div class="firmas-row">
-  ${firmasHtml}
+<div class="bloque-firmas">
+  <div class="firma-tit">Firma y sello del profesional actuante</div>
+  <div class="firmas-row">
+    ${firmasHtml}
+  </div>
 </div>
 
 <div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
@@ -2107,11 +2114,11 @@ ul{margin:4px 0 8px 18px;}
 li{margin-bottom:5px;}
 .bullet-item{display:flex;gap:6px;margin-bottom:5px;font-size:12.5px;}
 .bullet-item::before{content:"●";color:#3a6ea8;flex-shrink:0;}
-.conc-box{border-radius:8px;padding:12px 16px;margin:10px 0;background:${aptBg};border:1.5px solid ${aptBorder};}
+.conc-box{border-radius:8px;padding:12px 16px;margin:10px 0;background:${aptBg};border:1.5px solid ${aptBorder};break-inside:avoid;page-break-inside:avoid;}
 .conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
 .conc-sub{font-size:10.5px;color:#5a5750;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:40px;padding-top:16px;border-top:1.5px solid #e8e4de;}
-.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
@@ -2287,7 +2294,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
-.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;}
+.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;break-inside:avoid;page-break-inside:avoid;}
 .dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
 h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}.ev-row:last-child{border-bottom:none;}
@@ -2295,9 +2302,9 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-icon{width:22px;height:22px;border-radius:50%;background:#faedf1;color:#c0365a;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
 .ev-desc{font-size:12.5px;}
 .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
-.verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;}
+.verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;break-inside:avoid;page-break-inside:avoid;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:34px;padding-top:16px;border-top:1.5px solid #e8e4de;}
-.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
@@ -2386,7 +2393,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
-.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;}
+.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;break-inside:avoid;page-break-inside:avoid;}
 .dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
 h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}.ev-row:last-child{border-bottom:none;}
@@ -2394,9 +2401,9 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-icon{width:22px;height:22px;border-radius:50%;background:#e8f0f8;color:#3a6ea8;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
 .ev-desc{font-size:12.5px;}
 .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
-.verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;}
+.verif{margin-top:24px;background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:11px 15px;font-size:11px;color:#9a2847;break-inside:avoid;page-break-inside:avoid;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:34px;padding-top:16px;border-top:1.5px solid #e8e4de;}
-.firma-item{text-align:center;flex:1;min-width:160px;}
+.firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
