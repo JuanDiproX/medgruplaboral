@@ -3080,9 +3080,45 @@ function buildLinksHtml(t){
 function abrirWA(key){window.open('https://wa.me/?text='+encodeURIComponent(mensajesLinks[key]||''),'_blank');}
 function abrirGmail(key){window.open('mailto:?subject=Consulta médica MEDGRUP&body='+encodeURIComponent(mensajesLinks[key]||''),'_blank');}
 
+// El 15 va pegado después del código de área y solo existe en el formato local. Los códigos
+// de área argentinos tienen 2, 3 o 4 dígitos, así que se prueba dónde encaja para que queden
+// los 10 dígitos que corresponden (área + abonado).
+function quitar15AR(n){
+  if(n.length <= 10) return n;
+  for(const largoArea of [2,3,4]){
+    if(n.slice(largoArea, largoArea+2) === '15' && n.length - 2 === 10){
+      return n.slice(0, largoArea) + n.slice(largoArea+2);
+    }
+  }
+  return n;
+}
+
+// WhatsApp necesita el número en internacional: 54 + 9 + área (sin el 0) + abonado (sin el
+// 15). Los teléfonos se cargan a mano y llegan de cualquier forma —"2964 65-4284",
+// "02964 15 654284", "+54 9 2964 65-4284"—, y hasta ahora solo se les sacaban los símbolos:
+// wa.me recibía un número que no existe y abría "número inválido" sin explicar nada.
+function normalizarTelefonoAR(telefono){
+  let d = (telefono||'').replace(/\D/g,'');
+  if(!d) return '';
+  d = d.replace(/^00/, '');                       // salida internacional
+  if(d.startsWith('54')){
+    let resto = d.slice(2).replace(/^0/, '');
+    if(resto.startsWith('9')) resto = resto.slice(1);   // el 9 se vuelve a poner abajo
+    return '549' + quitar15AR(resto);
+  }
+  return '549' + quitar15AR(d.replace(/^0/, ''));
+}
+
+// 549 + 10 dígitos. Si no da, el número está incompleto o mal cargado.
+function telefonoARValido(digitos){ return /^549\d{10}$/.test(digitos); }
+
 // Abre WhatsApp directo al número si lo tenemos, o el selector de contactos si no
 function abrirWANumero(telefono, mensaje){
-  const digitos = (telefono||'').replace(/\D/g,'');
+  const digitos = normalizarTelefonoAR(telefono);
+  if(telefono && !telefonoARValido(digitos)){
+    mostrarError(`El teléfono cargado ("${telefono}") no es un celular argentino válido, así que WhatsApp no lo va a encontrar. Corregilo en el turno: código de área sin el 0 y número sin el 15.`);
+    return;
+  }
   const base = digitos ? `https://wa.me/${digitos}` : 'https://wa.me/';
   window.open(base+'?text='+encodeURIComponent(mensaje||''),'_blank');
 }
@@ -5182,8 +5218,16 @@ async function iniciarControlAhora(id){
     const wa = document.getElementById('prog-whatsapp');
     if(c.trabajador_telefono){
       const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Estamos realizando en este momento un control médico domiciliario. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
-      wa.href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+      const tel = normalizarTelefonoAR(c.trabajador_telefono);
+      wa.href = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
       wa.style.display = '';
+      // Si el número está mal cargado, mejor decirlo acá que descubrirlo cuando WhatsApp
+      // abre en blanco y el control ya arrancó
+      if(!telefonoARValido(tel)){
+        const err = document.getElementById('prog-error');
+        err.textContent = `Ojo: el teléfono cargado ("${c.trabajador_telefono}") no es un celular argentino válido. Copiá el link de abajo y mandáselo por otra vía, o corregí el teléfono del caso.`;
+        err.style.display = 'block';
+      }
     } else {
       wa.style.display = 'none';
     }
@@ -5251,7 +5295,12 @@ async function confirmarProgramarCaso(){
       // un examen periódico, un mensaje que no lo aclare lo deja pensando que se le imputa una falta.
       const porQue = tipo_control === 'examen_periodico' ? ' de seguimiento por examen periódico' : '';
       const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica${porQue} el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: es un control domiciliario, así que tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
-      document.getElementById('prog-whatsapp').href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+      const tel = normalizarTelefonoAR(c.trabajador_telefono);
+      document.getElementById('prog-whatsapp').href = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+      if(!telefonoARValido(tel)){
+        err.textContent = `Ojo: el teléfono cargado ("${c.trabajador_telefono}") no es un celular argentino válido. Copiá el link de abajo y mandáselo por otra vía, o corregí el teléfono del caso.`;
+        err.style.display = 'block';
+      }
       document.getElementById('prog-link').value = data.link_paciente || '';
       document.getElementById('prog-link-wrap').style.display = 'block';
       document.getElementById('prog-resultado').style.display = 'block';
