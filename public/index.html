@@ -566,7 +566,7 @@ td.no-label::before{display:none;}
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
       <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>Presupuestos</div>
-      <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--azul);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
+      <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Firmas
         <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
@@ -2327,6 +2327,7 @@ function mostrarApp(){
   // Chequear si el médico tiene dictámenes de junta (o actas) pendientes de firma (camino express)
   cargarMiFirmaCache();
   chequearFirmasPendientes();
+  refrescarBadgeAusentismo();
   iniciarPollFirmasPendientes();
 }
 
@@ -3835,7 +3836,12 @@ async function chequearFirmasPendientes(){
 // informe mientras Scarello ya está logueado, le aparezca solo sin tener que relogearse
 function iniciarPollFirmasPendientes(){
   if(firmasPollInterval) clearInterval(firmasPollInterval);
-  firmasPollInterval = setInterval(chequearFirmasPendientes, 45000);
+  // Mismo latido para los dos avisos del menú: si la empresa abre un caso o el admin se lo
+  // asigna mientras el médico tiene la pantalla abierta, se entera sin recargar.
+  firmasPollInterval = setInterval(() => {
+    chequearFirmasPendientes();
+    refrescarBadgeAusentismo();
+  }, 45000);
 }
 function detenerPollFirmasPendientes(){
   if(firmasPollInterval){ clearInterval(firmasPollInterval); firmasPollInterval = null; }
@@ -4653,6 +4659,32 @@ const ESTADO_CASO = {
   'cancelado':  { texto:'Cancelado',  clase:'b-gray'  }
 };
 
+// Aviso del menú. Al admin le importa lo que todavía no repartió; al médico, todo lo que
+// tiene abierto: un caso asignado y sin programar no aparece en ninguna agenda, así que sin
+// este número no se entera de que existe hasta que entra a buscarlo.
+function pintarBadgeAusentismo(casos){
+  const badge = document.getElementById('nav-ausentismo-badge');
+  if(!badge) return;
+  const esAdmin = usuarioActual?.rol === 'admin';
+  const n = esAdmin
+    ? casos.filter(c => c.estado === 'nuevo').length
+    : casos.filter(c => !['resuelto','cancelado'].includes(c.estado)).length;
+  badge.textContent = n;
+  badge.style.display = n ? 'inline-flex' : 'none';
+  badge.title = esAdmin ? `${n} caso(s) sin profesional asignado` : `${n} caso(s) de ausentismo abiertos`;
+}
+
+// El médico arranca en la agenda, no en Ausentismo. Si el contador se calculara solo al abrir
+// la sección, el aviso llegaría cuando ya fue a buscarlo — es decir, nunca.
+async function refrescarBadgeAusentismo(){
+  if(!sessionToken) return;
+  try{
+    const r = await fetch('/api/ausentismo/casos', {headers:apiHeaders()});
+    const d = await r.json();
+    if(d.ok) pintarBadgeAusentismo(d.casos || []);
+  }catch(e){ /* el aviso es una ayuda, no algo que deba romper la pantalla */ }
+}
+
 async function cargarCasosAusentismo(){
   const lista = document.getElementById('casos-lista');
   // El alta de casos es cosa del admin: el médico solo ve los suyos
@@ -4678,13 +4710,7 @@ function renderCasosAusentismo(){
   const abiertos = casosAusentismo.filter(c => !['resuelto','cancelado'].includes(c.estado));
 
   document.getElementById('badge-casos').textContent = casosAusentismo.length;
-  // Aviso en el menú: casos que todavía no tienen profesional
-  const badgeNav = document.getElementById('nav-ausentismo-badge');
-  const sinAsignar = casosAusentismo.filter(c => c.estado === 'nuevo').length;
-  if(badgeNav){
-    badgeNav.textContent = sinAsignar;
-    badgeNav.style.display = (sinAsignar && usuarioActual?.rol === 'admin') ? 'inline-flex' : 'none';
-  }
+  pintarBadgeAusentismo(casosAusentismo);
 
   const cuenta = e => casosAusentismo.filter(c => c.estado === e).length;
   filtros.innerHTML = [['','Todos',casosAusentismo.length], ['nuevo','Nuevos',cuenta('nuevo')],
