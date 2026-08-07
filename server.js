@@ -1829,10 +1829,22 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
       ? (await pool.query('SELECT nombre, matricula, especialidad FROM medicos WHERE nombre = ANY($1::text[])', [nombresAlPie])).rows
       : [];
     const perfilPie = nombre => perfilesPie.find(p => p.nombre === nombre) || {};
+    // Hay matrículas cargadas como "MN 102128 / MP 603", que ya traen el prefijo adentro:
+    // anteponerle "MN/MP" otra vez imprimía "MN/MP MN 102128 / MP 603".
+    const rotuloMatricula = m => !m ? '' : (/^(MN|MP|M\.N|M\.P)/i.test(String(m).trim()) ? m : 'MN/MP ' + m);
+
+    // El pie es de los profesionales que intervinieron, no de quien cargó el informe en el
+    // sistema. Cuando lo carga el admin por el médico, el autor del dictamen es "Administrador":
+    // sin matrícula y sin especialidad, firmando un documento médico-legal. Se lo deja afuera.
+    const esProfesional = nombre =>
+      perfilesPie.some(p => p.nombre === nombre) ||
+      medicosDelTurno.includes(nombre) ||
+      firmasJunta.some(f => f.medico_nombre === nombre);
 
     // Bloque de firmas: autor + otros dictámenes + firmas de junta (sin duplicar)
     const firmantesRender = [];
     for (const m of todos) {
+      if (!esProfesional(m.medico)) continue;
       const esAutor = m.medico === d.medico;
       firmantesRender.push({
         nombre: m.medico,
@@ -1868,12 +1880,22 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
         img: null
       });
     }
+    // Red de contención: si el filtro dejó el pie vacío —un informe viejo cargado por alguien
+    // que ya no está en el equipo— vale más mostrar al autor que emitir un informe sin firma.
+    if (!firmantesRender.length && d.medico) {
+      firmantesRender.push({
+        nombre: d.medico,
+        especialidad: d.especialidad || 'Medicina Laboral',
+        matricula: d.matricula || '',
+        img: d.firma_doctor || null
+      });
+    }
 
     const firmasHtml = firmantesRender.map(m => {
       const firmaImg = m.img
         ? `<img src="data:image/png;base64,${m.img}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>`;
-      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${m.matricula?'MN/MP '+m.matricula:''}</div></div>`;
+      return `<div style="text-align:center;flex:1;min-width:180px;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${rotuloMatricula(m.matricula)}</div></div>`;
     }).join('');
 
     // Trazabilidad de firmas de junta para el pie del documento
@@ -2189,7 +2211,9 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
       const firmaImg = f
         ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
-      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div><div class="firma-esp">${especialidad}</div><div class="firma-mat">${matricula?'MN/MP '+matricula:''}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
+      // Mismo criterio que en el informe: si la matrícula ya trae el prefijo, no se repite
+      const rotulo = !matricula ? '' : (/^(MN|MP|M\.N|M\.P)/i.test(String(matricula).trim()) ? matricula : 'MN/MP ' + matricula);
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div><div class="firma-esp">${especialidad}</div><div class="firma-mat">${rotulo}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
     }).join('') + (t.paciente_presencial && t.firma_paciente !== false ? (() => {
       const fp = firmasActa.find(x => x.es_paciente);
       const firmaImg = fp
