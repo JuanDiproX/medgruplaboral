@@ -928,17 +928,24 @@ td.no-label::before{display:none;}
           <div class="card-body">
             <div style="font-size:12.5px;color:var(--text3);line-height:1.5;margin-bottom:12px;">Normalmente lo abre la empresa desde su portal. Cargalo acá si te lo avisaron por otra vía.</div>
             <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Tipo de control</label>
+                <select id="au-tipo-control" onchange="onTipoControlChange()">
+                  <option value="ausentismo">Control de ausentismo</option>
+                  <option value="examen_periodico">Seguimiento por examen periódico</option>
+                </select>
+                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">El control domiciliario por ubicación es el mismo en los dos. Cambia cómo se llama la entrevista en la agenda, en el acta y en el informe.</div>
+              </div>
               <div class="form-group full"><label class="form-lbl">Empresa</label>
                 <select id="au-empresa"><option value="">Cargando empresas...</option></select>
               </div>
               <div class="form-group full"><label class="form-lbl">Trabajador (apellido y nombre)</label><input type="text" id="au-trabajador" placeholder="Apellido, Nombre"/></div>
               <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="au-dni" placeholder="30111222"/></div>
               <div class="form-group"><label class="form-lbl">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456"/></div>
-              <div class="form-group full"><label class="form-lbl">Domicilio donde hace reposo</label>
+              <div class="form-group full"><label class="form-lbl" id="au-lbl-domicilio">Domicilio donde hace reposo</label>
                 <input type="text" id="au-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
                 <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">Al entrar a la entrevista se le pide la ubicación al trabajador y se verifica contra este domicilio. Calle, número, ciudad y provincia.</div>
               </div>
-              <div class="form-group full"><label class="form-lbl">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
+              <div class="form-group full"><label class="form-lbl" id="au-lbl-motivo">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
               <div class="form-group full"><label class="form-lbl">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
               <div class="form-group full">
                 <label class="form-lbl">Certificado médico (opcional)</label>
@@ -1413,15 +1420,27 @@ td.no-label::before{display:none;}
   <div class="modal" style="max-width:460px;">
     <div class="modal-title" style="margin-bottom:4px;">Programar la entrevista</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="prog-caso-info">—</div>
-    <div class="form-grid">
-      <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="prog-fecha"/></div>
-      <div class="form-group"><label class="form-lbl">Hora</label>
-        <select id="prog-hora"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>14:00</option><option>15:00</option><option selected>16:00</option><option>17:00</option></select>
+    <div id="prog-form">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="prog-fecha"/></div>
+        <div class="form-group"><label class="form-lbl">Hora</label>
+          <select id="prog-hora"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>14:00</option><option>15:00</option><option selected>16:00</option><option>17:00</option></select>
+        </div>
+        <div class="form-group full"><label class="form-lbl">Tipo de control</label>
+          <select id="prog-tipo-control">
+            <option value="ausentismo">Control de ausentismo</option>
+            <option value="examen_periodico">Seguimiento por examen periódico</option>
+          </select>
+        </div>
       </div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Se crea la videollamada y el caso pasa a la agenda como un turno normal. Con este nombre van a salir el acta y el informe.</div>
     </div>
-    <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Se crea la videollamada y el caso pasa a la agenda como un turno normal.</div>
     <div id="prog-resultado" style="display:none;margin-top:12px;background:var(--verde-light);border:1px solid var(--verde);border-radius:var(--r-sm);padding:12px 14px;">
-      <div style="font-size:12.5px;color:#1e6640;line-height:1.5;margin-bottom:10px;">Entrevista programada. Mandale el link al trabajador: primero se le pide la ubicación y recién ahí entra a la videollamada.</div>
+      <div id="prog-resultado-txt" style="font-size:12.5px;color:#1e6640;line-height:1.5;margin-bottom:10px;">Entrevista programada. Mandale el link al trabajador: primero se le pide la ubicación y recién ahí entra a la videollamada.</div>
+      <div id="prog-link-wrap" style="display:none;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Link de ingreso (copialo si preferís mandarlo por otra vía):</div>
+        <input id="prog-link" type="text" readonly onclick="this.select()" style="width:100%;font-size:11.5px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;font-family:'DM Mono',monospace;background:white;"/>
+      </div>
       <a id="prog-whatsapp" href="#" target="_blank" rel="noopener" class="btn btn-full" style="background:#25D366;color:white;text-decoration:none;justify-content:center;padding:10px;">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
         Enviar por WhatsApp
@@ -4456,6 +4475,13 @@ let filtroCasos = '';        // '' = todos
 let casoAsignandoId = null;
 let casoProgramandoId = null;
 
+// Cómo se llama el control. Es el mismo circuito domiciliario en los dos casos: lo que
+// cambia es el nombre que después llevan la entrevista, el acta y el informe.
+const TIPO_CONTROL = {
+  'ausentismo':       { texto:'Control de ausentismo' },
+  'examen_periodico': { texto:'Seguimiento por examen periódico' }
+};
+
 const ESTADO_CASO = {
   'nuevo':      { texto:'Nuevo',      clase:'b-gray'  },
   'asignado':   { texto:'Asignado',   clase:'b-blue'  },
@@ -4537,7 +4563,7 @@ function renderCasosAusentismo(){
 
     return `<div class="turno-item" style="align-items:flex-start;">
       <div class="turno-info" style="flex:1;">
-        <div class="turno-paciente"><span>${c.trabajador_nombre}</span><span class="badge ${est.clase}">${est.texto}</span></div>
+        <div class="turno-paciente"><span>${c.trabajador_nombre}</span><span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
         <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+c.trabajador_dni:'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
         <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
           ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
@@ -4551,6 +4577,14 @@ function renderCasosAusentismo(){
 }
 
 function filtrarCasos(estado){ filtroCasos = estado; renderCasosAusentismo(); }
+
+// Solo se marca lo que no es lo habitual: casi todos los casos son de ausentismo, y un
+// cartel repetido en todas las tarjetas deja de leerse.
+function tagTipoControl(c){
+  if(!c.tipo_control || c.tipo_control === 'ausentismo') return '';
+  const t = TIPO_CONTROL[c.tipo_control];
+  return t ? `<span class="badge b-blue">${t.texto}</span>` : '';
+}
 
 // ----- Domicilio de reposo y control por ubicación -----
 // Sin coordenadas el trabajador no puede entrar a la entrevista, así que la tarjeta del caso
@@ -4782,18 +4816,31 @@ async function cargarEmpresasSelectAusentismo(){
   }
 }
 
+// El circuito domiciliario es el mismo, pero no todos los casos son por ausencia: cuando es
+// un seguimiento por examen periódico no hay ausencia que justificar, así que el formulario
+// deja de pedirla como si la hubiera.
+function onTipoControlChange(){
+  const esAusencia = document.getElementById('au-tipo-control').value === 'ausentismo';
+  document.getElementById('au-lbl-motivo').textContent = esAusencia ? 'Motivo de la ausencia' : 'Motivo del seguimiento (opcional)';
+  document.getElementById('au-motivo').placeholder = esAusencia
+    ? 'Faltó 3 días sin aviso, presentó certificado por...'
+    : 'Hallazgos del examen periódico a seguir, indicaciones previas...';
+  document.getElementById('au-lbl-domicilio').textContent = esAusencia ? 'Domicilio donde hace reposo' : 'Domicilio del trabajador';
+}
+
 async function crearCasoAusentismo(){
   const err = document.getElementById('au-error');
   err.style.display = 'none';
   const empresa = document.getElementById('au-empresa').value;
   const trabajador = document.getElementById('au-trabajador').value.trim();
   const motivo = document.getElementById('au-motivo').value.trim();
+  const tipoControl = document.getElementById('au-tipo-control').value;
   if(!empresa){ err.textContent='Elegí la empresa'; err.style.display='block'; return; }
   if(!trabajador){ err.textContent='Escribí el nombre del trabajador'; err.style.display='block'; return; }
-  if(!motivo){ err.textContent='Contá el motivo de la ausencia'; err.style.display='block'; return; }
+  if(!motivo && tipoControl === 'ausentismo'){ err.textContent='Contá el motivo de la ausencia'; err.style.display='block'; return; }
   try{
     const r = await fetch('/api/ausentismo/casos', { method:'POST', headers:apiHeaders(), body: JSON.stringify({
-      empresa_nombre: empresa, trabajador_nombre: trabajador,
+      empresa_nombre: empresa, trabajador_nombre: trabajador, tipo_control: tipoControl,
       trabajador_dni: document.getElementById('au-dni').value.trim(),
       trabajador_telefono: document.getElementById('au-telefono').value.trim(),
       domicilio: document.getElementById('au-domicilio').value.trim(),
@@ -4816,10 +4863,13 @@ async function crearCasoAusentismo(){
     if(avisos.length){ err.textContent = 'El caso se abrió. ' + avisos.join(' '); err.style.display='block'; }
 
     ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
+    // El tipo vuelve al habitual: el próximo caso que se cargue no hereda la excepción
+    document.getElementById('au-tipo-control').value = 'ausentismo';
+    onTipoControlChange();
     const inputCert = document.getElementById('au-certificados');
     if(inputCert) inputCert.value = '';
     mostrarToast('✓ Caso abierto','#1e6640');
-    addLog('blue','Caso de ausentismo abierto', `${trabajador} · ${empresa}`);
+    addLog('blue', TIPO_CONTROL[tipoControl] ? TIPO_CONTROL[tipoControl].texto+' abierto' : 'Caso abierto', `${trabajador} · ${empresa}`);
     await cargarCasosAusentismo();
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
 }
@@ -4859,8 +4909,15 @@ function abrirProgramarCaso(id){
   document.getElementById('prog-fecha').value = c.turno_fecha
     ? String(c.turno_fecha).split('T')[0]
     : new Date().toISOString().split('T')[0];
+  document.getElementById('prog-tipo-control').value = c.tipo_control || 'ausentismo';
   document.getElementById('prog-resultado').style.display = 'none';
+  document.getElementById('prog-form').style.display = '';
+  document.querySelector('#modal-programar-caso .modal-title').textContent = 'Programar la entrevista';
   document.getElementById('btn-prog-confirmar').style.display = 'inline-flex';
+  // El modal lo comparte con el control inmediato: hay que devolverlo a su estado normal
+  document.getElementById('prog-whatsapp').style.display = '';
+  document.getElementById('prog-link-wrap').style.display = 'none';
+  document.getElementById('prog-resultado-txt').textContent = 'Entrevista programada. Mandale el link al trabajador: primero se le pide la ubicación y recién ahí entra a la videollamada.';
   // Sin coordenadas del domicilio el link se genera igual, pero el trabajador queda trabado
   // en la pantalla de ubicación. Mejor avisarlo acá que descubrirlo el día de la entrevista.
   const err = document.getElementById('prog-error');
@@ -4878,12 +4935,13 @@ async function confirmarProgramarCaso(){
   err.style.display = 'none';
   const fecha = document.getElementById('prog-fecha').value;
   const hora = document.getElementById('prog-hora').value;
+  const tipo_control = document.getElementById('prog-tipo-control').value;
   if(!fecha){ err.textContent='Elegí la fecha'; err.style.display='block'; return; }
   const btn = document.getElementById('btn-prog-confirmar');
   btn.disabled = true;
   try{
     const r = await fetch(`/api/ausentismo/casos/${casoProgramandoId}/programar`, {
-      method:'POST', headers:apiHeaders(), body: JSON.stringify({ fecha, hora })
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ fecha, hora, tipo_control })
     });
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo programar'; err.style.display='block'; return; }
@@ -4891,15 +4949,20 @@ async function confirmarProgramarCaso(){
     const c = casosAusentismo.find(x => x.id === casoProgramandoId);
     if(data.link_paciente && c?.trabajador_telefono){
       const fl = new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: es un control domiciliario, así que tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
+      // Al trabajador se le nombra el control solo cuando no es el de ausentismo: si viene por
+      // un examen periódico, un mensaje que no lo aclare lo deja pensando que se le imputa una falta.
+      const porQue = tipo_control === 'examen_periodico' ? ' de seguimiento por examen periódico' : '';
+      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica${porQue} el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: es un control domiciliario, así que tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
       document.getElementById('prog-whatsapp').href = `https://wa.me/${c.trabajador_telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+      document.getElementById('prog-link').value = data.link_paciente || '';
+      document.getElementById('prog-link-wrap').style.display = 'block';
       document.getElementById('prog-resultado').style.display = 'block';
       btn.style.display = 'none';
     } else {
       document.getElementById('modal-programar-caso').classList.remove('open');
     }
     mostrarToast(data.reprogramado ? '✓ Entrevista reprogramada' : '✓ Entrevista programada','#1e6640');
-    addLog('blue','Entrevista de ausentismo programada', `${fecha} ${hora}`);
+    addLog('blue','Entrevista programada', `${TIPO_CONTROL[tipo_control]?.texto||''} · ${fecha} ${hora}`);
     await cargarCasosAusentismo();
     cargarTurnos();
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }

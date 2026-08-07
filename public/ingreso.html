@@ -63,7 +63,7 @@ button:disabled{opacity:.6;cursor:default;}
   <button id="btn" style="display:none;" onclick="verificar()">Verificar mi ubicación e ingresar</button>
   <a class="link-llamada" id="link-llamada" style="display:none;" href="#">Entrar a la videollamada</a>
 
-  <div class="pie" id="pie">Se te va a pedir permiso para acceder a tu ubicación. Es necesario porque el control de ausentismo es domiciliario: solo se usa para verificar que estás en el domicilio informado, y queda registrado junto a esta entrevista.</div>
+  <div class="pie" id="pie">Se te va a pedir permiso para acceder a tu ubicación. Es necesario porque el control es domiciliario: solo se usa para verificar que estás en el domicilio informado, y queda registrado junto a esta entrevista.</div>
 </div>
 
 <script>
@@ -83,7 +83,8 @@ async function cargar(){
     $('subtitulo').textContent = 'Hola ' + d.trabajador + ', te esperamos en la entrevista médica.';
     if(d.fecha){
       const f = String(d.fecha).split('T')[0].split('-').reverse().join('/');
-      $('datos').innerHTML = `<div><b>Fecha:</b> ${f}${d.hora?' a las '+d.hora+' hs':''}</div>` +
+      $('datos').innerHTML = (d.control?`<div><b>Motivo:</b> ${d.control}</div>`:'') +
+        `<div><b>Fecha:</b> ${f}${d.hora?' a las '+d.hora+' hs':''}</div>` +
         (d.domicilio?`<div><b>Domicilio informado:</b> ${d.domicilio}</div>`:'');
       $('datos').style.display = 'block';
     }

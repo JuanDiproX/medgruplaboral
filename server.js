@@ -304,6 +304,14 @@ async function initDB() {
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS radio_metros INTEGER DEFAULT 300`,
       // El link que se le manda al trabajador no puede ser adivinable: el id del turno sí lo es
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS token_ingreso VARCHAR(64)`,
+      // No todo control domiciliario es por ausentismo: el mismo circuito (verificar que el
+      // trabajador está en su casa) sirve para el seguimiento por examen periódico. De esto
+      // depende únicamente cómo se nombra el control en la agenda, el acta y el informe.
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS tipo_control VARCHAR(30) DEFAULT 'ausentismo'`,
+      // El control de ausentismo vale porque es sorpresa: se dispara en cualquier momento y no
+      // hay horario pactado. El acta y el informe tienen que llevar el instante real en que se
+      // inició, no el casillero horario que el turno necesita para existir en la agenda.
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS control_iniciado_en TIMESTAMP`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
       `ALTER TABLE IF EXISTS turnos ADD COLUMN IF NOT EXISTS modalidad VARCHAR(20) DEFAULT 'telemedicina'`,
       // Independiente de "modalidad" (que solo decide si se crea sala de Daily): esto decide si
@@ -2322,6 +2330,16 @@ app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
 // La empresa abre un caso, MEDGRUP le asigna un profesional, el profesional entrevista al
 // trabajador y emite el informe. Se cobra por caso resuelto.
 const ESTADOS_CASO = ['nuevo', 'asignado', 'programado', 'en-curso', 'resuelto', 'cancelado'];
+
+// Un caso es de ausentismo salvo que se diga lo contrario. El tipo no cambia nada del
+// circuito ni del control domiciliario: define cómo se llama la entrevista en la agenda, y
+// de ahí lo toman el acta y el informe, que es lo que firma el médico y recibe la empresa.
+const TIPOS_CONTROL = {
+  ausentismo:       'Control de ausentismo',
+  examen_periodico: 'Seguimiento por examen periódico'
+};
+const TIPO_CONTROL_DEFECTO = 'ausentismo';
+const etiquetaControl = tipo => TIPOS_CONTROL[tipo] || TIPOS_CONTROL[TIPO_CONTROL_DEFECTO];
 // Un caso avanza por estos caminos; cancelar se permite desde cualquier estado no terminal.
 const TRANSICIONES_CASO = {
   'nuevo':      ['asignado', 'cancelado'],
@@ -2383,9 +2401,10 @@ app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
 // --- Alta desde MEDGRUP (la empresa tiene su propio endpoint más abajo) ---
 app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
   const { empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
-          domicilio, domicilio_lat, domicilio_lng, radio_metros } = req.body;
+          domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control } = req.body;
   if (!empresa_nombre) return res.status(400).json({ error: 'Falta la empresa' });
   if (!trabajador_nombre) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
+  if (tipo_control && !TIPOS_CONTROL[tipo_control]) return res.status(400).json({ error: 'Tipo de control desconocido' });
   try {
     const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
     // Si mandaron la dirección sin coordenadas, se resuelve acá para que el control quede listo
@@ -2396,11 +2415,11 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
     }
     const r = await pool.query(
       `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
-                                     domicilio, domicilio_lat, domicilio_lng, radio_metros)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+                                     domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
       [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
        motivo || '', documentacion || '', notas_admin || '',
-       domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO]);
+       domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO, tipo_control || TIPO_CONTROL_DEFECTO]);
     res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -2408,9 +2427,10 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
 // --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
 app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
   const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre,
-          domicilio, domicilio_lat, domicilio_lng, radio_metros } = req.body;
+          domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control } = req.body;
+  if (tipo_control && !TIPOS_CONTROL[tipo_control]) return res.status(400).json({ error: 'Tipo de control desconocido' });
   try {
-    const chk = await pool.query('SELECT id, domicilio FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    const chk = await pool.query('SELECT id, domicilio, turno_id FROM casos_ausentismo WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
     let empresaId;
     if (empresa_nombre) {
@@ -2441,11 +2461,17 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
          domicilio           = COALESCE($9, domicilio),
          domicilio_lat       = CASE WHEN $10::boolean THEN $11 ELSE domicilio_lat END,
          domicilio_lng       = CASE WHEN $10::boolean THEN $12 ELSE domicilio_lng END,
-         radio_metros        = COALESCE($13, radio_metros)
-       WHERE id = $14`,
+         radio_metros        = COALESCE($13, radio_metros),
+         tipo_control        = COALESCE($14, tipo_control)
+       WHERE id = $15`,
       [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
        trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null,
-       domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, req.params.id]);
+       domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, tipo_control || null, req.params.id]);
+    // Si la entrevista ya estaba creada, el tipo tiene que seguir al caso: el acta y el
+    // informe se nombran desde el turno, no desde acá.
+    if (tipo_control && chk.rows[0].turno_id) {
+      await pool.query('UPDATE turnos SET tipo=$1 WHERE id=$2', [etiquetaControl(tipo_control), chk.rows[0].turno_id]);
+    }
     res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -2607,13 +2633,16 @@ app.get('/ingreso/:token', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/api/ingreso/:token', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, t.fecha, t.hora
+      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, c.tipo_control, t.fecha, t.hora
       FROM casos_ausentismo c LEFT JOIN turnos t ON t.id = c.turno_id
       WHERE c.token_ingreso=$1`, [req.params.token]);
     if (!r.rows.length) return res.status(404).json({ error: 'Este link no es válido o ya venció.' });
     const c = r.rows[0];
+    // El trabajador ve el nombre del control que le corresponde: la página es la misma, pero
+    // no se le puede decir "control de ausentismo" a quien viene por un examen periódico.
     res.json({ ok: true, trabajador: c.trabajador_nombre, fecha: c.fecha, hora: c.hora,
       domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null,
+      tipo_control: c.tipo_control || TIPO_CONTROL_DEFECTO, control: etiquetaControl(c.tipo_control),
       cerrado: ['resuelto','cancelado'].includes(c.estado) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -2868,7 +2897,7 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
     // La empresa ve el estado y el profesional, pero no las notas internas de MEDGRUP
     const r = await pool.query(`
       SELECT c.id, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono, c.motivo,
-             c.documentacion, c.estado, c.creado_en, c.resuelto_en, c.turno_id,
+             c.documentacion, c.estado, c.creado_en, c.resuelto_en, c.turno_id, c.tipo_control,
              c.domicilio, (c.domicilio_lat IS NOT NULL) AS domicilio_ubicado,
              m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
              t.fecha AS turno_fecha, t.hora AS turno_hora,

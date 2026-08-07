@@ -31,7 +31,7 @@ App de telemedicina con videollamada real, grabación automática y log de sesi�
 | Variable | Descripción |
 |---|---|
 | DAILY_API_KEY | API key de daily.co |
-| GOOGLE_MAPS_API_KEY | Geocoding API de Google. Convierte el domicilio del trabajador en coordenadas para el control de ausentismo. Es una clave **de servidor**: nunca se manda al navegador. Sin ella hay que cargar latitud y longitud a mano desde el panel. |
+| GOOGLE_MAPS_API_KEY | Geocoding API de Google. Convierte el domicilio del trabajador en coordenadas para el control domiciliario (ausentismo o seguimiento por examen periódico). Es una clave **de servidor**: nunca se manda al navegador. Sin ella hay que cargar latitud y longitud a mano desde el panel. |
 | PORT | Puerto (Railway lo setea automático) |
 
 ## Lo que funciona hoy

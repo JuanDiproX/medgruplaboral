@@ -783,6 +783,12 @@ async function doLoginEmpresa(){
 let casosEmpresa = [];
 let casoCertEmpresaId = null;
 
+// Los casos que abre la empresa son siempre de ausentismo; los otros los abre MEDGRUP, pero
+// la empresa los ve acá igual y tienen que figurar con su nombre.
+const TIPO_CONTROL_EMPRESA = {
+  'examen_periodico': 'Seguimiento por examen periódico'
+};
+
 const ESTADO_CASO_EMPRESA = {
   'nuevo':      { texto:'Recibido',    clase:'b-gris',  ayuda:'Lo recibimos. Estamos asignando el profesional.' },
   'asignado':   { texto:'Asignado',    clase:'b-blue',  ayuda:'Ya tiene profesional. Estamos coordinando la entrevista.' },
@@ -834,6 +840,11 @@ function renderCasosEmpresa(){
     const prof = c.profesional_nombre
       ? `<div style="font-size:12px;color:var(--azul);font-weight:600;margin-top:4px;">${c.profesional_nombre}${c.profesional_especialidad?' · '+c.profesional_especialidad:''}</div>`
       : '';
+    // Un caso puede no ser por ausencia (p. ej. seguimiento por examen periódico): en ese caso
+    // se aclara, porque el acta y el informe van a salir con ese nombre.
+    const tipo = c.tipo_control && c.tipo_control !== 'ausentismo'
+      ? `<div style="font-size:12px;color:var(--azul);margin-top:4px;">${TIPO_CONTROL_EMPRESA[c.tipo_control] || ''}</div>`
+      : '';
     const informe = c.dictamen_id
       ? `<a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${c.dictamen_id}/pdf" target="_blank" rel="noopener">Ver informe</a>`
       : '';
@@ -850,7 +861,7 @@ function renderCasosEmpresa(){
         <div style="min-width:0;">
           <div style="font-size:14.5px;font-weight:600;">${c.trabajador_nombre}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">${c.trabajador_dni?'DNI '+c.trabajador_dni+' · ':''}Informado el ${abierto}</div>
-          ${prof}${entrevista}${domicilio}
+          ${tipo}${prof}${entrevista}${domicilio}
         </div>
         <span class="badge ${est.clase}">${est.texto}</span>
       </div>
