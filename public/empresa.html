@@ -967,10 +967,33 @@ async function recargarCertificadosEmpresa(){
       const peso = cert.tamano_bytes ? (cert.tamano_bytes/1024 < 1024 ? Math.round(cert.tamano_bytes/1024)+' KB' : (cert.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${cert.nombre_archivo}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}</div></div>
-        <a class="btn btn-ghost" style="text-decoration:none;" href="/api/ausentismo/certificados/${cert.id}" target="_blank" rel="noopener">Ver</a>
+        <button class="btn btn-ghost" onclick="verCertificadoEmpresa(${cert.id})">Ver</button>
       </div>`;
     }).join('');
   }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa);">No se pudieron cargar los certificados.</div>'; }
+}
+
+// El endpoint del certificado exige el token en un header, y un <a href> abre una pestaña sin
+// headers: hay que traerlo con fetch y abrirlo como blob. La pestaña se abre ANTES del await
+// —con el click todavía "caliente"—, porque si se abre después el navegador la bloquea.
+async function verCertificadoEmpresa(certId){
+  const pestana = window.open('', '_blank');
+  const err = document.getElementById('ce-error');
+  try{
+    const r = await fetch('/api/ausentismo/certificados/' + certId, { headers: empresaHeaders() });
+    if(!r.ok){
+      const d = await r.json().catch(() => ({}));
+      if(pestana) pestana.close();
+      if(err){ err.textContent = d.error || 'No se pudo abrir el certificado'; err.style.display = 'block'; }
+      return;
+    }
+    const url = URL.createObjectURL(await r.blob());
+    if(pestana) pestana.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    if(pestana) pestana.close();
+    if(err){ err.textContent = 'No se pudo abrir el certificado'; err.style.display = 'block'; }
+  }
 }
 
 async function subirCertificadosEmpresa(){

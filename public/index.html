@@ -4916,6 +4916,29 @@ async function abrirCertificadosCaso(id){
   await recargarCertificadosCaso();
 }
 
+// El endpoint del certificado exige el token en un header, y un <a href> abre una pestaña sin
+// headers: el archivo hay que traerlo con fetch y abrirlo como blob. La pestaña se abre ANTES
+// del await —con el click todavía "caliente"—, porque si se abre después el navegador la
+// bloquea por popup.
+async function verCertificado(certId){
+  const pestana = window.open('', '_blank');
+  try{
+    const r = await fetch('/api/ausentismo/certificados/' + certId, { headers: apiHeaders() });
+    if(!r.ok){
+      const d = await r.json().catch(() => ({}));
+      if(pestana) pestana.close();
+      mostrarError(d.error || 'No se pudo abrir el certificado');
+      return;
+    }
+    const url = URL.createObjectURL(await r.blob());
+    if(pestana) pestana.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    if(pestana) pestana.close();
+    mostrarError('No se pudo abrir el certificado');
+  }
+}
+
 async function recargarCertificadosCaso(){
   const lista = document.getElementById('cert-lista');
   lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
@@ -4943,7 +4966,7 @@ async function recargarCertificadosCaso(){
           <div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}${cuando?' · '+cuando:''}${cert.subido_por?' · '+cert.subido_por:''}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
-          <a href="/api/ausentismo/certificados/${cert.id}" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 11px;font-size:12px;text-decoration:none;">Ver</a>
+          <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;" onclick="verCertificado(${cert.id})">Ver</button>
           ${esAdmin?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);" onclick="borrarCertificado(${cert.id})">Quitar</button>`:''}
         </div>
       </div>`;
