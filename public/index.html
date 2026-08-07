@@ -1702,6 +1702,12 @@ async function generarInformeIA(){
   const turnoCtx = consultaActual || turnoDictamenActual || {};
   const empresa = turnoCtx.empresa || '';
   const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
+  // El control de ausentismo se informa corto —qué refirió el trabajador y si estaba en su
+  // domicilio—, no como pericia. Es otro documento, así que es otro prompt.
+  const esAuditoria = tipo === 'Control de ausentismo';
+  const modalidadTexto = turnoCtx.modalidad === 'presencial'
+    ? 'visita domiciliaria presencial'
+    : 'control remoto por videollamada a través de la plataforma MEDGRUP';
   const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
 
   // Diagnóstico previo cargado al crear/editar el turno — se pasa a la IA como contexto
@@ -1711,10 +1717,83 @@ async function generarInformeIA(){
     if(turnoCtx.diagnosticoPrevio) partes.push(`- Diagnóstico previo del paciente: ${turnoCtx.diagnosticoPrevio}`);
     if(turnoCtx.diasReposoPrevio > 0) partes.push(`- Días de reposo indicados previamente: ${turnoCtx.diasReposoPrevio}`);
     if(turnoCtx.medicoTratante) partes.push(`- Médico tratante que emitió el diagnóstico: ${turnoCtx.medicoTratante}`);
-    contextoDiagnostico = `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
+    // El informe de ausentismo no tiene secciones numeradas: mandarlo a la "sección V" ahí
+    // sería pedirle una estructura que ese documento no tiene.
+    contextoDiagnostico = esAuditoria
+      ? `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (es contexto; mencionalo solo si el médico lo retomó en su dictado):\n${partes.join('\n')}`
+      : `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
   }
 
-  const SYSTEM_PROMPT = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
+  const PROMPT_AUDITORIA = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
+
+Esto NO es una pericia. Es el informe de un CONTROL DE AUSENTISMO domiciliario, y es un
+documento corto. La empresa necesita saber dos cosas: qué refirió el trabajador y si estaba
+en su domicilio. Nada más.
+
+El médico dicta en borrador: rápido, telegráfico, con abreviaturas y sin puntuación. Tu único
+trabajo es pasar ESO a un texto formal. No sos el que evalúa: el que evaluó es él.
+
+=== LA REGLA QUE ORDENA TODO ===
+Podés cambiar CÓMO está dicho. No podés cambiar QUÉ se dijo, ni cuánto.
+
+  "dice q le duele la espalda hace 4 dias"  → "Refiere dolor lumbar de cuatro (4) días de evolución."
+  "tomando ibuprofeno"                      → "Refiere encontrarse medicada con ibuprofeno."
+  "atendio bien, estaba en la casa"         → "Atendió el control desde su domicilio."
+  "no quiso mostrar el certificado"         → "No exhibió el certificado médico al serle requerido."
+
+Cada frase que escribas que no salga de sus notas es una afirmación falsa en un documento que
+puede terminar en un expediente laboral. Si dudás entre poner algo o dejarlo afuera, dejalo
+afuera. Si el médico dictó tres renglones, el informe tiene tres renglones.
+
+=== PROHIBIDO ===
+- Frases hechas, párrafos de relleno y fórmulas de cierre. No hay un texto base que completar.
+- Inventar síntomas, antecedentes, medicación, estudios o documentación que no haya dictado.
+- Afirmar que se verificó la ubicación, a qué distancia o a qué hora: ese dato lo imprime el
+  sistema desde el registro de ingresos, no vos. No lo escribas ni lo supongas.
+- Repetir el encabezado (empresa, trabajador, DNI, fecha, hora, modalidad, domicilio): ya está
+  impreso arriba del informe.
+- Secciones de pericia: metodología, antecedentes, examen semiológico, análisis médico-legal,
+  conclusiones médico-legales. Acá no van.
+
+=== QUÉ ESCRIBIR ===
+Dos campos, y solo esos:
+
+"analisis" — lo que refirió el trabajador durante el control: síntomas, desde cuándo, estado
+  actual, medicación, tratamiento, quién lo atiende, documentación que haya mostrado. Todo en
+  el registro del médico y nada más. Si además lo examinó y describió hallazgos, van acá mismo.
+
+"conclusion" — el cierre del control en una o dos oraciones: si el trabajador se encontraba en
+  su domicilio y cumpliendo el reposo, y qué resolvió el médico. Solo lo que él haya dicho.
+
+=== REGISTRO Y FORMA ===
+- Español rioplatense formal, tercera persona, tiempo impersonal. "El trabajador", "la trabajadora".
+- Sobrio y directo. Esto es una constancia, no una pericia: no adornes.
+- No contradigas ni suavices al médico. Si describe una negativa, una incongruencia o
+  sobreactuación, va tal cual, en lenguaje técnico.
+- Si el médico ya dio diagnóstico, días de reposo o aptitud, respetá exactamente lo que dijo.
+- Nunca escribas "Sin datos", "No especificado", "N/A": esos campos van vacíos "".
+
+=== FORMATO DE LA RESPUESTA ===
+1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
+2. CUIDADO CON LAS COMILLAS: las comillas internas van escapadas como \\" y los saltos de línea
+   dentro de un valor como \\n, nunca literales. Una comilla suelta rompe el informe entero.
+
+JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0):
+{
+  "apellido_nombre": "APELLIDO NOMBRE en mayúsculas",
+  "dni": "número",
+  "edad": "número",
+  "obra_social": "nombre",
+  "analisis": "lo que refirió el trabajador",
+  "conclusion": "el cierre del control",
+  "diagnostico_cie": "código y nombre, solo si el médico lo dio",
+  "aptitud": "apto" o "restricc" o "no-apto",
+  "dias_reposo": 0,
+  "derivacion": "Sin derivación",
+  "indicaciones": "indicaciones"
+}`;
+
+  const PROMPT_PERICIAL = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
 
 El médico dicta en borrador: rápido, telegráfico, con abreviaturas, sin puntuación y a veces
 con errores de tipeo. Tu trabajo es pasar ESO a un informe médico-legal formal. Nada más.
@@ -1818,6 +1897,8 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "indicaciones": "indicaciones"
 }`;
 
+  const SYSTEM_PROMPT = esAuditoria ? PROMPT_AUDITORIA : PROMPT_PERICIAL;
+
   // Corte propio del navegador: si la conexión se corta sin respuesta, sin esto el botón
   // se queda girando para siempre y el médico no se entera de nada.
   const cortarIA = new AbortController();
@@ -1835,9 +1916,11 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
       body: JSON.stringify({
         system: SYSTEM_PROMPT,
         max_tokens: 8000,
-        messages:[{role:'user',content:`DATOS DE LA CONSULTA:
+        messages:[{role:'user',content:`DATOS DE${esAuditoria?'L CONTROL':' LA CONSULTA'}:
 - Empresa: ${empresa}
-- Tipo de consulta: ${tipo}
+- Tipo de consulta: ${tipo}${esAuditoria?`
+- Modalidad: ${modalidadTexto}${turnoCtx.hora?`
+- Hora del control: ${turnoCtx.hora} hs`:''}`:''}
 - Fecha de hoy: ${fecha}${contextoDiagnostico}
 
 NOTAS DICTADAS POR EL MÉDICO:
@@ -2040,8 +2123,36 @@ function limpiarFirma(){
 
 function armarPreviewInforme(info){
   const fecha = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
-  const empresa = (consultaActual||turnoDictamenActual||{}).empresa || '';
+  const ctx = consultaActual||turnoDictamenActual||{};
+  const empresa = ctx.empresa || '';
   const partes = [];
+
+  // Los controles domiciliarios se imprimen con el formato de auditoría, así que la vista
+  // previa tiene que mostrar eso mismo: si no, el médico revisa un documento que no es el
+  // que después sale del sistema.
+  if(ctx.tipo === 'Control de ausentismo'){
+    const tieneTexto = v => v && String(v).trim() && !['—','sin datos','no especificado','no consta'].includes(String(v).trim().toLowerCase());
+    partes.push('INFORME DE AUDITORÍA MÉDICA LABORAL');
+    partes.push('');
+    partes.push('EMPRESA: ' + (empresa||'—'));
+    partes.push('TRABAJADOR/A EVALUADO/A: ' + (info.apellido_nombre || ctx.paciente || '—'));
+    if(tieneTexto(info.dni)) partes.push('DNI: ' + info.dni);
+    partes.push('MOTIVO DEL CONTROL: ' + ctx.tipo);
+    partes.push('');
+    partes.push('FECHA Y HORA DEL CONTROL');
+    partes.push('Fecha: ' + fecha);
+    if(ctx.hora) partes.push('Hora: ' + ctx.hora + ' hs');
+    partes.push('Modalidad: ' + (ctx.modalidad === 'presencial'
+      ? 'Visita médica domiciliaria'
+      : 'Control remoto por videollamada a través de la plataforma MEDGRUP'));
+    partes.push('');
+    partes.push('INFORME');
+    [info.metodologia, info.analisis, info.hallazgos, info.conclusion]
+      .filter(tieneTexto).forEach(p => { partes.push(p); partes.push(''); });
+    partes.push('Firma y sello del profesional actuante');
+    return partes.join('\n');
+  }
+
   partes.push('INFORME DE EVALUACIÓN MÉDICO-LABORAL PSIQUIÁTRICA');
   partes.push('');
   partes.push('A: Dirección de Recursos Humanos – ' + (empresa||'—').toUpperCase());

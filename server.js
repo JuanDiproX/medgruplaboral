@@ -1876,8 +1876,27 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     // Determinar tipo de informe según el turno
     let turnoInfo = null;
     if (d.turno_id) {
-      const tr = await pool.query('SELECT tipo FROM turnos WHERE id=$1', [d.turno_id]);
+      const tr = await pool.query('SELECT tipo, fecha, hora, modalidad FROM turnos WHERE id=$1', [d.turno_id]);
       if (tr.rows.length) turnoInfo = tr.rows[0];
+    }
+
+    // El control de ausentismo no se informa como una evaluación clínica: alcanza con qué
+    // refirió el trabajador y si estaba en su domicilio. Por eso lleva su propio formato,
+    // corto. Los demás controles del módulo (examen periódico) usan el informe de siempre.
+    let casoControl = null, verificacion = null;
+    if (d.turno_id) {
+      const c = await pool.query(
+        `SELECT * FROM casos_ausentismo
+         WHERE turno_id=$1 AND COALESCE(tipo_control,'ausentismo')='ausentismo' LIMIT 1`, [d.turno_id]);
+      casoControl = c.rows[0] || null;
+      if (casoControl) {
+        // La verificación de ubicación la produjo el sistema, no el médico: se imprime desde
+        // el registro de ingresos y no desde el dictado, que es lo que le da valor probatorio.
+        const v = await pool.query(
+          `SELECT distancia_metros, creado_en FROM ingresos_ubicacion
+           WHERE caso_id=$1 AND resultado='aceptado' ORDER BY creado_en DESC LIMIT 1`, [casoControl.id]);
+        verificacion = v.rows[0] || null;
+      }
     }
     const tipoConsulta = turnoInfo?.tipo || 'Evaluación Médico-Laboral';
 
@@ -1898,6 +1917,115 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
       : d.metodologia;
     const analisis = d.analisis || '';
     const diagCIE = d.diagnostico_cie || '';
+
+    // ===== FORMATO AUDITORÍA (controles domiciliarios) =====
+    if (casoControl) {
+      // El control de ausentismo es sorpresa: la hora del turno es solo el casillero que
+      // necesita la agenda. Lo que vale —y lo que va al informe— es cuándo arrancó de verdad.
+      const inicioReal = casoControl.control_iniciado_en ? new Date(casoControl.control_iniciado_en) : null;
+      const horaControl = inicioReal
+        ? inicioReal.toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG })
+        : (d.hora_inicio || turnoInfo?.hora || '');
+      const fechaControl = inicioReal
+        ? inicioReal.toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:ZONA_ARG })
+        : fechaConsulta;
+      const esPresencial = turnoInfo?.modalidad === 'presencial';
+      const modalidad = esPresencial
+        ? 'Visita médica domiciliaria'
+        : 'Control remoto por videollamada a través de la plataforma MEDGRUP';
+      const radio = casoControl.radio_metros || 300;
+      // Sin verificación no se dice nada: afirmar que se constató la ubicación cuando el
+      // registro no lo respalda es exactamente lo que un abogado busca en este documento.
+      const bloqueUbicacion = verificacion
+        ? `<div class="dato"><span class="dato-lbl">Verificación de ubicación:</span> Confirmada a las ${new Date(verificacion.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Argentina/Buenos_Aires'})} hs, a ${Math.round(verificacion.distancia_metros)} m del domicilio informado (radio admitido: ${radio} m).</div>`
+        : (esPresencial ? '' : `<div class="dato"><span class="dato-lbl">Verificación de ubicación:</span> Sin verificación de ubicación registrada para este control.</div>`);
+
+      // El cuerpo se arma con lo que dictó el médico. Lo que no dictó, no se imprime: el
+      // informe sale corto antes que relleno.
+      const cuerpo = [d.metodologia, analisis, (d.hallazgos && !d.sin_semiologico) ? d.hallazgos : '', d.conclusion]
+        .filter(x => x && String(x).trim())
+        .map(x => `<p style="white-space:pre-wrap;">${x}</p>`).join('');
+
+      const htmlAuditoria = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+<title>Informe ${d.numero}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:14px;}
+.logo-img{height:40px;width:auto;object-fit:contain;}
+.doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
+.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;text-decoration:underline;margin-bottom:14px;}
+h2{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;text-decoration:underline;margin:18px 0 8px;}
+p{margin-bottom:9px;text-align:justify;}
+.dato{margin-bottom:3px;}
+.dato-lbl{font-weight:700;text-decoration:underline;}
+.conc-box{border-radius:8px;padding:12px 16px;margin:14px 0 4px;background:${aptBg};border:1.5px solid ${aptBorder};}
+.conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
+.conc-sub{font-size:10.5px;color:#5a5750;}
+.firma-tit{margin-top:38px;font-size:12.5px;font-weight:700;text-decoration:underline;}
+.firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:14px;}
+.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
+.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+@media print{body{padding:20px 28px;}}
+</style></head><body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:11px;">
+    <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
+    <div>
+      <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP – SERVICIO MÉDICO</div>
+      <div style="font-size:11px;font-weight:600;color:#1a1916;">${d.empresa||'—'}</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <div class="doc-ref">
+      <div class="doc-numero">${d.numero}</div>
+      <div>Tierra del Fuego, ${fechaEmision}</div>
+      <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
+    </div>
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
+  </div>
+</div>
+
+<h1>Informe de auditoría médica laboral</h1>
+
+<div class="dato"><span class="dato-lbl">Empresa:</span> ${d.empresa||'—'}</div>
+<div class="dato"><span class="dato-lbl">Trabajador/a evaluado/a:</span> ${apellidoNombre}</div>
+${d.paciente_dni?`<div class="dato"><span class="dato-lbl">DNI:</span> ${d.paciente_dni}</div>`:''}
+<div class="dato"><span class="dato-lbl">Motivo del control:</span> ${turnoInfo?.tipo || 'Control de ausentismo'}</div>
+
+<h2>Fecha y hora del control</h2>
+<div class="dato"><span class="dato-lbl">Fecha:</span> ${fechaControl}</div>
+${horaControl?`<div class="dato"><span class="dato-lbl">Hora de inicio del control:</span> ${horaControl} hs</div>`:''}
+<div class="dato"><span class="dato-lbl">Modalidad:</span> ${modalidad}</div>
+${casoControl.domicilio?`<div class="dato"><span class="dato-lbl">Domicilio informado:</span> ${casoControl.domicilio}</div>`:''}
+${bloqueUbicacion}
+
+<h2>Informe</h2>
+${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
+
+${d.aptitud?`<div class="conc-box">
+  <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
+  ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
+  <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
+</div>`:''}
+${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
+
+<div class="firma-tit">Firma y sello del profesional actuante</div>
+<div class="firmas-row">
+  ${firmasHtml}
+</div>
+
+<div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero} · medgruplaboral.com.ar</div>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(htmlAuditoria);
+    }
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <title>Informe ${d.numero}</title>
@@ -1953,7 +2081,7 @@ li{margin-bottom:5px;}
 </div>
 
 <div class="titulo-doc">
-  <h1>Informe de Evaluación ${tipoConsulta}</h1>
+  <h1>Informe de Evaluación${turnoInfo?.tipo ? ' — ' + turnoInfo.tipo : ''}</h1>
   <div class="subtitulo">Medicina del Trabajo · Psiquiatría Forense</div>
 </div>
 
