@@ -2020,9 +2020,6 @@ h2{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3p
 p{margin-bottom:9px;text-align:justify;}
 .dato{margin-bottom:3px;}
 .dato-lbl{font-weight:700;text-decoration:underline;}
-.conc-box{border-radius:8px;padding:12px 16px;margin:14px 0 4px;background:${aptBg};border:1.5px solid ${aptBorder};break-inside:avoid;page-break-inside:avoid;}
-.conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
-.conc-sub{font-size:10.5px;color:#5a5750;}
 .constancia{margin-top:16px;background:#f4f7fb;border-left:3px solid #3a6ea8;border-radius:6px;padding:11px 15px;font-size:11px;line-height:1.65;color:#2a5080;text-align:justify;break-inside:avoid;page-break-inside:avoid;}
 /* El pie de firma se imprime entero o pasa completo a la hoja siguiente: un renglón de firma
    separado de su nombre y matrícula no identifica a nadie. */
@@ -2069,12 +2066,6 @@ ${bloqueUbicacion}
 <h2>Informe</h2>
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
-
-${d.aptitud?`<div class="conc-box">
-  <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
-  ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
-  <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
-</div>`:''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
 ${constanciaGeo}
 
