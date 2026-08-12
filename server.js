@@ -635,13 +635,12 @@ app.get('/api/presupuestos/:id/pdf', async (req, res) => {
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <title>Presupuesto ${p.numero}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
-.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+.doc-numero{font-family:'DejaVu Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#3a6ea8;}
 .titulo-doc{margin:12px 0 4px;text-align:center;}
 .titulo-doc h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1916;}
 .titulo-doc .subtitulo{font-size:11px;color:#5a5750;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;}
@@ -662,7 +661,7 @@ table.items td{padding:8px 10px;border-bottom:1px solid #e8e4de;font-size:12px;}
 .firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
-.wm{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+.wm{margin-top:20px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DejaVu Sans Mono',monospace;border-top:1px solid #eee;padding-top:8px;}
 @media print{body{padding:20px 28px;}table.items th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body>
 
@@ -671,7 +670,7 @@ table.items td{padding:8px 10px;border-bottom:1px solid #e8e4de;font-size:12px;}
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
     <div>
       <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP</div>
-      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div>
+      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DejaVu Sans Mono',monospace;">Servicio Médico Laboral Integral</div>
     </div>
   </div>
   <div style="display:flex;align-items:flex-start;gap:12px;">
@@ -679,7 +678,7 @@ table.items td{padding:8px 10px;border-bottom:1px solid #e8e4de;font-size:12px;}
       <div class="doc-numero">${p.numero}</div>
       <div>Tierra del Fuego, ${fechaEmision}</div>
     </div>
-    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;margin-top:2px;">Verificar</div></div>` : ''}
   </div>
 </div>
 
@@ -2008,13 +2007,12 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
       const htmlAuditoria = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <title>Informe ${d.numero}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:14px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
-.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+.doc-numero{font-family:'DejaVu Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#3a6ea8;}
 h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;text-decoration:underline;margin-bottom:14px;}
 h2{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;text-decoration:underline;margin:18px 0 8px;}
 p{margin-bottom:9px;text-align:justify;}
@@ -2026,8 +2024,8 @@ p{margin-bottom:9px;text-align:justify;}
 .bloque-firmas{margin-top:38px;break-inside:avoid;page-break-inside:avoid;}
 .firma-tit{font-size:12.5px;font-weight:700;text-decoration:underline;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:14px;}
-.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;}
+.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DejaVu Sans Mono',monospace;border-top:1px solid #eee;padding-top:8px;}
 @media print{body{padding:20px 28px;}}
 </style></head><body>
 
@@ -2045,7 +2043,7 @@ p{margin-bottom:9px;text-align:justify;}
       <div>Tierra del Fuego, ${fechaEmision}</div>
       <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
     </div>
-    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;margin-top:2px;">Verificar</div></div>` : ''}
   </div>
 </div>
 
@@ -2087,13 +2085,12 @@ ${constanciaGeo}
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <title>Informe ${d.numero}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
-.doc-numero{font-family:'DM Mono',sans-serif;font-size:12.5px;font-weight:600;color:#3a6ea8;}
+.doc-numero{font-family:'DejaVu Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#3a6ea8;}
 .titulo-doc{margin:12px 0 4px;text-align:center;}
 .titulo-doc h1{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1916;}
 .titulo-doc .subtitulo{font-size:11px;color:#5a5750;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;}
@@ -2113,9 +2110,9 @@ li{margin-bottom:5px;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
-.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;border-top:1px solid #eee;padding-top:8px;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;}
+.hash{margin-top:20px;text-align:right;font-size:8px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;}
+.wm{margin-top:12px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DejaVu Sans Mono',monospace;border-top:1px solid #eee;padding-top:8px;}
 @media print{body{padding:20px 28px;}h2{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head><body>
 
@@ -2124,7 +2121,7 @@ li{margin-bottom:5px;}
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
     <div>
       <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP</div>
-      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Servicio Médico Laboral Integral</div>
+      <div style="font-size:9px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DejaVu Sans Mono',monospace;">Servicio Médico Laboral Integral</div>
     </div>
   </div>
   <div style="display:flex;align-items:flex-start;gap:12px;">
@@ -2133,7 +2130,7 @@ li{margin-bottom:5px;}
       <div>Tierra del Fuego, ${fechaEmision}</div>
       <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
     </div>
-    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DM Mono',sans-serif;margin-top:2px;">Verificar</div></div>` : ''}
+    ${qrVerificacion ? `<div style="text-align:center;flex-shrink:0;"><img src="${qrVerificacion}" alt="QR de verificación" style="width:56px;height:56px;"/><div style="font-size:6.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;margin-top:2px;">Verificar</div></div>` : ''}
   </div>
 </div>
 
@@ -2280,16 +2277,16 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
           : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">No se registró ningún intento de ingreso al control.</div>`;
 
         const htmlInasistencia = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta de inasistencia - ${t.paciente}</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
 .datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;break-inside:avoid;page-break-inside:avoid;}
-.dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
+.dato-label{color:#9a9790;font-family:'DejaVu Sans Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
 h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}.ev-row:last-child{border-bottom:none;}
-.ev-hora{font-family:'DM Mono',sans-serif;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
+.ev-hora{font-family:'DejaVu Sans Mono',monospace;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
 .ev-icon{width:22px;height:22px;border-radius:50%;background:#faedf1;color:#c0365a;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
 .ev-desc{font-size:12.5px;}
 .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
@@ -2299,13 +2296,13 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
-.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;}
+.wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DejaVu Sans Mono',monospace;}
 @media print{body{padding:26px 32px;}}</style></head><body>
 <div class="header">
   <div style="display:flex;align-items:center;gap:11px;">
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
-    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Salud Ocupacional, Seguridad e Higiene del Trabajo</div></div>
+    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DejaVu Sans Mono',monospace;">Salud Ocupacional, Seguridad e Higiene del Trabajo</div></div>
   </div>
   <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
 </div>
@@ -2379,16 +2376,16 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
       : 'Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.';
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${t.paciente}</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
 .datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:12px 15px;margin:14px 0 20px;display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;break-inside:avoid;page-break-inside:avoid;}
-.dato-label{color:#9a9790;font-family:'DM Mono',sans-serif;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
+.dato-label{color:#9a9790;font-family:'DejaVu Sans Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.5px;}.dato-value{font-weight:600;}
 h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .ev-row{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid #ecebe7;}.ev-row:last-child{border-bottom:none;}
-.ev-hora{font-family:'DM Mono',sans-serif;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
+.ev-hora{font-family:'DejaVu Sans Mono',monospace;font-size:11.5px;color:#3a6ea8;font-weight:500;width:64px;flex-shrink:0;}
 .ev-icon{width:22px;height:22px;border-radius:50%;background:#e8f0f8;color:#3a6ea8;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
 .ev-desc{font-size:12.5px;}
 .eventos-box{border:1px solid #e8e4de;border-radius:9px;overflow:hidden;}
@@ -2398,13 +2395,13 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
 .firma-nombre{font-size:11.5px;font-weight:700;}
 .firma-esp{font-size:10px;color:#5a5750;}
-.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DM Mono',sans-serif;}
-.wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DM Mono',sans-serif;}
+.firma-mat{font-size:9.5px;color:#9a9790;font-family:'DejaVu Sans Mono',monospace;}
+.wm{margin-top:28px;text-align:center;font-size:9px;color:#c8c4be;font-family:'DejaVu Sans Mono',monospace;}
 @media print{body{padding:26px 32px;}}</style></head><body>
 <div class="header">
   <div style="display:flex;align-items:center;gap:11px;">
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
-    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DM Mono',sans-serif;">Salud Ocupacional, Seguridad e Higiene del Trabajo</div></div>
+    <div><div style="font-size:18px;font-weight:700;color:#3a6ea8;">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1.2px;text-transform:uppercase;font-family:'DejaVu Sans Mono',monospace;">Salud Ocupacional, Seguridad e Higiene del Trabajo</div></div>
   </div>
   <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
 </div>
