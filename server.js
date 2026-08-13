@@ -246,6 +246,23 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS idx_cert_caso ON certificados_ausentismo (caso_id);
 
+      -- Un caso puede terminar en más de un informe (un control y su seguimiento, por
+      -- ejemplo). Antes había que abrir un caso duplicado por cada informe, y la empresa
+      -- terminaba viendo dos veces al mismo trabajador. Acá van los que ya vienen redactados
+      -- fuera del sistema; los que se emiten desde la app siguen viviendo en dictamenes.
+      CREATE TABLE IF NOT EXISTS informes_ausentismo (
+        id SERIAL PRIMARY KEY,
+        caso_id INTEGER NOT NULL REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        titulo VARCHAR(300),
+        nombre_archivo VARCHAR(300) NOT NULL,
+        tipo_mime VARCHAR(100),
+        tamano_bytes INTEGER,
+        archivo_base64 TEXT NOT NULL,
+        subido_por VARCHAR(200),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_informes_caso ON informes_ausentismo (caso_id);
+
       CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
       CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
       CREATE INDEX IF NOT EXISTS idx_casos_prof      ON casos_ausentismo (profesional_id);
@@ -2649,7 +2666,8 @@ const SELECT_CASO = `
   SELECT c.*, m.nombre AS profesional_nombre, m.matricula AS profesional_matricula,
          m.especialidad AS profesional_especialidad,
          t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado,
-         (SELECT COUNT(*) FROM certificados_ausentismo ce WHERE ce.caso_id = c.id) AS certificados
+         (SELECT COUNT(*) FROM certificados_ausentismo ce WHERE ce.caso_id = c.id) AS certificados,
+         (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos
   FROM casos_ausentismo c
   LEFT JOIN medicos m ON m.id = c.profesional_id
   LEFT JOIN turnos  t ON t.id = c.turno_id`;
@@ -3122,6 +3140,69 @@ app.get('/api/ausentismo/certificados/:certId', authMedgrupOEmpresa, async (req,
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Informes del caso ---
+// Un caso puede cerrar con más de un informe. Estos son los que ya vienen redactados fuera
+// del sistema; los que emite la app viven en dictamenes y se listan aparte. A diferencia de
+// los certificados, que los aporta la empresa, el informe lo produce MEDGRUP: la empresa
+// solo lo lee.
+app.post('/api/ausentismo/casos/:id/informes', authMiddleware, async (req, res) => {
+  try {
+    const c = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!c.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (!(await puedeVerCaso(c.rows[0], req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
+
+    const { titulo, nombre_archivo, tipo_mime, archivo_base64 } = req.body;
+    if (!archivo_base64 || !nombre_archivo) return res.status(400).json({ error: 'Falta el archivo' });
+    if (tipo_mime && !CERT_TIPOS.includes(tipo_mime)) {
+      return res.status(400).json({ error: 'Solo se aceptan archivos PDF, JPG, PNG o WEBP' });
+    }
+    const limpio = archivo_base64.replace(/^data:[^;]+;base64,/, '');
+    const bytes = Math.round(limpio.length * 3 / 4);
+    if (bytes > CERT_MAX_BYTES) {
+      return res.status(413).json({ error: `El archivo pesa ${(bytes/1024/1024).toFixed(1)} MB y el máximo es 5 MB. Comprimí el PDF o bajale la calidad.` });
+    }
+    const r = await pool.query(
+      `INSERT INTO informes_ausentismo (caso_id, titulo, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
+      [req.params.id, (titulo || '').slice(0, 300), String(nombre_archivo).slice(0, 300),
+       tipo_mime || '', bytes, limpio, req.usuario.nombre]);
+    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Lo lee también la empresa: es el resultado por el que abrió el caso
+app.get('/api/ausentismo/casos/:id/informes', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    const caso = await casoVisiblePara(req.params.id, req);
+    if (caso === null) return res.status(404).json({ error: 'Caso no encontrado' });
+    if (caso === false) return res.status(403).json({ error: 'No tenés acceso a este caso' });
+    const r = await pool.query(
+      `SELECT id, titulo, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
+       FROM informes_ausentismo WHERE caso_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
+    res.json({ ok: true, informes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/ausentismo/informes/:informeId', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM informes_ausentismo WHERE id=$1', [req.params.informeId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Informe no encontrado' });
+    const inf = r.rows[0];
+    if (!(await casoVisiblePara(inf.caso_id, req))) return res.status(403).json({ error: 'No tenés acceso a este informe' });
+    res.setHeader('Content-Type', inf.tipo_mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${(inf.nombre_archivo||'informe').replace(/"/g,'')}"`);
+    res.send(Buffer.from(inf.archivo_base64, 'base64'));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/ausentismo/informes/:informeId', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM informes_ausentismo WHERE id=$1 RETURNING nombre_archivo', [req.params.informeId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Informe no encontrado' });
+    res.json({ ok: true, nombre: r.rows[0].nombre_archivo });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/ausentismo/certificados/:certId', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query('DELETE FROM certificados_ausentismo WHERE id=$1 RETURNING nombre_archivo', [req.params.certId]);
@@ -3244,7 +3325,12 @@ app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT c.id, c.empresa_nombre, c.trabajador_nombre, c.trabajador_dni, c.resuelto_en,
-             m.nombre AS profesional_nombre
+             m.nombre AS profesional_nombre,
+             -- Se factura por caso, pero un caso puede cerrar con más de un informe. El
+             -- conteo va a la vista para que al cerrar el mes se vea y se decida, en vez de
+             -- facturar de menos sin que nadie lo note.
+             (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id)
+             + (SELECT COUNT(*) FROM dictamenes d WHERE d.turno_id = c.turno_id) AS informes
       FROM casos_ausentismo c
       LEFT JOIN medicos m ON m.id = c.profesional_id
       WHERE c.estado = 'resuelto' AND to_char(c.resuelto_en,'YYYY-MM') = $1
@@ -3290,7 +3376,8 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
              c.domicilio, (c.domicilio_lat IS NOT NULL) AS domicilio_ubicado,
              m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
              t.fecha AS turno_fecha, t.hora AS turno_hora,
-             (SELECT d.id FROM dictamenes d WHERE d.turno_id = c.turno_id ORDER BY d.creado_en DESC LIMIT 1) AS dictamen_id
+             (SELECT d.id FROM dictamenes d WHERE d.turno_id = c.turno_id ORDER BY d.creado_en DESC LIMIT 1) AS dictamen_id,
+             (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos
       FROM casos_ausentismo c
       LEFT JOIN medicos m ON m.id = c.profesional_id
       LEFT JOIN turnos  t ON t.id = c.turno_id

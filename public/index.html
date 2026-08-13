@@ -1399,6 +1399,29 @@ td.no-label::before{display:none;}
   </div>
 </div>
 
+<!-- MODAL INFORMES DEL CASO (varios informes por caso, subidos ya redactados) -->
+<div class="modal-bg" id="modal-informes-caso">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title" style="margin-bottom:4px;">Informes del caso</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="inf-caso-info">—</div>
+    <div id="inf-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl">Título (opcional)</label>
+        <input type="text" id="inf-titulo" placeholder="Ej: Segundo informe — control de seguimiento"/>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:5px;">Sirve para distinguirlos cuando el caso tiene más de uno. Si lo dejás vacío se usa el nombre del archivo.</div>
+      </div>
+      <div class="form-group full"><label class="form-lbl">Archivo del informe</label>
+        <input type="file" id="inf-nuevo" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;" onchange="subirInformesCaso()"/>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:5px;">PDF o foto, hasta 5 MB cada uno. La empresa los ve en su portal junto al informe emitido desde el sistema.</div>
+      </div>
+    </div>
+    <div id="inf-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-informes-caso').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ASIGNAR PROFESIONAL A UN CASO DE AUSENTISMO -->
 <div class="modal-bg" id="modal-asignar-caso">
   <div class="modal" style="max-width:460px;">
@@ -4769,7 +4792,9 @@ function renderCasosAusentismo(){
       : '';
 
     const nCert = Number(c.certificados) || 0;
+    const nInf = Number(c.informes_adjuntos) || 0;
     const acciones = [`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`];
+    acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirInformesCaso(${c.id})">📄 Informes${nInf?' ('+nInf+')':''}</button>`);
     if(esAdmin)
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDomicilioCaso(${c.id})">📍 Domicilio</button>`);
     if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
@@ -4967,6 +4992,119 @@ async function subirCertificados(casoId, archivos){
     subidos.push(file.name);
   }
   return subidos;
+}
+
+// ----- Informes del caso -----
+// Un caso puede cerrar con más de un informe. Los que ya vienen redactados fuera del sistema
+// se cuelgan acá, y la empresa los ve junto al que emite la app: así deja de hacer falta
+// abrir un caso duplicado por cada informe.
+let casoInformesId = null;
+
+async function abrirInformesCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  casoInformesId = id;
+  document.getElementById('inf-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre||''}`;
+  document.getElementById('inf-error').style.display = 'none';
+  document.getElementById('inf-titulo').value = '';
+  document.getElementById('inf-nuevo').value = '';
+  document.getElementById('modal-informes-caso').classList.add('open');
+  await recargarInformesCaso();
+}
+
+async function recargarInformesCaso(){
+  const lista = document.getElementById('inf-lista');
+  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${casoInformesId}/informes`, {headers:apiHeaders()});
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error);
+    if(!data.informes.length){
+      lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay informes subidos. El informe que se emite desde el sistema no aparece acá: la empresa lo ve igual.</div>';
+      return;
+    }
+    const esAdmin = usuarioActual?.rol === 'admin';
+    lista.innerHTML = data.informes.map((inf, i) => {
+      const peso = inf.tamano_bytes ? (inf.tamano_bytes/1024 < 1024 ? Math.round(inf.tamano_bytes/1024)+' KB' : (inf.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
+      const cuando = inf.creado_en ? new Date(inf.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:600;word-break:break-all;">${inf.titulo || inf.nombre_archivo}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Informe ${i+1}${inf.titulo?' · '+inf.nombre_archivo:''}${peso?' · '+peso:''}${cuando?' · '+cuando:''}${inf.subido_por?' · '+inf.subido_por:''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;" onclick="verInformeAdjunto(${inf.id})">Ver</button>
+          ${esAdmin?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);" onclick="borrarInformeAdjunto(${inf.id})">Quitar</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa-dark);">No se pudieron cargar los informes.</div>'; }
+}
+
+// Mismo motivo que en los certificados: el endpoint valida por header, un <a href> no lo manda
+async function verInformeAdjunto(id){
+  const pestana = window.open('', '_blank');
+  try{
+    const r = await fetch('/api/ausentismo/informes/' + id, { headers: apiHeaders() });
+    if(!r.ok){
+      const d = await r.json().catch(() => ({}));
+      if(pestana) pestana.close();
+      mostrarError(d.error || 'No se pudo abrir el informe');
+      return;
+    }
+    const url = URL.createObjectURL(await r.blob());
+    if(pestana) pestana.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    if(pestana) pestana.close();
+    mostrarError('No se pudo abrir el informe');
+  }
+}
+
+async function subirInformesCaso(){
+  const input = document.getElementById('inf-nuevo');
+  const err = document.getElementById('inf-error');
+  const titulo = document.getElementById('inf-titulo').value.trim();
+  err.style.display = 'none';
+  if(!input.files.length) return;
+  const archivos = [...input.files];
+  try{
+    for(const [i, archivo] of archivos.entries()){
+      const base64 = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = () => rej(new Error('No se pudo leer ' + archivo.name));
+        fr.readAsDataURL(archivo);
+      });
+      const r = await fetch(`/api/ausentismo/casos/${casoInformesId}/informes`, {
+        method:'POST', headers:apiHeaders(),
+        body: JSON.stringify({
+          // Con varios archivos a la vez el título se numera, si no quedarían todos iguales
+          titulo: titulo ? (archivos.length > 1 ? `${titulo} (${i+1})` : titulo) : '',
+          nombre_archivo: archivo.name, tipo_mime: archivo.type, archivo_base64: base64
+        })
+      });
+      const d = await r.json();
+      if(!d.ok) throw new Error(d.error || 'No se pudo subir ' + archivo.name);
+    }
+    input.value = '';
+    document.getElementById('inf-titulo').value = '';
+    mostrarToast(`✓ ${archivos.length} informe(s) subido(s)`,'#1e6640');
+    addLog('blue','Informe agregado al caso', `${archivos.length} archivo(s)`);
+    await recargarInformesCaso();
+    await cargarCasosAusentismo();
+  }catch(e){ err.textContent = e.message; err.style.display = 'block'; input.value = ''; }
+}
+
+async function borrarInformeAdjunto(id){
+  if(!(await confirmar('Se va a quitar este informe del caso. La empresa deja de verlo.', { titulo:'Quitar informe', textoConfirmar:'Quitar', danger:true }))) return;
+  try{
+    const r = await fetch('/api/ausentismo/informes/'+id, { method:'DELETE', headers:apiHeaders() });
+    const d = await r.json();
+    if(!d.ok){ mostrarError(d.error||'No se pudo quitar'); return; }
+    await recargarInformesCaso();
+    await cargarCasosAusentismo();
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 async function abrirCertificadosCaso(id){

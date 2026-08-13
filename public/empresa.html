@@ -685,6 +685,24 @@ tbody tr:hover .avatar{transform:scale(1.08);}
   </div>
 </div>
 
+<!-- MODAL INFORMES DEL CASO (puede haber más de uno) -->
+<div class="modal-bg" id="modal-informes-empresa">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div class="modal-head-left">
+        <div>
+          <div class="modal-title">Informes del caso</div>
+          <div class="modal-subtitle" id="ie-caso-info">—</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-informes-empresa').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="ie-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DETALLE -->
 <div class="modal-bg" id="modal-detalle">
   <div class="modal">
@@ -845,9 +863,15 @@ function renderCasosEmpresa(){
     const tipo = c.tipo_control && c.tipo_control !== 'ausentismo'
       ? `<div style="font-size:12px;color:var(--azul);margin-top:4px;">${TIPO_CONTROL_EMPRESA[c.tipo_control] || ''}</div>`
       : '';
-    const informe = c.dictamen_id
-      ? `<a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${c.dictamen_id}/pdf" target="_blank" rel="noopener">Ver informe</a>`
-      : '';
+    // Un caso puede cerrar con más de un informe: el que emite el sistema y los que MEDGRUP
+    // sube ya redactados. Antes se mostraba solo uno y por eso había que abrir casos
+    // duplicados para que la empresa viera el resto.
+    const nAdjuntos = Number(c.informes_adjuntos) || 0;
+    const total = (c.dictamen_id ? 1 : 0) + nAdjuntos;
+    const informe = !total ? ''
+      : total === 1 && c.dictamen_id
+        ? `<a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${c.dictamen_id}/pdf" target="_blank" rel="noopener">Ver informe</a>`
+        : `<button class="btn btn-primary" onclick="verInformesCaso(${c.id}, ${c.dictamen_id || 'null'})">Ver informes (${total})</button>`;
     const cancelar = ['nuevo','asignado','programado'].includes(c.estado)
       ? `<button class="btn btn-ghost" onclick="cancelarCasoEmpresa(${c.id})">Cancelar</button>` : '';
     // El control es domiciliario: si la dirección no quedó ubicada, no se puede verificar nada
@@ -939,6 +963,52 @@ async function crearCasoEmpresa(){
     document.getElementById('ca-certificados').value = '';
     await cargarCasosEmpresa();
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+}
+
+// Un caso puede tener varios informes: el que emite MEDGRUP desde el sistema y los que sube
+// ya redactados. Se listan juntos para que la empresa no tenga que buscarlos en casos aparte.
+async function verInformesCaso(id, dictamenId){
+  const c = casosEmpresa.find(x => x.id === id);
+  if(!c) return;
+  document.getElementById('ie-caso-info').textContent = c.trabajador_nombre;
+  const lista = document.getElementById('ie-lista');
+  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
+  document.getElementById('modal-informes-empresa').classList.add('open');
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/informes`, {headers:empresaHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+
+    const filas = [];
+    if(dictamenId){
+      filas.push(`<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">Informe médico</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Emitido por MEDGRUP</div></div>
+        <a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${dictamenId}/pdf" target="_blank" rel="noopener">Ver</a>
+      </div>`);
+    }
+    for(const inf of (d.informes||[])){
+      const cuando = inf.creado_en ? new Date(inf.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+      filas.push(`<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${inf.titulo || inf.nombre_archivo}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Emitido por MEDGRUP${cuando?' · '+cuando:''}</div></div>
+        <button class="btn btn-primary" onclick="verInformeAdjuntoEmpresa(${inf.id})">Ver</button>
+      </div>`);
+    }
+    lista.innerHTML = filas.length ? filas.join('') : '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay informes disponibles.</div>';
+  }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa);">No se pudieron cargar los informes.</div>'; }
+}
+
+// El endpoint valida por header, así que el archivo se trae con fetch y se abre como blob
+async function verInformeAdjuntoEmpresa(id){
+  const pestana = window.open('', '_blank');
+  try{
+    const r = await fetch('/api/ausentismo/informes/' + id, { headers: empresaHeaders() });
+    if(!r.ok){ if(pestana) pestana.close(); return; }
+    const url = URL.createObjectURL(await r.blob());
+    if(pestana) pestana.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){ if(pestana) pestana.close(); }
 }
 
 async function abrirCertificadosEmpresa(id){
