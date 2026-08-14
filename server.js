@@ -265,7 +265,9 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_informes_caso ON informes_ausentismo (caso_id);
-      CREATE INDEX IF NOT EXISTS idx_informes_turno ON informes_ausentismo (turno_id);
+      -- El índice de turno_id se crea más abajo, en el loop de migraciones: acá la columna
+      -- todavía no existe en una base ya desplegada (CREATE TABLE IF NOT EXISTS es un no-op
+      -- si la tabla ya está creada), así que crearlo en este mismo bloque rompía el arranque.
 
       CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
       CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
