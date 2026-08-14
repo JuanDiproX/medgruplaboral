@@ -246,13 +246,16 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS idx_cert_caso ON certificados_ausentismo (caso_id);
 
-      -- Un caso puede terminar en más de un informe (un control y su seguimiento, por
-      -- ejemplo). Antes había que abrir un caso duplicado por cada informe, y la empresa
-      -- terminaba viendo dos veces al mismo trabajador. Acá van los que ya vienen redactados
-      -- fuera del sistema; los que se emiten desde la app siguen viviendo en dictamenes.
+      -- Un caso o un turno pueden terminar en más de un informe (un control y su seguimiento,
+      -- una junta médica que se retoma más adelante, etc). Antes había que abrir un caso
+      -- duplicado por cada informe, y la empresa terminaba viendo dos veces al mismo
+      -- trabajador. Acá van los que ya vienen redactados fuera del sistema; los que se emiten
+      -- desde la app siguen viviendo en dictamenes. Cuelga de un caso de ausentismo (caso_id)
+      -- o directamente de un turno (turno_id) —junta médica, seguimiento, etc—: nunca de los dos.
       CREATE TABLE IF NOT EXISTS informes_ausentismo (
         id SERIAL PRIMARY KEY,
-        caso_id INTEGER NOT NULL REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        caso_id INTEGER REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        turno_id VARCHAR(50) REFERENCES turnos(id) ON DELETE CASCADE,
         titulo VARCHAR(300),
         nombre_archivo VARCHAR(300) NOT NULL,
         tipo_mime VARCHAR(100),
@@ -262,6 +265,7 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_informes_caso ON informes_ausentismo (caso_id);
+      CREATE INDEX IF NOT EXISTS idx_informes_turno ON informes_ausentismo (turno_id);
 
       CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
       CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
@@ -343,6 +347,11 @@ async function initDB() {
       `ALTER TABLE IF EXISTS firmas_acta ADD COLUMN IF NOT EXISTS capturada_por VARCHAR(200)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)`,
       `ALTER TABLE IF EXISTS medicos ADD COLUMN IF NOT EXISTS firma_guardada TEXT`,
+      // Generaliza los informes adicionales de "solo casos de ausentismo" a cualquier turno
+      // (junta médica, seguimiento, etc): caso_id deja de ser obligatorio y se suma turno_id.
+      `ALTER TABLE IF EXISTS informes_ausentismo ALTER COLUMN caso_id DROP NOT NULL`,
+      `ALTER TABLE IF EXISTS informes_ausentismo ADD COLUMN IF NOT EXISTS turno_id VARCHAR(50) REFERENCES turnos(id) ON DELETE CASCADE`,
+      `CREATE INDEX IF NOT EXISTS idx_informes_turno ON informes_ausentismo (turno_id)`,
     ]) await client.query(q2).catch(()=>{});
 
     // Fix columnas
@@ -489,7 +498,8 @@ app.get('/api/empresa/mis-turnos', empresaAuthMiddleware, async (req, res) => {
     const r = await pool.query(`
       SELECT t.*,
         COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL), '{}') as medicos,
-        (SELECT json_agg(d.*) FROM dictamenes d WHERE d.turno_id=t.id) as dictamenes_data
+        (SELECT json_agg(d.*) FROM dictamenes d WHERE d.turno_id=t.id) as dictamenes_data,
+        (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id=t.id) as informes_extra
       FROM turnos t
       LEFT JOIN turno_medicos tm ON t.id=tm.turno_id
       WHERE t.empresa=$1
@@ -1334,7 +1344,8 @@ app.get('/api/turnos', authMiddleware, async (req, res) => {
     // quién comparte la junta), por eso el filtro va como EXISTS y no sobre el JOIN.
     const esAdmin = req.usuario.rol === 'admin';
     const r = await pool.query(`
-      SELECT t.*, COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL),'{}') as medicos
+      SELECT t.*, COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL),'{}') as medicos,
+        (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id = t.id) AS informes_extra
       FROM turnos t LEFT JOIN turno_medicos tm ON t.id=tm.turno_id
       ${esAdmin ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos a WHERE a.turno_id=t.id AND a.medico_nombre=$1)'}
       GROUP BY t.id ORDER BY t.fecha ASC, t.hora ASC
@@ -2684,6 +2695,23 @@ async function puedeVerCaso(caso, req) {
   return !!miId && caso.profesional_id === miId;
 }
 
+// Mismo criterio que puedeVerCaso pero para un turno cualquiera (junta médica, seguimiento,
+// etc): el admin gestiona todos, el médico solo los que tiene asignados en turno_medicos.
+async function puedeGestionarInformesDelTurno(turnoId, usuario) {
+  if (usuario.rol === 'admin') return true;
+  const r = await pool.query('SELECT 1 FROM turno_medicos WHERE turno_id=$1 AND medico_nombre=$2', [turnoId, usuario.nombre]);
+  return r.rows.length > 0;
+}
+
+// Análogo a casoVisiblePara pero para un turno: además del staff asignado, lo puede ver la
+// empresa dueña del turno.
+async function turnoVisiblePara(turnoId, req) {
+  const r = await pool.query('SELECT empresa FROM turnos WHERE id=$1', [turnoId]);
+  if (!r.rows.length) return false;
+  if (req.empresa) return r.rows[0].empresa === req.empresa.nombre;
+  return puedeGestionarInformesDelTurno(turnoId, req.usuario);
+}
+
 // --- Listado: el admin ve todo, el médico solo lo que tiene asignado ---
 app.get('/api/ausentismo/casos', authMiddleware, async (req, res) => {
   try {
@@ -3183,12 +3211,57 @@ app.get('/api/ausentismo/casos/:id/informes', authMedgrupOEmpresa, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Informes adicionales de un turno cualquiera (junta médica, seguimiento, control de
+// licencia, etc): mismo mecanismo que los de un caso de ausentismo, pero sin pasar por
+// casos_ausentismo. Un turno puede tratarse en más de un momento y cerrar con más de un
+// informe redactado aparte.
+app.post('/api/turnos/:id/informes', authMiddleware, async (req, res) => {
+  try {
+    const t = await pool.query('SELECT id FROM turnos WHERE id=$1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    if (!(await puedeGestionarInformesDelTurno(req.params.id, req.usuario))) {
+      return res.status(403).json({ error: 'Este turno no está asignado a vos' });
+    }
+    const { titulo, nombre_archivo, tipo_mime, archivo_base64 } = req.body;
+    if (!archivo_base64 || !nombre_archivo) return res.status(400).json({ error: 'Falta el archivo' });
+    if (tipo_mime && !CERT_TIPOS.includes(tipo_mime)) {
+      return res.status(400).json({ error: 'Solo se aceptan archivos PDF, JPG, PNG o WEBP' });
+    }
+    const limpio = archivo_base64.replace(/^data:[^;]+;base64,/, '');
+    const bytes = Math.round(limpio.length * 3 / 4);
+    if (bytes > CERT_MAX_BYTES) {
+      return res.status(413).json({ error: `El archivo pesa ${(bytes/1024/1024).toFixed(1)} MB y el máximo es 5 MB. Comprimí el PDF o bajale la calidad.` });
+    }
+    const r = await pool.query(
+      `INSERT INTO informes_ausentismo (turno_id, titulo, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
+      [req.params.id, (titulo || '').slice(0, 300), String(nombre_archivo).slice(0, 300),
+       tipo_mime || '', bytes, limpio, req.usuario.nombre]);
+    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Lo lee también la empresa dueña del turno
+app.get('/api/turnos/:id/informes', authMedgrupOEmpresa, async (req, res) => {
+  try {
+    if (!(await turnoVisiblePara(req.params.id, req))) {
+      const t = await pool.query('SELECT 1 FROM turnos WHERE id=$1', [req.params.id]);
+      return res.status(t.rows.length ? 403 : 404).json({ error: t.rows.length ? 'No tenés acceso a este turno' : 'Turno no encontrado' });
+    }
+    const r = await pool.query(
+      `SELECT id, titulo, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
+       FROM informes_ausentismo WHERE turno_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
+    res.json({ ok: true, informes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/ausentismo/informes/:informeId', authMedgrupOEmpresa, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM informes_ausentismo WHERE id=$1', [req.params.informeId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Informe no encontrado' });
     const inf = r.rows[0];
-    if (!(await casoVisiblePara(inf.caso_id, req))) return res.status(403).json({ error: 'No tenés acceso a este informe' });
+    const visible = inf.caso_id ? await casoVisiblePara(inf.caso_id, req) : await turnoVisiblePara(inf.turno_id, req);
+    if (!visible) return res.status(403).json({ error: 'No tenés acceso a este informe' });
     res.setHeader('Content-Type', inf.tipo_mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${(inf.nombre_archivo||'informe').replace(/"/g,'')}"`);
     res.send(Buffer.from(inf.archivo_base64, 'base64'));

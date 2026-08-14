@@ -1399,10 +1399,10 @@ td.no-label::before{display:none;}
   </div>
 </div>
 
-<!-- MODAL INFORMES DEL CASO (varios informes por caso, subidos ya redactados) -->
+<!-- MODAL INFORMES (varios informes por caso de ausentismo o por turno, subidos ya redactados) -->
 <div class="modal-bg" id="modal-informes-caso">
   <div class="modal" style="max-width:560px;">
-    <div class="modal-title" style="margin-bottom:4px;">Informes del caso</div>
+    <div class="modal-title" style="margin-bottom:4px;" id="inf-modal-title">Informes del caso</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem;" id="inf-caso-info">—</div>
     <div id="inf-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;"></div>
     <div class="form-grid">
@@ -2610,7 +2610,7 @@ async function cargarTurnos(){
       document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar los turnos: '+(data.error||'respuesta inválida')+'</div>';
       return;
     }
-    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[]}));
+    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[],informesExtra:Number(t.informes_extra)||0}));
     poblarFiltroEmpresasAgenda();
     renderAgenda();
   }catch(e){
@@ -2783,6 +2783,9 @@ function renderAgenda(){
     // Acta: el médico la ve como link directo; al admin se le ofrece en el menú de más acciones (abre el modal de edición)
     const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
+    // Informes adicionales redactados aparte: un turno puede tratarse en más de un momento
+    // (junta médica que se retoma, seguimiento, etc) y cerrar con más de un informe.
+    const binf=`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirInformesTurno('${t.id}')" title="Informes adicionales redactados aparte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Adjuntos${t.informesExtra?' ('+t.informesExtra+')':''}</button>`;
     const brecordar=(t.estado!=='completado'&&!esPresencial)?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e9d5a;" onclick="recordarTurnoWA('${t.id}')" title="Enviar recordatorio por WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;pointer-events:none;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>Recordar</button>`:'';
     const bLinks = esPresencial ? '' : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verLinks('${t.id}')">Links</button>`;
     // Firma en cadena: solo tiene sentido si la paciente estuvo presente (con o sin videollamada)
@@ -2800,7 +2803,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
  }catch(err){
   console.error('Error en renderAgenda:', err);
@@ -4998,13 +5001,37 @@ async function subirCertificados(casoId, archivos){
 // Un caso puede cerrar con más de un informe. Los que ya vienen redactados fuera del sistema
 // se cuelgan acá, y la empresa los ve junto al que emite la app: así deja de hacer falta
 // abrir un caso duplicado por cada informe.
-let casoInformesId = null;
+// Contexto genérico del modal: puede apuntar a un caso de ausentismo o a un turno cualquiera
+// (junta médica, seguimiento, etc). Ambos comparten el mismo mecanismo de informes subidos aparte.
+let informesCtx = null; // { tipo: 'caso'|'turno', id }
+
+function urlBaseInformes(){
+  return informesCtx.tipo === 'turno'
+    ? `/api/turnos/${informesCtx.id}/informes`
+    : `/api/ausentismo/casos/${informesCtx.id}/informes`;
+}
 
 async function abrirInformesCaso(id){
   const c = casosAusentismo.find(x => x.id === id);
   if(!c) return;
-  casoInformesId = id;
+  informesCtx = { tipo:'caso', id };
+  document.getElementById('inf-modal-title').textContent = 'Informes del caso';
   document.getElementById('inf-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre||''}`;
+  document.getElementById('inf-error').style.display = 'none';
+  document.getElementById('inf-titulo').value = '';
+  document.getElementById('inf-nuevo').value = '';
+  document.getElementById('modal-informes-caso').classList.add('open');
+  await recargarInformesCaso();
+}
+
+// Mismo modal, pero para cualquier turno (junta médica, seguimiento, control de licencia...):
+// un turno también puede tratarse en más de un momento y cerrar con más de un informe.
+async function abrirInformesTurno(id){
+  const t = turnos.find(x => x.id === id);
+  if(!t) return;
+  informesCtx = { tipo:'turno', id };
+  document.getElementById('inf-modal-title').textContent = 'Informes adicionales del turno';
+  document.getElementById('inf-caso-info').textContent = `${t.paciente} · ${t.tipo||''}${t.empresa?' · '+t.empresa:''}`;
   document.getElementById('inf-error').style.display = 'none';
   document.getElementById('inf-titulo').value = '';
   document.getElementById('inf-nuevo').value = '';
@@ -5016,7 +5043,7 @@ async function recargarInformesCaso(){
   const lista = document.getElementById('inf-lista');
   lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
   try{
-    const r = await fetch(`/api/ausentismo/casos/${casoInformesId}/informes`, {headers:apiHeaders()});
+    const r = await fetch(urlBaseInformes(), {headers:apiHeaders()});
     const data = await r.json();
     if(!data.ok) throw new Error(data.error);
     if(!data.informes.length){
@@ -5076,7 +5103,7 @@ async function subirInformesCaso(){
         fr.onerror = () => rej(new Error('No se pudo leer ' + archivo.name));
         fr.readAsDataURL(archivo);
       });
-      const r = await fetch(`/api/ausentismo/casos/${casoInformesId}/informes`, {
+      const r = await fetch(urlBaseInformes(), {
         method:'POST', headers:apiHeaders(),
         body: JSON.stringify({
           // Con varios archivos a la vez el título se numera, si no quedarían todos iguales
@@ -5090,20 +5117,20 @@ async function subirInformesCaso(){
     input.value = '';
     document.getElementById('inf-titulo').value = '';
     mostrarToast(`✓ ${archivos.length} informe(s) subido(s)`,'#1e6640');
-    addLog('blue','Informe agregado al caso', `${archivos.length} archivo(s)`);
+    addLog('blue','Informe agregado', `${archivos.length} archivo(s)`);
     await recargarInformesCaso();
-    await cargarCasosAusentismo();
+    if(informesCtx.tipo==='caso') await cargarCasosAusentismo(); else await cargarTurnos();
   }catch(e){ err.textContent = e.message; err.style.display = 'block'; input.value = ''; }
 }
 
 async function borrarInformeAdjunto(id){
-  if(!(await confirmar('Se va a quitar este informe del caso. La empresa deja de verlo.', { titulo:'Quitar informe', textoConfirmar:'Quitar', danger:true }))) return;
+  if(!(await confirmar('Se va a quitar este informe. La empresa deja de verlo.', { titulo:'Quitar informe', textoConfirmar:'Quitar', danger:true }))) return;
   try{
     const r = await fetch('/api/ausentismo/informes/'+id, { method:'DELETE', headers:apiHeaders() });
     const d = await r.json();
     if(!d.ok){ mostrarError(d.error||'No se pudo quitar'); return; }
     await recargarInformesCaso();
-    await cargarCasosAusentismo();
+    if(informesCtx.tipo==='caso') await cargarCasosAusentismo(); else await cargarTurnos();
   }catch(e){ mostrarError('Error de conexión'); }
 }
 

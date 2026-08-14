@@ -965,26 +965,25 @@ async function crearCasoEmpresa(){
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
 }
 
-// Un caso puede tener varios informes: el que emite MEDGRUP desde el sistema y los que sube
-// ya redactados. Se listan juntos para que la empresa no tenga que buscarlos en casos aparte.
-async function verInformesCaso(id, dictamenId){
-  const c = casosEmpresa.find(x => x.id === id);
-  if(!c) return;
-  document.getElementById('ie-caso-info').textContent = c.trabajador_nombre;
+// Un caso o un turno pueden tener varios informes: el/los que emite MEDGRUP desde el sistema
+// y los que sube ya redactados aparte. Se listan juntos para que la empresa no tenga que
+// buscarlos por separado.
+async function abrirModalInformes(urlBase, nombre, dictamenes){
+  document.getElementById('ie-caso-info').textContent = nombre;
   const lista = document.getElementById('ie-lista');
   lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
   document.getElementById('modal-informes-empresa').classList.add('open');
   try{
-    const r = await fetch(`/api/ausentismo/casos/${id}/informes`, {headers:empresaHeaders()});
+    const r = await fetch(urlBase, {headers:empresaHeaders()});
     const d = await r.json();
     if(!d.ok) throw new Error(d.error);
 
     const filas = [];
-    if(dictamenId){
+    for(const dict of (dictamenes||[])){
       filas.push(`<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">Informe médico</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">Informe médico${dict.medico?' — '+dict.medico:''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">Emitido por MEDGRUP</div></div>
-        <a class="btn btn-primary" style="text-decoration:none;" href="/api/dictamenes/${dictamenId}/pdf" target="_blank" rel="noopener">Ver</a>
+        <a class="btn btn-primary" style="text-decoration:none;" href="${dict.pdf_firmado ? '/api/dictamenes/'+dict.id+'/pdf-firmado' : '/api/dictamenes/'+dict.id+'/pdf'}" target="_blank" rel="noopener">Ver</a>
       </div>`);
     }
     for(const inf of (d.informes||[])){
@@ -997,6 +996,20 @@ async function verInformesCaso(id, dictamenId){
     }
     lista.innerHTML = filas.length ? filas.join('') : '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay informes disponibles.</div>';
   }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa);">No se pudieron cargar los informes.</div>'; }
+}
+
+async function verInformesCaso(id, dictamenId){
+  const c = casosEmpresa.find(x => x.id === id);
+  if(!c) return;
+  await abrirModalInformes(`/api/ausentismo/casos/${id}/informes`, c.trabajador_nombre, dictamenId ? [{ id: dictamenId }] : []);
+}
+
+// Mismo modal, pero para cualquier turno (junta médica, seguimiento, control de licencia...):
+// un turno también puede tratarse en más de un momento y cerrar con más de un informe.
+async function verInformesTurno(id){
+  const t = turnosData.find(x => x.id === id);
+  if(!t) return;
+  await abrirModalInformes(`/api/turnos/${id}/informes`, t.paciente, t.dictamenes_data || []);
 }
 
 // El endpoint valida por header, así que el archivo se trae con fetch y se abre como blob
@@ -1120,7 +1133,7 @@ async function cargarTurnos(){
 
 function actualizarStats(){
   animarNumero('stat-total', turnosData.length);
-  const conInforme = turnosData.filter(t => t.dictamenes_data && t.dictamenes_data.length > 0).length;
+  const conInforme = turnosData.filter(t => (t.dictamenes_data && t.dictamenes_data.length > 0) || (Number(t.informes_extra) || 0) > 0).length;
   animarNumero('stat-con-informe', conInforme, 800);
   const pendientes = turnosData.filter(t => t.estado === 'pendiente').length;
   animarNumero('stat-pendiente', pendientes, 900);
@@ -1169,14 +1182,20 @@ function renderTabla(turnos){
       </tr></thead>
       <tbody>${turnos.map((t, idx) => {
         const medicos = Array.isArray(t.medicos) ? t.medicos : [];
-        const tieneInforme = t.dictamenes_data && t.dictamenes_data.length > 0;
-        const primerDict = tieneInforme ? t.dictamenes_data[0] : null;
+        // Un turno puede cerrar con más de un informe (el que emite el sistema y/o los que
+        // MEDGRUP sube ya redactados aparte): se cuentan juntos para decidir si alcanza con
+        // un link directo o hace falta el modal con la lista completa.
+        const dicts = Array.isArray(t.dictamenes_data) ? t.dictamenes_data : [];
+        const nExtra = Number(t.informes_extra) || 0;
+        const totalInformes = dicts.length + nExtra;
         const docs = `
-          ${tieneInforme
-            ? `<a href="${primerDict.pdf_firmado ? '/api/dictamenes/'+primerDict.id+'/pdf-firmado' : '/api/dictamenes/'+primerDict.id+'/pdf'}" target="_blank" class="btn btn-primary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-                Informe</a>`
-            : '<span class="sin-info">Sin informe</span>'}
+          ${!totalInformes
+            ? '<span class="sin-info">Sin informe</span>'
+            : totalInformes === 1 && dicts.length === 1
+              ? `<a href="${dicts[0].pdf_firmado ? '/api/dictamenes/'+dicts[0].id+'/pdf-firmado' : '/api/dictamenes/'+dicts[0].id+'/pdf'}" target="_blank" class="btn btn-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                  Informe</a>`
+              : `<button class="btn btn-primary" onclick="verInformesTurno('${t.id}')">Ver informes (${totalInformes})</button>`}
           ${t.estado === 'completado'
             ? `<a href="/api/turnos/${t.id}/acta" target="_blank" class="btn btn-ghost">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
@@ -1213,7 +1232,7 @@ function renderTabla(turnos){
     </table></div>`;
 }
 
-function verDetalle(t){
+async function verDetalle(t){
   const medicos = Array.isArray(t.medicos) ? t.medicos : [];
   const dicts = t.dictamenes_data || [];
   const aptLabels = { apto:'Apto', restricc:'Apto con restricciones', 'no-apto':'No apto' };
@@ -1276,6 +1295,7 @@ function verDetalle(t){
 
     <div class="modal-section">Informes médico-legales</div>
     ${informesHtml}
+    <div id="informes-extra-detalle"></div>
 
     ${t.estado==='completado' ? `
       <div class="modal-section">Acta de asistencia</div>
@@ -1293,6 +1313,33 @@ function verDetalle(t){
   });
 
   document.getElementById('modal-detalle').classList.add('open');
+
+  // Informes subidos aparte (además del que emite el sistema): se traen después para no
+  // demorar la apertura del modal con datos que la mayoría de los turnos no tiene.
+  const nExtra = Number(t.informes_extra) || 0;
+  if(nExtra){
+    const cont = document.getElementById('informes-extra-detalle');
+    cont.innerHTML = '<div style="font-size:12.5px;color:var(--text3);margin-top:8px;">Cargando informes adicionales…</div>';
+    try{
+      const r = await fetch(`/api/turnos/${t.id}/informes`, {headers:empresaHeaders()});
+      const d = await r.json();
+      cont.innerHTML = (d.ok && d.informes.length) ? d.informes.map(inf => {
+        const cuando = inf.creado_en ? new Date(inf.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
+        return `<div class="informe-card" style="margin-top:8px;">
+          <div class="informe-head">
+            <div>
+              <div class="informe-medico">${inf.titulo || inf.nombre_archivo}</div>
+              <div class="informe-numero">${cuando}</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;" onclick="verInformeAdjuntoEmpresa(${inf.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            Ver informe
+          </button>
+        </div>`;
+      }).join('') : '';
+    }catch(e){ cont.innerHTML = ''; }
+  }
 }
 
 // Cerrar el modal tocando fuera de él
