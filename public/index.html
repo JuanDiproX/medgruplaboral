@@ -3428,12 +3428,34 @@ async function obtenerMiLinkTurno(t){
   return propio ? propio.link : null;
 }
 
+// El turno ya está "en-curso" (se ve como "Unirse" en la agenda en vez de "Iniciar") — pasa
+// cuando el doc recarga la página o vuelve a la agenda a mitad de una consulta. Tiene que caer
+// en la misma pantalla embebida que "Iniciar", nunca en Daily.co suelto en una pestaña aparte,
+// porque ahí no tiene "Redactar informe" ni el resto de los botones de la consulta.
 async function unirseTurno(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
   const link = await obtenerMiLinkTurno(t);
   if(!link){ mostrarError('No pudimos generar tu link de acceso a esta videollamada. Pedile al administrador que te agregue al turno.'); return; }
-  window.open(link,'_blank');
+  document.getElementById('form-dictamen').style.display='none';
+  document.getElementById('cert-ok').style.display='none';
+  document.getElementById('notas-panel').style.display='none';
+  document.getElementById('video-container').classList.add('active');
+
+  linkVideoActual = link;
+
+  document.getElementById('daily-frame').src = link;
+  document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
+  document.getElementById('video-sala').textContent=t.sala;
+
+  document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  document.getElementById('links-box').style.display='block';
+  consultaActual=t;
+  clearInterval(timerInterval);startTimer();
+  cargarCasoDeLlamada(id);
+  const nAdj = t.informesExtra || 0;
+  document.getElementById('btn-adjuntos-llamada-txt').textContent = nAdj ? `Adjuntos (${nAdj})` : 'Adjuntos';
   addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
+  document.getElementById('video-container').scrollIntoView({behavior:'smooth'});
 }
 
 function registrarEventoTurno(turnoId,tipo,participante){
