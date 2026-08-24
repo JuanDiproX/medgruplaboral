@@ -426,6 +426,10 @@ tr{transition:background 0.15s;}
 #video-sala{display:none;}
 .video-timer{font-size:11px;}
 .video-bottombar .btn{flex:1;justify-content:center;}
+/* Con "Certificado"/"Adjuntos"/"Redactar informe"/"Finalizar" puede haber 4 botones a la vez:
+   sin esto, en un celular angosto quedan todos apretados en una sola fila sin lugar para el texto. */
+.video-actions{flex-wrap:wrap;width:100%;}
+.video-actions .btn{flex:1 1 calc(50% - 4px);min-width:0;padding:8px 6px;font-size:11px;}
 /* El panel de notas queda por encima del video fullscreen */
 #notas-panel{z-index:700 !important;}
 #notas-panel{width:calc(100vw - 24px) !important;max-height:70vh !important;right:12px !important;bottom:12px !important;left:12px !important;}
@@ -623,7 +627,7 @@ td.no-label::before{display:none;}
       <iframe id="daily-frame" allow="camera; microphone; fullscreen; display-capture" style="width:100%;height:480px;border:none;"></iframe>
       <div class="video-bottombar">
         <div class="video-timer" id="video-timer">00:00:00</div>
-        <div style="display:flex;gap:8px;">
+        <div class="video-actions" style="display:flex;gap:8px;">
           <button class="btn" id="btn-cert-llamada" onclick="abrirCertificadosDeLlamada()" style="display:none;background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-cert-llamada-txt">Certificado</span></button>
           <button class="btn" id="btn-adjuntos-llamada" onclick="abrirInformesTurno(consultaActual.id)" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);" title="Informes adicionales subidos para este turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-adjuntos-llamada-txt">Adjuntos</span></button>
           <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" title="Redactar el informe de esta consulta con ayuda de IA" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:1px solid rgba(255,255,255,0.25);box-shadow:0 2px 10px rgba(99,102,241,0.45);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Redactar informe</button>
