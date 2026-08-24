@@ -660,7 +660,12 @@ td.no-label::before{display:none;}
             <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
             <span style="color:white;font-size:12.5px;font-weight:700;">Revisá y editá el informe</span>
           </div>
-          <div style="padding:12px;"><textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea></div>
+          <div style="padding:12px;"><textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <input type="text" id="notas-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+              <button onclick="corregirInformeIA()" id="btn-corregir-ia" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
+            </div>
+          </div>
         </div>
         <div id="notas-preview-hint" style="display:none;margin-top:10px;padding:10px 12px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;font-size:11.5px;color:var(--azul);line-height:1.5;">💡 Cuando termines la consulta, cerrá esta ventana y hacé click en <strong>"Finalizar consulta"</strong> — el informe generado se guarda automáticamente al pasar al dictamen.</div>
         <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-aptitud" value="apto"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
@@ -736,7 +741,12 @@ td.no-label::before{display:none;}
                   <div style="width:24px;height:24px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">2</div>
                   <span style="color:white;font-size:13.5px;font-weight:700;">Revisá el informe generado — podés editarlo</span>
                 </div>
-                <div style="padding:16px 18px;max-height:500px;overflow-y:auto;"><textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea></div>
+                <div style="padding:16px 18px;max-height:500px;overflow-y:auto;"><textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+                  <div style="display:flex;gap:8px;margin-top:10px;">
+                    <input type="text" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+                    <button onclick="corregirInformeIA()" id="btn-corregir-ia-dict" style="padding:10px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
+                  </div>
+                </div>
               </div>
               <div id="firma-wrap" style="display:none;background:linear-gradient(135deg,#fff9e6,#fef3c7);border:1.5px solid #fbbf24;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
@@ -1716,18 +1726,30 @@ function leerCamposInformeIA(raw){
   return (info.conclusion || info.hallazgos) ? info : null;
 }
 
-async function generarInformeIA(){
+// mensajeCorreccion viene de corregirInformeIA(): cuando está presente, esta misma función
+// no arranca de cero — sigue la conversación guardada en window._iaConversacion (dictado
+// original + informe ya generado) y le suma el pedido de ajuste, así la IA corrige sobre lo
+// que ya escribió en vez de redactar todo de nuevo a ciegas.
+async function generarInformeIA(mensajeCorreccion){
+  const esCorreccion = !!mensajeCorreccion;
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
   const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
   const texto = textoEl?.value?.trim();
-  if(!texto){ mostrarError('Escribí los datos del paciente antes de generar el informe.'); return; }
+  if(!esCorreccion && !texto){ mostrarError('Escribí los datos del paciente antes de generar el informe.'); return; }
+  // El turno de la conversación guardada tiene que ser el mismo que el que está abierto ahora:
+  // si el doc terminó una consulta y arrancó otra, no hay que corregir el informe del paciente
+  // anterior sobre el de este.
+  const turnoCorrienteId = (consultaActual || turnoDictamenActual || {}).id;
+  if(esCorreccion && (!window._iaConversacion || window._iaConversacion.turnoId !== turnoCorrienteId)){
+    mostrarError('Generá el informe primero.'); return;
+  }
 
   const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
   const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
   const btn = desdeNotas ? document.getElementById('btn-generar-ia') : document.getElementById('btn-generar-ia-dict');
 
   btn.disabled=true;
-  if(btnText) btnText.textContent='Generando...';
+  if(btnText) btnText.textContent = esCorreccion ? 'Ajustando el informe...' : 'Generando...';
   if(statusEl) statusEl.style.display='flex';
 
   const turnoCtx = consultaActual || turnoDictamenActual || {};
@@ -1930,6 +1952,23 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
 
   const SYSTEM_PROMPT = esAuditoria ? PROMPT_AUDITORIA : PROMPT_PERICIAL;
 
+  // En corrección se sigue la conversación ya guardada (mismo system, mismos mensajes previos)
+  // en vez de armar el prompt inicial de nuevo: así la IA ve el informe que ya escribió.
+  const systemAEnviar = esCorreccion ? window._iaConversacion.system : SYSTEM_PROMPT;
+  const mensajesAEnviar = esCorreccion
+    ? [...window._iaConversacion.messages, {role:'user', content: mensajeCorreccion}]
+    : [{role:'user',content:`DATOS DE${esAuditoria?'L CONTROL':' LA CONSULTA'}:
+- Empresa: ${empresa}
+- Tipo de consulta: ${tipo}${esAuditoria?`
+- Modalidad: ${modalidadTexto}${turnoCtx.hora?`
+- Hora del control: ${turnoCtx.hora} hs`:''}`:''}
+- Fecha de hoy: ${fecha}${contextoDiagnostico}
+
+NOTAS DICTADAS POR EL MÉDICO:
+${texto}
+
+Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: campo vacío "" y la sección no se imprime. Devolvé SOLO el JSON.`}];
+
   // Corte propio del navegador: si la conexión se corta sin respuesta, sin esto el botón
   // se queda girando para siempre y el médico no se entera de nada.
   const cortarIA = new AbortController();
@@ -1945,19 +1984,9 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
       headers:apiHeaders(),
       signal: cortarIA.signal,
       body: JSON.stringify({
-        system: SYSTEM_PROMPT,
+        system: systemAEnviar,
         max_tokens: 8000,
-        messages:[{role:'user',content:`DATOS DE${esAuditoria?'L CONTROL':' LA CONSULTA'}:
-- Empresa: ${empresa}
-- Tipo de consulta: ${tipo}${esAuditoria?`
-- Modalidad: ${modalidadTexto}${turnoCtx.hora?`
-- Hora del control: ${turnoCtx.hora} hs`:''}`:''}
-- Fecha de hoy: ${fecha}${contextoDiagnostico}
-
-NOTAS DICTADAS POR EL MÉDICO:
-${texto}
-
-Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: campo vacío "" y la sección no se imprime. Devolvé SOLO el JSON.`}]
+        messages: mensajesAEnviar
       })
     });
 
@@ -2009,6 +2038,9 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     }
 
     window._informeIA = info;
+    // Se guarda recién acá, con la respuesta ya confirmada válida: si se guardara antes y la
+    // IA devolviera algo ilegible, la próxima corrección arrancaría de un turno roto.
+    window._iaConversacion = { system: systemAEnviar, messages: [...mensajesAEnviar, {role:'assistant', content: rawText}], turnoId: turnoCorrienteId };
     const destino = desdeNotas ? 'notas' : 'dict';
     const set = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined && val !== null) el.value = val; };
 
@@ -2077,6 +2109,24 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     clearTimeout(avisoLento);
     btn.disabled=false;
     if(statusEl) statusEl.style.display='none';
+  }
+}
+
+// Pedirle un ajuste puntual a la IA sobre el informe ya generado (sección "Corregir" debajo
+// del preview), sin tener que volver a dictar todo de nuevo.
+async function corregirInformeIA(){
+  const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
+  const input = document.getElementById(desdeNotas ? 'notas-correccion-texto' : 'dict-correccion-texto');
+  const btnCorregir = document.getElementById(desdeNotas ? 'btn-corregir-ia' : 'btn-corregir-ia-dict');
+  const pedido = input?.value?.trim();
+  if(!pedido){ mostrarError('Escribí qué querés corregir o agregar.'); return; }
+  if(!window._iaConversacion){ mostrarError('Generá el informe primero.'); return; }
+  if(btnCorregir){ btnCorregir.disabled=true; btnCorregir.textContent='Ajustando…'; }
+  try{
+    await generarInformeIA(pedido);
+    if(input) input.value='';
+  } finally {
+    if(btnCorregir){ btnCorregir.disabled=false; btnCorregir.textContent='Corregir'; }
   }
 }
 
