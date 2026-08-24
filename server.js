@@ -2166,7 +2166,7 @@ li{margin-bottom:5px;}
 
 <div class="titulo-doc">
   <h1>Informe de Evaluación${turnoInfo?.tipo ? ' — ' + turnoInfo.tipo : ''}</h1>
-  <div class="subtitulo">Medicina del Trabajo · Psiquiatría Forense</div>
+  <div class="subtitulo">Medicina del Trabajo</div>
 </div>
 
 <div class="destinatario">
