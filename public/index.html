@@ -284,6 +284,7 @@ tr:hover td{background:var(--azul-light);}
 .modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:fadeUp 0.2s ease both;}
 .modal-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.3px;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);}
+.adjunto-row:hover{box-shadow:var(--shadow-sm);border-color:var(--azul-mid);}
 .loading{display:none;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:0.5rem 0;}
 .spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--azul);border-radius:50%;animation:spin 0.7s linear infinite;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
@@ -1418,7 +1419,7 @@ td.no-label::before{display:none;}
     </div>
     <div id="inf-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('modal-informes-caso').classList.remove('open')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-informes-caso').classList.remove('open')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 6L6 18M6 6l12 12"/></svg>Cerrar</button>
     </div>
   </div>
 </div>
@@ -5044,36 +5045,53 @@ async function abrirInformesTurno(id){
 
 async function recargarInformesCaso(){
   const lista = document.getElementById('inf-lista');
-  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Cargando...</div>';
+  lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);padding:14px 0;text-align:center;">Cargando…</div>';
   try{
     const r = await fetch(urlBaseInformes(), {headers:apiHeaders()});
     const data = await r.json();
     if(!data.ok) throw new Error(data.error);
     if(!data.informes.length){
-      lista.innerHTML = '<div style="font-size:12.5px;color:var(--text3);">Todavía no hay informes subidos. El informe que se emite desde el sistema no aparece acá: la empresa lo ve igual.</div>';
+      lista.innerHTML = `<div style="text-align:center;padding:22px 10px;color:var(--text3);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:30px;height:30px;opacity:0.5;margin-bottom:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        <div style="font-size:12.5px;line-height:1.5;">Todavía no hay informes subidos.<br>El informe que se emite desde el sistema no aparece acá: la empresa lo ve igual.</div>
+      </div>`;
       return;
     }
     const esAdmin = usuarioActual?.rol === 'admin';
     lista.innerHTML = data.informes.map((inf, i) => {
       const peso = inf.tamano_bytes ? (inf.tamano_bytes/1024 < 1024 ? Math.round(inf.tamano_bytes/1024)+' KB' : (inf.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
       const cuando = inf.creado_en ? new Date(inf.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
-      return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;">
-          <div style="font-size:13px;font-weight:600;word-break:break-all;">${inf.titulo || inf.nombre_archivo}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Informe ${i+1}${inf.titulo?' · '+inf.nombre_archivo:''}${peso?' · '+peso:''}${cuando?' · '+cuando:''}${inf.subido_por?' · '+inf.subido_por:''}</div>
+      const esImg = (inf.tipo_mime||'').startsWith('image/');
+      const iconPath = esImg
+        ? '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'
+        : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>';
+      return `<div class="adjunto-row" style="border:1px solid var(--border2);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;justify-content:space-between;flex-wrap:wrap;transition:box-shadow .15s,border-color .15s;">
+        <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+          <div style="width:36px;height:36px;border-radius:9px;background:${esImg?'var(--verde-light)':'var(--azul-light)'};color:${esImg?'var(--verde)':'var(--azul)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;">${iconPath}</svg>
+          </div>
+          <div style="min-width:0;">
+            <div style="font-size:13px;font-weight:600;word-break:break-word;">${inf.titulo || inf.nombre_archivo}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Informe ${i+1}${inf.titulo?' · '+inf.nombre_archivo:''}${peso?' · '+peso:''}${cuando?' · '+cuando:''}${inf.subido_por?' · '+inf.subido_por:''}</div>
+          </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;" onclick="verInformeAdjunto(${inf.id})">Ver</button>
-          ${esAdmin?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);" onclick="borrarInformeAdjunto(${inf.id})">Quitar</button>`:''}
+          <button class="btn btn-primary" style="padding:7px 14px;font-size:12px;box-shadow:none;" onclick="verInformeAdjunto(${inf.id}, this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>Ver</button>
+          ${esAdmin?`<button class="btn btn-danger" style="padding:7px 12px;font-size:12px;" onclick="borrarInformeAdjunto(${inf.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Quitar</button>`:''}
         </div>
       </div>`;
     }).join('');
   }catch(e){ lista.innerHTML = '<div style="font-size:12.5px;color:var(--rosa-dark);">No se pudieron cargar los informes.</div>'; }
 }
 
-// Mismo motivo que en los certificados: el endpoint valida por header, un <a href> no lo manda
-async function verInformeAdjunto(id){
+// Mismo motivo que en los certificados: el endpoint valida por header, un <a href> no lo manda.
+// La pestaña se abre en el mismo click (si no, el navegador la bloquea como popup) y se va
+// llenando en segundo plano: la ventana actual (agenda, videollamada) sigue 100% usable mientras
+// tanto, no se congela nada.
+async function verInformeAdjunto(id, btn){
   const pestana = window.open('', '_blank');
+  const txtOriginal = btn ? btn.innerHTML : null;
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Abriendo…'; }
   try{
     const r = await fetch('/api/ausentismo/informes/' + id, { headers: apiHeaders() });
     if(!r.ok){
@@ -5088,6 +5106,8 @@ async function verInformeAdjunto(id){
   }catch(e){
     if(pestana) pestana.close();
     mostrarError('No se pudo abrir el informe');
+  }finally{
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = txtOriginal; }
   }
 }
 
