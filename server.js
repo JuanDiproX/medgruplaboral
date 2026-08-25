@@ -1678,10 +1678,9 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
     const chk = await pool.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'No encontrado' });
 
-    // Admin puede editar sin límite de tiempo. Médico solo dentro de las primeras 5 horas.
+    // El dictamen queda editable siempre, sin límite de horas — el médico tiene que poder
+    // corregirlo a mano (o con la IA) el tiempo que haga falta, no solo el mismo día.
     const esAdmin = req.usuario.rol === 'admin';
-    const horasPasadas = (Date.now()-new Date(chk.rows[0].creado_en).getTime())/(1000*60*60);
-    if (!esAdmin && horasPasadas > 5) return res.status(403).json({ error: 'No editable: pasaron más de 5 horas' });
 
     const {
       aptitud, dias_reposo, derivacion, indicaciones,
@@ -2187,8 +2186,8 @@ li{margin-bottom:5px;}
   ${puesto!=='—'?`<div class="bullet-item">Puesto de Trabajo: ${puesto}</div>`:''}
   ${antiguedad!=='—'?`<div class="bullet-item">Antigüedad: ${antiguedad}</div>`:''}
   ${d.obra_social?`<div class="bullet-item">Obra Social: ${d.obra_social}</div>`:''}
-  ${sitLicencia!=='—'?`<div class="bullet-item">Situación de Licencia: ${sitLicencia}</div>`:''}
 </div>
+${sitLicencia!=='—'?`<p style="font-weight:600;margin-bottom:4px;">Situación de Licencia:</p><p style="white-space:pre-wrap;">${sitLicencia}</p>`:''}
 
 ${metodologia?`<h2>${romano(n())}. Metodología adoptada</h2><p style="white-space:pre-wrap;">${metodologia}</p>${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}`:''}
 
