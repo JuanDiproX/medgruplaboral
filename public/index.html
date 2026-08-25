@@ -2081,7 +2081,13 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
         // sin escapar para romper todo el JSON. Acá se leen los campos uno por uno en vez de
         // exigir que el texto sea JSON perfecto.
         info = leerCamposInformeIA(rawText);
-        if(!info) throw new Error('No se pudo leer la respuesta de la IA. Volvé a generar.');
+        if(!info){
+          // Se deja en consola completo para poder ver qué contestó realmente la IA cuando
+          // esto vuelva a pasar — el cartel de error solo alcanza para un fragmento.
+          console.error('Respuesta de la IA que no se pudo interpretar como informe:', rawText);
+          const fragmento = rawText.slice(0, 300) + (rawText.length > 300 ? '…' : '');
+          throw new Error('No se pudo leer la respuesta de la IA. Volvé a generar. Lo que contestó: "' + fragmento + '"');
+        }
         console.warn('Informe rescatado con el lector tolerante (el JSON venía mal formado).');
       }
     }
