@@ -139,6 +139,10 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 .card-title svg{width:15px;height:15px;color:var(--azul);pointer-events:none;stroke:var(--azul);opacity:0.85;}
 .card-body{padding:1.4rem;}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+/* El log de actividad y la columna lateral de la agenda solo le sirven al admin (para el
+   acta ya queda el registro server-side); al médico se le da todo el ancho en vez de dejarle
+   medio panel vacío. */
+.two-col.sin-log-lateral{grid-template-columns:1fr;}
 /* Las celdas de un grid tampoco se achican solas: sin esto una columna con texto largo
    desborda sobre la otra en vez de recortarse. */
 .two-col > *{min-width:0;}
@@ -681,7 +685,7 @@ td.no-label::before{display:none;}
       <div class="metric-card mc-green"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg></div><div class="metric-body"><div class="metric-lbl">Hoy</div><div class="metric-val" id="cnt-hoy">0</div><div class="metric-hint">turnos para hoy</div></div></div>
     </div>
 
-    <div class="two-col">
+    <div class="two-col sin-log-lateral" id="agenda-cols">
       <div>
         <div class="card" id="turnos-card">
           <div class="card-hdr">
@@ -788,7 +792,7 @@ td.no-label::before{display:none;}
         </div>
       </div>
       <div>
-        <div class="card">
+        <div class="card" id="card-log-actividad" style="display:none;">
           <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Log de actividad</div><span class="badge b-gray" id="log-count">0</span></div>
           <div class="card-body" style="padding-top:0.75rem;max-height:380px;overflow-y:auto;">
             <div class="timeline" id="log-timeline"><div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Sin actividad aún</div></div>
@@ -2492,6 +2496,8 @@ function mostrarApp(){
     document.getElementById('nav-empresas').style.display='flex';
     document.getElementById('nav-medicos').style.display='flex';
     document.getElementById('nav-presupuestos').style.display='flex';
+    document.getElementById('card-log-actividad').style.display='block';
+    document.getElementById('agenda-cols').classList.remove('sin-log-lateral');
   }
   // Resetear visibilidad de la agenda (pueden haber quedado ocultos si se cerró la pestaña en medio de un dictamen)
   const metricsEl = document.getElementById('metrics-row');
