@@ -2918,8 +2918,10 @@ function renderAgenda(){
 
   document.getElementById('agenda-lista').innerHTML = avisoHtml + lista.map((t,idx)=>{
     const fl=new Date(t.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':'<span class="badge b-gray">Pendiente</span>';
     const prox = estadoProximidad(t);
+    // "Pendiente" no suma nada al lado del badge de urgencia (⏰ en 10 min ya implica que está
+    // pendiente): se muestra el uno o el otro, nunca los dos juntos.
+    const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':(prox?'':'<span class="badge b-gray">Pendiente</span>');
     const claseFila = prox==='inminente'?'turno-item inminente':prox==='proximo'?'turno-item proximo':'turno-item';
     let badgeUrg='';
     if(prox==='inminente'){
