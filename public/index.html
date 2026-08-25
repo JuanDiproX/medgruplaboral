@@ -1736,69 +1736,10 @@ function leerCamposInformeIA(raw){
   return (info.conclusion || info.hallazgos) ? info : null;
 }
 
-// mensajeCorreccion viene de corregirInformeIA(): cuando está presente, esta misma función
-// no arranca de cero — sigue la conversación guardada en window._iaConversacion (dictado
-// original + informe ya generado) y le suma el pedido de ajuste, así la IA corrige sobre lo
-// que ya escribió en vez de redactar todo de nuevo a ciegas.
-async function generarInformeIA(mensajeCorreccion){
-  const esCorreccion = !!mensajeCorreccion;
-  const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
-  const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
-  const texto = textoEl?.value?.trim();
-  if(!esCorreccion && !texto){ mostrarError('Escribí los datos del paciente antes de generar el informe.'); return; }
-  // El turno de la conversación guardada tiene que ser el mismo que el que está abierto ahora:
-  // si el doc terminó una consulta y arrancó otra, no hay que corregir el informe del paciente
-  // anterior sobre el de este.
-  const turnoCorrienteId = (consultaActual || turnoDictamenActual || {}).id;
-  if(esCorreccion && (!window._iaConversacion || window._iaConversacion.turnoId !== turnoCorrienteId)){
-    mostrarError('Generá el informe primero.'); return;
-  }
-
-  // Foto de "antes de corregir": si la corrección sale peor, deshacerCorreccionIA() vuelve a esto.
-  // Va con turnoId para que un "Deshacer" que quedó visible de una consulta anterior nunca le
-  // pise los campos al paciente que está abierto ahora.
-  const snapshotParaDeshacer = esCorreccion ? {
-    info: window._informeIA,
-    destino: desdeNotas ? 'notas' : 'dict',
-    previewText: document.getElementById(desdeNotas ? 'notas-preview-text' : 'informe-preview-text')?.value || '',
-    conversacion: window._iaConversacion,
-    turnoId: turnoCorrienteId
-  } : null;
-
-  const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
-  const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
-  const btn = desdeNotas ? document.getElementById('btn-generar-ia') : document.getElementById('btn-generar-ia-dict');
-
-  btn.disabled=true;
-  if(btnText) btnText.textContent = esCorreccion ? 'Ajustando el informe...' : 'Generando...';
-  if(statusEl) statusEl.style.display='flex';
-
-  const turnoCtx = consultaActual || turnoDictamenActual || {};
-  const empresa = turnoCtx.empresa || '';
-  const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
-  // El control de ausentismo se informa corto —qué refirió el trabajador y si estaba en su
-  // domicilio—, no como pericia. Es otro documento, así que es otro prompt.
-  const esAuditoria = tipo === 'Control de ausentismo';
-  const modalidadTexto = turnoCtx.modalidad === 'presencial'
-    ? 'visita domiciliaria presencial'
-    : 'control remoto por videollamada a través de la plataforma MEDGRUP';
-  const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
-
-  // Diagnóstico previo cargado al crear/editar el turno — se pasa a la IA como contexto
-  let contextoDiagnostico = '';
-  if(turnoCtx.diagnosticoPrevio || turnoCtx.medicoTratante || turnoCtx.diasReposoPrevio > 0){
-    const partes = [];
-    if(turnoCtx.diagnosticoPrevio) partes.push(`- Diagnóstico previo del paciente: ${turnoCtx.diagnosticoPrevio}`);
-    if(turnoCtx.diasReposoPrevio > 0) partes.push(`- Días de reposo indicados previamente: ${turnoCtx.diasReposoPrevio}`);
-    if(turnoCtx.medicoTratante) partes.push(`- Médico tratante que emitió el diagnóstico: ${turnoCtx.medicoTratante}`);
-    // El informe de ausentismo no tiene secciones numeradas: mandarlo a la "sección V" ahí
-    // sería pedirle una estructura que ese documento no tiene.
-    contextoDiagnostico = esAuditoria
-      ? `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (es contexto; mencionalo solo si el médico lo retomó en su dictado):\n${partes.join('\n')}`
-      : `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
-  }
-
-  const PROMPT_AUDITORIA = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
+// Movidos a nivel de módulo (antes vivían adentro de generarInformeIA) para que
+// cargarDictamenEnFormulario() también pueda armar una conversación de IA al abrir
+// un dictamen ya emitido, sin duplicar estos prompts.
+const PROMPT_AUDITORIA = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
 
 Esto NO es una pericia. Es el informe de un CONTROL DE AUSENTISMO domiciliario, y es un
 documento corto. La empresa necesita saber dos cosas: qué refirió el trabajador y si estaba
@@ -1991,6 +1932,73 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "alerta_diagnostico_previo": ""
 }`;
 
+// mensajeCorreccion viene de corregirInformeIA(): cuando está presente, esta misma función
+// no arranca de cero — sigue la conversación guardada en window._iaConversacion (dictado
+// original + informe ya generado) y le suma el pedido de ajuste, así la IA corrige sobre lo
+// que ya escribió en vez de redactar todo de nuevo a ciegas.
+async function generarInformeIA(mensajeCorreccion){
+  const esCorreccion = !!mensajeCorreccion;
+  const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
+  const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
+  const texto = textoEl?.value?.trim();
+  if(!esCorreccion && !texto){ mostrarError('Escribí los datos del paciente antes de generar el informe.'); return; }
+  // El turno de la conversación guardada tiene que ser el mismo que el que está abierto ahora:
+  // si el doc terminó una consulta y arrancó otra (o abrió un dictamen viejo sin recargar la
+  // página), no hay que corregir el informe de otro paciente sobre el de este. consultaActual
+  // nunca se limpia al terminar una llamada, así que hay que elegir según desdeNotas y no con
+  // un || (si no, un turno viejo en memoria le gana al que está realmente abierto).
+  const turnoCorrienteId = desdeNotas ? consultaActual?.id : turnoDictamenActual?.id;
+  if(esCorreccion && (!window._iaConversacion || window._iaConversacion.turnoId !== turnoCorrienteId)){
+    mostrarError('Generá el informe primero.'); return;
+  }
+
+  // Foto de "antes de corregir": si la corrección sale peor, deshacerCorreccionIA() vuelve a esto.
+  // Va con turnoId para que un "Deshacer" que quedó visible de una consulta anterior nunca le
+  // pise los campos al paciente que está abierto ahora.
+  const snapshotParaDeshacer = esCorreccion ? {
+    info: window._informeIA,
+    destino: desdeNotas ? 'notas' : 'dict',
+    previewText: document.getElementById(desdeNotas ? 'notas-preview-text' : 'informe-preview-text')?.value || '',
+    conversacion: window._iaConversacion,
+    turnoId: turnoCorrienteId
+  } : null;
+
+  const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
+  const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
+  const btn = desdeNotas ? document.getElementById('btn-generar-ia') : document.getElementById('btn-generar-ia-dict');
+
+  btn.disabled=true;
+  if(btnText) btnText.textContent = esCorreccion ? 'Ajustando el informe...' : 'Generando...';
+  if(statusEl) statusEl.style.display='flex';
+
+  // Mismo motivo que turnoCorrienteId: elegir por desdeNotas, no por ||, para no agarrar un
+  // turno viejo que quedó en consultaActual de una llamada anterior.
+  const turnoCtx = (desdeNotas ? consultaActual : turnoDictamenActual) || {};
+  const empresa = turnoCtx.empresa || '';
+  const tipo = turnoCtx.tipo || 'evaluación médico-laboral';
+  // El control de ausentismo se informa corto —qué refirió el trabajador y si estaba en su
+  // domicilio—, no como pericia. Es otro documento, así que es otro prompt.
+  const esAuditoria = tipo === 'Control de ausentismo';
+  const modalidadTexto = turnoCtx.modalidad === 'presencial'
+    ? 'visita domiciliaria presencial'
+    : 'control remoto por videollamada a través de la plataforma MEDGRUP';
+  const fecha = turnoCtx.fecha ? new Date(turnoCtx.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}) : new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Diagnóstico previo cargado al crear/editar el turno — se pasa a la IA como contexto
+  let contextoDiagnostico = '';
+  if(turnoCtx.diagnosticoPrevio || turnoCtx.medicoTratante || turnoCtx.diasReposoPrevio > 0){
+    const partes = [];
+    if(turnoCtx.diagnosticoPrevio) partes.push(`- Diagnóstico previo del paciente: ${turnoCtx.diagnosticoPrevio}`);
+    if(turnoCtx.diasReposoPrevio > 0) partes.push(`- Días de reposo indicados previamente: ${turnoCtx.diasReposoPrevio}`);
+    if(turnoCtx.medicoTratante) partes.push(`- Médico tratante que emitió el diagnóstico: ${turnoCtx.medicoTratante}`);
+    // El informe de ausentismo no tiene secciones numeradas: mandarlo a la "sección V" ahí
+    // sería pedirle una estructura que ese documento no tiene.
+    contextoDiagnostico = esAuditoria
+      ? `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (es contexto; mencionalo solo si el médico lo retomó en su dictado):\n${partes.join('\n')}`
+      : `\n\nDIAGNÓSTICO PREVIO CARGADO EN EL TURNO (usalo en la sección V de análisis médico-legal y consideralo para las conclusiones):\n${partes.join('\n')}`;
+  }
+
+
   const SYSTEM_PROMPT = esAuditoria ? PROMPT_AUDITORIA : PROMPT_PERICIAL;
 
   // En corrección se sigue la conversación ya guardada (mismo system, mismos mensajes previos)
@@ -2099,7 +2107,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       const previewText = document.getElementById('notas-preview-text');
       const previewHint = document.getElementById('notas-preview-hint');
       if(previewWrap && previewText){
-        previewText.value = armarPreviewInforme(info);
+        previewText.value = armarPreviewInforme(info, consultaActual);
         previewWrap.style.display = 'block';
         if(previewHint) previewHint.style.display = 'block';
       }
@@ -2123,7 +2131,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       const previewText = document.getElementById('informe-preview-text');
       const firmaWrap = document.getElementById('firma-wrap');
       if(previewWrap && previewText){
-        previewText.value = armarPreviewInforme(info);
+        previewText.value = armarPreviewInforme(info, turnoDictamenActual);
         previewWrap.style.display = 'block';
       }
       mostrarAlertaDiagnostico('dict-alerta-diag', info.alerta_diagnostico_previo);
@@ -2193,7 +2201,7 @@ function mostrarAlertaDiagnostico(id, texto){
 function deshacerCorreccionIA(){
   const snap = window._iaSnapshotAnterior;
   if(!snap) return;
-  const turnoCorrienteId = (consultaActual || turnoDictamenActual || {}).id;
+  const turnoCorrienteId = snap.destino === 'notas' ? consultaActual?.id : turnoDictamenActual?.id;
   if(snap.turnoId !== turnoCorrienteId){
     // Quedó de una consulta anterior: no tiene nada que ver con lo que está abierto ahora.
     window._iaSnapshotAnterior = null;
@@ -2306,9 +2314,12 @@ function limpiarFirma(){
   document.getElementById('firma-status').style.fontWeight = 'normal';
 }
 
-function armarPreviewInforme(info){
+// ctxTurno se pasa explícito desde el llamador (no se adivina con consultaActual||turnoDictamenActual:
+// consultaActual queda pisado con la última llamada aunque haga rato que terminó, y podía
+// mostrar la empresa/tipo de un paciente anterior en el preview de este).
+function armarPreviewInforme(info, ctxTurno){
   const fecha = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
-  const ctx = consultaActual||turnoDictamenActual||{};
+  const ctx = ctxTurno||{};
   const empresa = ctx.empresa || '';
   const partes = [];
 
@@ -3945,7 +3956,7 @@ async function abrirDictamenParaTurno(t, dur){
       const previewDictWrap = document.getElementById('informe-preview-wrap');
       const firmaWrap = document.getElementById('firma-wrap');
       if(previewDict && previewNotas){
-        previewDict.value = previewNotas.value || armarPreviewInforme(info);
+        previewDict.value = previewNotas.value || armarPreviewInforme(info, turnoDictamenActual);
         if(previewDictWrap) previewDictWrap.style.display = 'block';
       }
       if(firmaWrap){
@@ -4036,6 +4047,50 @@ function cargarDictamenEnFormulario(d){
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     Actualizar mi dictamen
   `;
+
+  // Reconstruye el informe con la misma forma que devuelve la IA al generarlo, para poder
+  // usar "Corregir" sobre un dictamen que ya quedó guardado de otra sesión — sin esto,
+  // window._iaConversacion no existe (vive solo en memoria) y "Corregir" no tendría de dónde partir.
+  const infoReconstruido = {
+    apellido_nombre: d.apellido_nombre || d.paciente || '', dni: d.paciente_dni || '', edad: d.edad || '',
+    fecha_nacimiento: d.fecha_nacimiento || '', lugar_nacimiento: d.lugar_nacimiento || '',
+    estado_civil: d.estado_civil || '', estudios: d.estudios || '',
+    puesto: d.puesto || d.profesion || '', antiguedad: d.antiguedad || '',
+    obra_social: d.obra_social || '', situacion_licencia: d.situacion_licencia || '',
+    metodologia: d.metodologia || '', antecedentes: d.antecedentes || '',
+    hallazgos: d.hallazgos || '', analisis: d.analisis || '',
+    conclusion: d.conclusion || '', diagnostico_cie: d.diagnostico_cie || '',
+    aptitud: d.aptitud || 'apto', dias_reposo: d.dias_reposo || 0,
+    derivacion: d.derivacion || 'Sin derivación', indicaciones: d.indicaciones || '',
+    alerta_diagnostico_previo: ''
+  };
+  ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
+    let el = document.getElementById('ia-campo-'+k);
+    if(!el){ el=document.createElement('input'); el.type='hidden'; el.id='ia-campo-'+k; document.body.appendChild(el); }
+    el.value = infoReconstruido[k] || '';
+  });
+  window._informeIA = infoReconstruido;
+  const esAuditoriaExistente = turnoDictamenActual?.tipo === 'Control de ausentismo';
+  window._iaConversacion = {
+    system: esAuditoriaExistente ? PROMPT_AUDITORIA : PROMPT_PERICIAL,
+    messages: [
+      { role:'user', content: 'Este es el informe ya emitido, en el mismo JSON que usás para redactarlo. A partir de acá te voy a pedir ajustes puntuales sobre este mismo informe.' },
+      { role:'assistant', content: JSON.stringify(infoReconstruido) }
+    ],
+    turnoId: turnoDictamenActual?.id
+  };
+  const previewWrapExistente = document.getElementById('informe-preview-wrap');
+  const previewTextExistente = document.getElementById('informe-preview-text');
+  if(previewWrapExistente && previewTextExistente){
+    previewTextExistente.value = armarPreviewInforme(infoReconstruido, turnoDictamenActual);
+    previewWrapExistente.style.display = 'block';
+  }
+  mostrarAlertaDiagnostico('dict-alerta-diag', '');
+  const btnDeshacerExistente = document.getElementById('btn-deshacer-ia-dict');
+  if(btnDeshacerExistente) btnDeshacerExistente.style.display = 'none';
+  const correccionInputExistente = document.getElementById('dict-correccion-texto');
+  if(correccionInputExistente) correccionInputExistente.value = '';
+
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
