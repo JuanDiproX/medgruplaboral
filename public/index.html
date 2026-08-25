@@ -2004,8 +2004,18 @@ async function generarInformeIA(mensajeCorreccion){
   // En corrección se sigue la conversación ya guardada (mismo system, mismos mensajes previos)
   // en vez de armar el prompt inicial de nuevo: así la IA ve el informe que ya escribió.
   const systemAEnviar = esCorreccion ? window._iaConversacion.system : SYSTEM_PROMPT;
+  // Ante un pedido de corrección largo o con mucho detalle (ej: un impugnatorio completo con
+  // discordancias y cómputos), la IA a veces respondía con una pregunta aclaratoria en vez de
+  // aplicar el cambio — texto que no es JSON y rompe el parseo. Este envoltorio insiste en que
+  // corrija directo y devuelva el JSON completo, nunca una pregunta.
   const mensajesAEnviar = esCorreccion
-    ? [...window._iaConversacion.messages, {role:'user', content: mensajeCorreccion}]
+    ? [...window._iaConversacion.messages, {role:'user', content:
+        'Aplicá vos mismo este ajuste sobre el informe que diste en tu respuesta anterior y ' +
+        'devolvé el JSON COMPLETO actualizado, con la misma forma y todas las claves de siempre ' +
+        '— no un resumen, no una pregunta, no texto conversacional. Si el pedido no aclara algo ' +
+        'puntual, usá tu mejor criterio dentro de las reglas que ya tenés; no pidas más ' +
+        'información. Respondé ÚNICAMENTE con el JSON.\n\nAJUSTE PEDIDO POR EL MÉDICO:\n' + mensajeCorreccion
+      }]
     : [{role:'user',content:`DATOS DE${esAuditoria?'L CONTROL':' LA CONSULTA'}:
 - Empresa: ${empresa}
 - Tipo de consulta: ${tipo}${esAuditoria?`
@@ -2086,7 +2096,12 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
           // esto vuelva a pasar — el cartel de error solo alcanza para un fragmento.
           console.error('Respuesta de la IA que no se pudo interpretar como informe:', rawText);
           const fragmento = rawText.slice(0, 300) + (rawText.length > 300 ? '…' : '');
-          throw new Error('No se pudo leer la respuesta de la IA. Volvé a generar. Lo que contestó: "' + fragmento + '"');
+          // Si ni siquiera parece JSON, lo más probable es que haya respondido con una pregunta
+          // en vez de corregir — el aviso al médico tiene que decirle qué hacer, no solo que falló.
+          const pistaCorreccion = (esCorreccion && !rawText.includes('{'))
+            ? ' Parece que te devolvió una pregunta en vez de corregir: probá un pedido más corto y puntual (ej. "cambiá la conclusión a...", "sacá tal certificado del cómputo") en vez de pegar el documento completo, y volvé a tocar Corregir.'
+            : '';
+          throw new Error('No se pudo leer la respuesta de la IA.' + pistaCorreccion + ' Lo que contestó: "' + fragmento + '"');
         }
         console.warn('Informe rescatado con el lector tolerante (el JSON venía mal formado).');
       }
