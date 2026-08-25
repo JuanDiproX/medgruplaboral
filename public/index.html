@@ -660,10 +660,13 @@ td.no-label::before{display:none;}
             <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
             <span style="color:white;font-size:12.5px;font-weight:700;">Revisá y editá el informe</span>
           </div>
-          <div style="padding:12px;"><textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+          <div style="padding:12px;">
+            <div id="notas-alerta-diag" style="display:none;margin-bottom:10px;padding:9px 12px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:11.5px;color:#92400e;line-height:1.5;"></div>
+            <textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
             <div style="display:flex;gap:6px;margin-top:8px;">
               <input type="text" id="notas-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
               <button onclick="corregirInformeIA()" id="btn-corregir-ia" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
+              <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia" style="display:none;padding:9px 12px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
             </div>
           </div>
         </div>
@@ -741,10 +744,13 @@ td.no-label::before{display:none;}
                   <div style="width:24px;height:24px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">2</div>
                   <span style="color:white;font-size:13.5px;font-weight:700;">Revisá el informe generado — podés editarlo</span>
                 </div>
-                <div style="padding:16px 18px;max-height:500px;overflow-y:auto;"><textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+                <div style="padding:16px 18px;max-height:500px;overflow-y:auto;">
+                  <div id="dict-alerta-diag" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:12px;color:#92400e;line-height:1.5;"></div>
+                  <textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
                   <div style="display:flex;gap:8px;margin-top:10px;">
                     <input type="text" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
                     <button onclick="corregirInformeIA()" id="btn-corregir-ia-dict" style="padding:10px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
+                    <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia-dict" style="display:none;padding:10px 14px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
                   </div>
                 </div>
               </div>
@@ -1744,6 +1750,17 @@ async function generarInformeIA(mensajeCorreccion){
     mostrarError('Generá el informe primero.'); return;
   }
 
+  // Foto de "antes de corregir": si la corrección sale peor, deshacerCorreccionIA() vuelve a esto.
+  // Va con turnoId para que un "Deshacer" que quedó visible de una consulta anterior nunca le
+  // pise los campos al paciente que está abierto ahora.
+  const snapshotParaDeshacer = esCorreccion ? {
+    info: window._informeIA,
+    destino: desdeNotas ? 'notas' : 'dict',
+    previewText: document.getElementById(desdeNotas ? 'notas-preview-text' : 'informe-preview-text')?.value || '',
+    conversacion: window._iaConversacion,
+    turnoId: turnoCorrienteId
+  } : null;
+
   const btnText = desdeNotas ? document.getElementById('btn-ia-text') : document.getElementById('btn-ia-dict-text');
   const statusEl = desdeNotas ? document.getElementById('ia-status') : document.getElementById('ia-dict-status');
   const btn = desdeNotas ? document.getElementById('btn-generar-ia') : document.getElementById('btn-generar-ia-dict');
@@ -1826,6 +1843,15 @@ Dos campos, y solo esos:
 - Si el médico ya dio diagnóstico, días de reposo o aptitud, respetá exactamente lo que dijo.
 - Nunca escribas "Sin datos", "No especificado", "N/A": esos campos van vacíos "".
 
+=== ALERTA POR DIAGNÓSTICO PREVIO (campo "alerta_diagnostico_previo") ===
+Si en el mensaje te pasaron un diagnóstico previo cargado en el turno (reposo indicado, médico
+tratante) Y lo que dictó el médico en este control lo contradice de forma clara y concreta —por
+ejemplo, el reposo previo sigue vigente pero el médico dio de alta o dictó una aptitud sin
+restricciones, o al revés—, escribí en este campo una frase breve y neutral describiendo la
+contradicción, para que el médico la vea antes de firmar. Si no hay diagnóstico previo cargado,
+o hay uno pero no lo contradice, o la relación no es clara, dejá el campo vacío "". Ante la duda,
+vacío: una alerta que no corresponde es peor que no alertar.
+
 === FORMATO DE LA RESPUESTA ===
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
 2. CUIDADO CON LAS COMILLAS: las comillas internas van escapadas como \\" y los saltos de línea
@@ -1843,7 +1869,8 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
-  "indicaciones": "indicaciones"
+  "indicaciones": "indicaciones",
+  "alerta_diagnostico_previo": ""
 }`;
 
   const PROMPT_PERICIAL = `Sos el asistente de redacción del Dr. Raúl Rolando Barboza, Psiquiatra Forense y Médico del Trabajo (MN 102128 – MP 603).
@@ -1918,6 +1945,15 @@ desmentir y lo primero que mira un abogado.
   esos campos van vacíos "".
 - NO agregues el cierre "Es todo cuanto puedo afirmar..."; se imprime aparte.
 
+=== ALERTA POR DIAGNÓSTICO PREVIO (campo "alerta_diagnostico_previo") ===
+Si en el mensaje te pasaron un diagnóstico previo cargado en el turno (reposo indicado, médico
+tratante) Y la conclusión a la que llega este informe lo contradice de forma clara y concreta
+—por ejemplo, el reposo previo sigue vigente pero acá se concluye aptitud sin restricciones, o
+al revés—, escribí en este campo una frase breve y neutral describiendo la contradicción, para
+que el médico la vea antes de firmar. Si no hay diagnóstico previo cargado, o hay uno pero no lo
+contradice, o la relación no es clara, dejá el campo vacío "". Ante la duda, vacío: una alerta
+que no corresponde es peor que no alertar.
+
 === FORMATO DE LA RESPUESTA ===
 1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
 2. CUIDADO CON LAS COMILLAS: si citás textualmente al paciente, escribí las comillas internas
@@ -1947,7 +1983,8 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
-  "indicaciones": "indicaciones"
+  "indicaciones": "indicaciones",
+  "alerta_diagnostico_previo": ""
 }`;
 
   const SYSTEM_PROMPT = esAuditoria ? PROMPT_AUDITORIA : PROMPT_PERICIAL;
@@ -2062,6 +2099,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
         previewWrap.style.display = 'block';
         if(previewHint) previewHint.style.display = 'block';
       }
+      mostrarAlertaDiagnostico('notas-alerta-diag', info.alerta_diagnostico_previo);
       window._informeIAEnVivo = info;
       guardarNotaBorrador();
     } else {
@@ -2084,10 +2122,19 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
         previewText.value = armarPreviewInforme(info);
         previewWrap.style.display = 'block';
       }
+      mostrarAlertaDiagnostico('dict-alerta-diag', info.alerta_diagnostico_previo);
       if(firmaWrap){
         firmaWrap.style.display = 'block';
         setTimeout(() => { if(!firmaContext) inicializarFirmaCanvas(); }, 100);
       }
+    }
+
+    // El "Deshacer" solo tiene sentido después de una corrección: la primera generación no
+    // tiene un estado previo bueno al cual volver.
+    const btnDeshacer = document.getElementById(destino === 'notas' ? 'btn-deshacer-ia' : 'btn-deshacer-ia-dict');
+    if(btnDeshacer){
+      if(esCorreccion){ window._iaSnapshotAnterior = snapshotParaDeshacer; btnDeshacer.style.display='inline-flex'; }
+      else { window._iaSnapshotAnterior = null; btnDeshacer.style.display='none'; }
     }
 
     if(btnText) btnText.textContent='✓ Informe generado';
@@ -2128,6 +2175,59 @@ async function corregirInformeIA(){
   } finally {
     if(btnCorregir){ btnCorregir.disabled=false; btnCorregir.textContent='Corregir'; }
   }
+}
+
+function mostrarAlertaDiagnostico(id, texto){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(texto){ el.textContent = '⚠ ' + texto; el.style.display = 'block'; }
+  else el.style.display = 'none';
+}
+
+// Vuelve al informe de antes de la última corrección (foto tomada en generarInformeIA justo
+// antes de mandar el pedido de ajuste). Un solo nivel de deshacer, no una pila de historial.
+function deshacerCorreccionIA(){
+  const snap = window._iaSnapshotAnterior;
+  if(!snap) return;
+  const turnoCorrienteId = (consultaActual || turnoDictamenActual || {}).id;
+  if(snap.turnoId !== turnoCorrienteId){
+    // Quedó de una consulta anterior: no tiene nada que ver con lo que está abierto ahora.
+    window._iaSnapshotAnterior = null;
+    const btnViejo = document.getElementById(snap.destino === 'notas' ? 'btn-deshacer-ia' : 'btn-deshacer-ia-dict');
+    if(btnViejo) btnViejo.style.display = 'none';
+    return;
+  }
+  const info = snap.info || {};
+  const set = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined && val !== null) el.value = val; };
+  const pref = snap.destino === 'notas' ? 'notas-' : 'dict-';
+
+  set(pref+'dni', info.dni); set(pref+'edad', info.edad); set(pref+'obrasocial', info.obra_social);
+  set(pref+'profesion', info.profesion || info.puesto); set(pref+'antecedentes', info.antecedentes);
+  set(pref+'hallazgos', info.hallazgos); set(pref+'conclusion', info.conclusion);
+  if(info.aptitud) set(pref+'aptitud', info.aptitud); set(pref+'reposo', info.dias_reposo ?? 0);
+  if(snap.destino === 'dict'){
+    if(info.derivacion) set('dict-derivacion', info.derivacion.toLowerCase().includes('sin') ? 'Sin derivación' : info.derivacion);
+    set('dict-indicaciones', info.indicaciones);
+    if(info.apellido_nombre) set('dict-paciente-input', info.apellido_nombre);
+  }
+  ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
+    const el = document.getElementById('ia-campo-'+k);
+    if(el) el.value = info[k] || '';
+  });
+
+  const previewId = snap.destino === 'notas' ? 'notas-preview-text' : 'informe-preview-text';
+  const previewEl = document.getElementById(previewId);
+  if(previewEl) previewEl.value = snap.previewText;
+  mostrarAlertaDiagnostico(snap.destino === 'notas' ? 'notas-alerta-diag' : 'dict-alerta-diag', info.alerta_diagnostico_previo);
+
+  window._informeIA = info;
+  window._iaConversacion = snap.conversacion;
+  if(snap.destino === 'notas'){ window._informeIAEnVivo = info; guardarNotaBorrador(); }
+
+  const btnDeshacer = document.getElementById(snap.destino === 'notas' ? 'btn-deshacer-ia' : 'btn-deshacer-ia-dict');
+  if(btnDeshacer) btnDeshacer.style.display = 'none';
+  window._iaSnapshotAnterior = null;
+  mostrarToast('Se deshizo la última corrección','#2a5080');
 }
 
 let firmaContext = null, firmaDrawing = false, firmaHasContent = false, firmaLastPos = null;
