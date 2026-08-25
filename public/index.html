@@ -1597,6 +1597,10 @@ td.no-label::before{display:none;}
 
     <!-- Sección: Aptitud y diagnóstico -->
     <div class="divider" id="ed-sec-aptitud">Aptitud y diagnóstico</div>
+    <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin:2px 0 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;">
+      <input type="checkbox" id="ed-sin-aptitud" style="width:auto;margin:2px 0 0 0;" onchange="edToggleAptitud()"/>
+      <span style="font-size:12.5px;line-height:1.5;">Este informe no lleva determinación de aptitud laboral<br/><span style="color:var(--text3);font-size:11.5px;">Para informes que no son una evaluación de aptitud (ej. análisis de encuadre legal de licencias). El recuadro de aptitud/reposo no se imprime. Los datos no se borran: si volvés a destildarlo, reaparece tal cual.</span></span>
+    </label>
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="form-group">
         <label class="form-lbl">Aptitud laboral</label>
@@ -4963,6 +4967,16 @@ function edToggleSemiologico(){
   caja.disabled = !!apagado;
   caja.style.opacity = apagado ? '0.45' : '1';
 }
+// Mismo mecanismo que edToggleSemiologico, pero para el recuadro de aptitud/reposo del PDF.
+function edToggleAptitud(){
+  const apagado = document.getElementById('ed-sin-aptitud')?.checked;
+  ['ed-aptitud','ed-aptitud-texto','ed-reposo','ed-derivacion'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.disabled = !!apagado;
+    el.style.opacity = apagado ? '0.45' : '1';
+  });
+}
 function edIrA(id){
   const el = document.getElementById(id);
   if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -5906,6 +5920,8 @@ async function abrirModalEditarDictamen(dictamenId){
   if(selAptitud) selAptitud.value = d.aptitud || 'apto';
   const chkSemio = document.getElementById('ed-sin-semiologico');
   if(chkSemio){ chkSemio.checked = !!d.sin_semiologico; edToggleSemiologico(); }
+  const chkAptitud = document.getElementById('ed-sin-aptitud');
+  if(chkAptitud){ chkAptitud.checked = !!d.sin_aptitud; edToggleAptitud(); }
 
   const verPdf = document.getElementById('ed-ver-pdf');
   if(verPdf) verPdf.href = '/api/dictamenes/' + dictamenId + '/pdf';
@@ -5945,6 +5961,7 @@ async function guardarEdicionDictamen(){
     obra_social:        get('ed-obra-social'),
     situacion_licencia: get('ed-situacion-lic'),
     sin_semiologico:    !!document.getElementById('ed-sin-semiologico')?.checked,
+    sin_aptitud:        !!document.getElementById('ed-sin-aptitud')?.checked,
     metodologia:        get('ed-metodologia'),
     antecedentes:       get('ed-antecedentes'),
     hallazgos:          get('ed-hallazgos'),

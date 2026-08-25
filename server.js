@@ -319,6 +319,9 @@ async function initDB() {
       // Hay evaluaciones que no incluyen examen del estado mental. Con esto la sección se
       // apaga para ese informe y no vuelve aunque se regenere con la IA.
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS sin_semiologico BOOLEAN DEFAULT false`,
+      // Hay informes (ej. análisis de encuadre legal de licencias) que no son una evaluación
+      // de aptitud laboral: con esto el recuadro de aptitud/reposo no se imprime para ese informe.
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS sin_aptitud BOOLEAN DEFAULT false`,
       // Control domiciliario: el reposo es en el domicilio del trabajador, así que el caso
       // guarda esa dirección, sus coordenadas y con cuánto margen se considera "en casa".
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio VARCHAR(400)`,
@@ -1690,7 +1693,7 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
       estudios, puesto, antiguedad, situacion_licencia,
       metodologia, analisis, diagnostico_cie,
       // Campos extra editables solo por admin
-      medico, matricula, especialidad, paciente, empresa, sin_semiologico
+      medico, matricula, especialidad, paciente, empresa, sin_semiologico, sin_aptitud
     } = req.body;
 
     if (esAdmin) {
@@ -1710,14 +1713,16 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
         diagnostico_cie=COALESCE($22,diagnostico_cie),
         medico=COALESCE($23,medico), matricula=COALESCE($24,matricula),
         especialidad=COALESCE($25,especialidad), paciente=COALESCE($26,paciente),
-        empresa=COALESCE($27,empresa), sin_semiologico=COALESCE($28,sin_semiologico)
-        WHERE id=$29`,
+        empresa=COALESCE($27,empresa), sin_semiologico=COALESCE($28,sin_semiologico),
+        sin_aptitud=COALESCE($29,sin_aptitud)
+        WHERE id=$30`,
         [aptitud, dias_reposo, derivacion, indicaciones, paciente_dni, edad,
          obra_social, profesion, antecedentes, hallazgos, conclusion,
          apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil,
          estudios, puesto, antiguedad, situacion_licencia, metodologia, analisis, diagnostico_cie,
          medico||null, matricula||null, especialidad||null, paciente||null, empresa||null,
          sin_semiologico === undefined ? null : !!sin_semiologico,
+         sin_aptitud === undefined ? null : !!sin_aptitud,
          req.params.id]);
     } else {
       await pool.query(`UPDATE dictamenes SET
@@ -1732,13 +1737,15 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
         estudios=COALESCE($16,estudios), puesto=COALESCE($17,puesto),
         antiguedad=COALESCE($18,antiguedad), situacion_licencia=COALESCE($19,situacion_licencia),
         metodologia=COALESCE($20,metodologia), analisis=COALESCE($21,analisis),
-        diagnostico_cie=COALESCE($22,diagnostico_cie), sin_semiologico=COALESCE($23,sin_semiologico)
-        WHERE id=$24`,
+        diagnostico_cie=COALESCE($22,diagnostico_cie), sin_semiologico=COALESCE($23,sin_semiologico),
+        sin_aptitud=COALESCE($24,sin_aptitud)
+        WHERE id=$25`,
         [aptitud, dias_reposo, derivacion, indicaciones, paciente_dni, edad,
          obra_social, profesion, antecedentes, hallazgos, conclusion,
          apellido_nombre, fecha_nacimiento, lugar_nacimiento, estado_civil,
          estudios, puesto, antiguedad, situacion_licencia, metodologia, analisis, diagnostico_cie,
          sin_semiologico === undefined ? null : !!sin_semiologico,
+         sin_aptitud === undefined ? null : !!sin_aptitud,
          req.params.id]);
     }
     res.json({ ok: true });
@@ -2200,11 +2207,11 @@ ${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2
 <h2>${romano(n())}. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
-<div class="conc-box">
+${!d.sin_aptitud ? `<div class="conc-box">
   <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
   ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
   <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
-</div>
+</div>` : ''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
 
 <p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
