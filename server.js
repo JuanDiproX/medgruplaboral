@@ -2099,7 +2099,7 @@ ${bloqueUbicacion}
 
 <h2>Informe</h2>
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
-${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
 ${constanciaGeo}
 
@@ -2206,7 +2206,7 @@ ${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2
 
 <h2>${romano(n())}. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
-${diagCIE?`<p><strong>Encuadre diagnóstico:</strong> ${diagCIE}</p>`:''}
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
 ${!d.sin_aptitud ? `<div class="conc-box">
   <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
   ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
