@@ -646,19 +646,22 @@ td.no-label::before{display:none;}
         <button onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.15);border:none;color:white;cursor:pointer;font-size:16px;line-height:1;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">×</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">1</div>
-          <span style="font-size:12.5px;font-weight:700;color:#6366f1;">Dictá el caso</span>
+        <div id="notas-paso1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">1</div>
+            <span style="font-size:12.5px;font-weight:700;color:#6366f1;">Dictá el caso</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5;">Escribí datos del paciente, hallazgos, análisis y aptitud. La IA arma el informe completo.</div>
+          <textarea id="notas-libre" placeholder="Ej: Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años..." style="width:100%;min-height:140px;font-size:12.5px;padding:10px 12px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;box-sizing:border-box;" oninput="guardarNotaBorrador()"></textarea>
+          <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span id="btn-ia-text">Generar informe con IA</span>
+          </button>
+          <div id="ia-status" style="display:none;margin-top:10px;font-size:11.5px;text-align:center;color:var(--text3);align-items:center;justify-content:center;gap:6px;">
+            <div style="width:12px;height:12px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>Analizando y redactando...
+          </div>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5;">Escribí datos del paciente, hallazgos, análisis y aptitud. La IA arma el informe completo.</div>
-        <textarea id="notas-libre" placeholder="Ej: Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años..." style="width:100%;min-height:140px;font-size:12.5px;padding:10px 12px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;box-sizing:border-box;" oninput="guardarNotaBorrador()"></textarea>
-        <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          <span id="btn-ia-text">Generar informe con IA</span>
-        </button>
-        <div id="ia-status" style="display:none;margin-top:10px;font-size:11.5px;text-align:center;color:var(--text3);align-items:center;justify-content:center;gap:6px;">
-          <div style="width:12px;height:12px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>Analizando y redactando...
-        </div>
+        <button onclick="mostrarPaso1('notas')" id="notas-paso1-colapsado" style="display:none;width:100%;margin-bottom:10px;padding:8px 10px;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:11.5px;cursor:pointer;text-align:left;">✎ Volver a dictar desde cero (reinicia el informe)</button>
         <div id="notas-preview-wrap" style="display:none;margin-top:14px;background:white;border:2px solid #d4edda;border-radius:12px;overflow:hidden;">
           <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:10px 14px;display:flex;align-items:center;gap:8px;">
             <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
@@ -666,9 +669,16 @@ td.no-label::before{display:none;}
           </div>
           <div style="padding:12px;">
             <div id="notas-alerta-diag" style="display:none;margin-bottom:10px;padding:9px 12px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:11.5px;color:#92400e;line-height:1.5;"></div>
-            <textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:280px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
-            <div style="display:flex;gap:6px;margin-top:8px;">
-              <input type="text" id="notas-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+            <textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:260px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+          </div>
+          <div style="border-top:1px solid var(--border);background:var(--surface2);">
+            <div style="padding:10px 12px 4px;display:flex;align-items:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:#6366f1;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span style="font-size:11.5px;font-weight:700;color:var(--text2);">Ajustes con IA</span>
+            </div>
+            <div id="notas-chat-historial" style="max-height:150px;overflow-y:auto;padding:4px 12px;"></div>
+            <div style="display:flex;gap:6px;padding:8px 12px 12px;">
+              <input type="text" id="notas-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;background:white;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
               <button onclick="corregirInformeIA()" id="btn-corregir-ia" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
               <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia" style="display:none;padding:9px 12px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
             </div>
@@ -726,7 +736,7 @@ td.no-label::before{display:none;}
             </div>
             <div class="card-body">
               <div style="background:linear-gradient(135deg,var(--azul-light),var(--celeste-light));border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;"><span id="dict-empresa">—</span> · <span id="dict-duracion">—</span></div>
-              <div style="background:linear-gradient(135deg,#f0f0ff,#faf0ff);border:1.5px solid #c4b5fd;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
+              <div id="dict-paso1" style="background:linear-gradient(135deg,#f0f0ff,#faf0ff);border:1.5px solid #c4b5fd;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                   <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">1</div>
                   <span style="font-size:13.5px;font-weight:700;color:#6366f1;letter-spacing:-0.1px;">Dictá el caso — la IA redacta el informe</span>
@@ -743,6 +753,7 @@ td.no-label::before{display:none;}
                   </div>
                 </div>
               </div>
+              <button onclick="mostrarPaso1('dict')" id="dict-paso1-colapsado" style="display:none;width:100%;margin-bottom:16px;padding:10px 12px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12.5px;cursor:pointer;text-align:left;">✎ Volver a dictar desde cero (reinicia el informe)</button>
               <div id="informe-preview-wrap" style="display:none;background:white;border:2px solid #d4edda;border-radius:12px;padding:0;margin-bottom:16px;overflow:hidden;">
                 <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:12px 16px;display:flex;align-items:center;gap:8px;">
                   <div style="width:24px;height:24px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">2</div>
@@ -750,9 +761,16 @@ td.no-label::before{display:none;}
                 </div>
                 <div style="padding:16px 18px;max-height:500px;overflow-y:auto;">
                   <div id="dict-alerta-diag" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:12px;color:#92400e;line-height:1.5;"></div>
-                  <textarea id="informe-preview-text" style="width:100%;min-height:400px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
-                  <div style="display:flex;gap:8px;margin-top:10px;">
-                    <input type="text" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+                  <textarea id="informe-preview-text" style="width:100%;min-height:380px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+                </div>
+                <div style="border-top:1px solid var(--border);background:var(--surface2);">
+                  <div style="padding:12px 18px 4px;display:flex;align-items:center;gap:6px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:#6366f1;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--text2);">Ajustes con IA</span>
+                  </div>
+                  <div id="dict-chat-historial" style="max-height:170px;overflow-y:auto;padding:4px 18px;"></div>
+                  <div style="display:flex;gap:8px;padding:10px 18px 14px;">
+                    <input type="text" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;background:white;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
                     <button onclick="corregirInformeIA()" id="btn-corregir-ia-dict" style="padding:10px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
                     <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia-dict" style="display:none;padding:10px 14px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
                   </div>
@@ -2173,6 +2191,17 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       if(esCorreccion){ window._iaSnapshotAnterior = snapshotParaDeshacer; btnDeshacer.style.display='inline-flex'; }
       else { window._iaSnapshotAnterior = null; btnDeshacer.style.display='none'; }
     }
+    // El chat de ajustes es solo para mostrar: al generar de cero arranca vacío y se colapsa
+    // el paso 1 (ya no hace falta verlo mientras se sigue corrigiendo); cada corrección se
+    // suma como un mensaje más.
+    if(esCorreccion){
+      window._iaCorreccionesHistorial = [...(window._iaCorreccionesHistorial||[]),
+        { texto: mensajeCorreccion, hora: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) }];
+    } else {
+      window._iaCorreccionesHistorial = [];
+      colapsarPaso1(destino);
+    }
+    renderChatCorreccion(destino);
 
     if(btnText) btnText.textContent='✓ Informe generado';
     btn.style.background='linear-gradient(135deg,#1e6640,#3a9460)';
@@ -2221,6 +2250,48 @@ function mostrarAlertaDiagnostico(id, texto){
   else el.style.display = 'none';
 }
 
+function escaparHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Colapsa el paso "Dictá el caso" a un link chico una vez que ya hay un informe generado: ver
+// de nuevo el cuadro de dictado entero, vacío, arriba de la corrección confundía — parecía que
+// había que volver a dictar todo para pedir un ajuste.
+function colapsarPaso1(destino){
+  const paso1 = document.getElementById(destino==='notas' ? 'notas-paso1' : 'dict-paso1');
+  const link = document.getElementById(destino==='notas' ? 'notas-paso1-colapsado' : 'dict-paso1-colapsado');
+  if(paso1) paso1.style.display = 'none';
+  if(link) link.style.display = 'block';
+}
+function mostrarPaso1(destino){
+  const paso1 = document.getElementById(destino==='notas' ? 'notas-paso1' : 'dict-paso1');
+  const link = document.getElementById(destino==='notas' ? 'notas-paso1-colapsado' : 'dict-paso1-colapsado');
+  if(paso1) paso1.style.display = 'block';
+  if(link) link.style.display = 'none';
+}
+
+// Historial de pedidos de ajuste, solo para mostrar como chat — no es lo que se le manda a la
+// IA (eso sigue siendo window._iaConversacion, con el prompt completo). Uno por destino activo
+// a la vez, igual que window._iaConversacion.
+function renderChatCorreccion(destino){
+  const cont = document.getElementById(destino==='notas' ? 'notas-chat-historial' : 'dict-chat-historial');
+  if(!cont) return;
+  const historial = window._iaCorreccionesHistorial || [];
+  if(!historial.length){
+    cont.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:11px;padding:8px 0;">Todavía no pediste ningún ajuste. Escribí uno abajo.</div>';
+    return;
+  }
+  cont.innerHTML = historial.map(h => `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+      <div style="max-width:88%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:7px 11px;border-radius:11px 11px 2px 11px;font-size:11.5px;line-height:1.5;white-space:pre-wrap;">${escaparHtml(h.texto)}</div>
+    </div>
+    <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
+      <div style="max-width:88%;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:11px 11px 11px 2px;font-size:10.5px;">✓ Informe actualizado · ${h.hora}</div>
+    </div>
+  `).join('');
+  cont.scrollTop = cont.scrollHeight;
+}
+
 // Vuelve al informe de antes de la última corrección (foto tomada en generarInformeIA justo
 // antes de mandar el pedido de ajuste). Un solo nivel de deshacer, no una pila de historial.
 function deshacerCorreccionIA(){
@@ -2264,6 +2335,9 @@ function deshacerCorreccionIA(){
   const btnDeshacer = document.getElementById(snap.destino === 'notas' ? 'btn-deshacer-ia' : 'btn-deshacer-ia-dict');
   if(btnDeshacer) btnDeshacer.style.display = 'none';
   window._iaSnapshotAnterior = null;
+  // El chat de ajustes tiene que reflejar que el último pedido quedó sin efecto.
+  window._iaCorreccionesHistorial = (window._iaCorreccionesHistorial||[]).slice(0, -1);
+  renderChatCorreccion(snap.destino);
   mostrarToast('Se deshizo la última corrección','#2a5080');
 }
 
@@ -3653,6 +3727,9 @@ async function unirseTurno(id){
   consultaActual=t;
   clearInterval(timerInterval);startTimer();
   cargarCasoDeLlamada(id);
+  // El cuadro de dictado no debería seguir colapsado de una consulta anterior.
+  mostrarPaso1('notas');
+  window._iaCorreccionesHistorial = [];
   const nAdj = t.informesExtra || 0;
   document.getElementById('btn-adjuntos-llamada-txt').textContent = nAdj ? `Adjuntos (${nAdj})` : 'Adjuntos';
   addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
@@ -3731,6 +3808,8 @@ function cargarNotaBorrador(){
       const pw=document.getElementById('notas-preview-wrap');
       const pt=document.getElementById('notas-preview-text');
       if(pw&&pt){ pt.value=b.previewEditado; pw.style.display='block'; }
+      colapsarPaso1('notas');
+      renderChatCorreccion('notas');
     }
   }catch(e){}
 }
@@ -3771,6 +3850,9 @@ async function iniciarTurno(id){
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
   cargarCasoDeLlamada(id);
+  // El cuadro de dictado no debería seguir colapsado de una consulta anterior.
+  mostrarPaso1('notas');
+  window._iaCorreccionesHistorial = [];
   const nAdj = t.informesExtra || 0;
   document.getElementById('btn-adjuntos-llamada-txt').textContent = nAdj ? `Adjuntos (${nAdj})` : 'Adjuntos';
   addLog('blue','Consulta iniciada',t.paciente+' · '+t.hora);
@@ -3956,6 +4038,7 @@ async function abrirDictamenParaTurno(t, dur){
       Guardar y emitir informe firmado
     `;
     dictamenActualId=null;
+    mostrarPaso1('dict');
 
     // Transferir el TEXTO LIBRE dictado durante la llamada al cuadro del dictamen.
     // Funciona tanto si generó el informe con IA como si solo anotó y no generó nada:
@@ -3991,6 +4074,10 @@ async function abrirDictamenParaTurno(t, dur){
       if(info.apellido_nombre){
         document.getElementById('dict-paciente-input').value = info.apellido_nombre;
       }
+      // Ya viene con informe generado desde la llamada: no hace falta ver el cuadro de
+      // dictado de nuevo, y el chat de ajustes arrastra lo que ya se corrigió en vivo.
+      colapsarPaso1('dict');
+      renderChatCorreccion('dict');
       addLog('green','Informe generado durante la llamada','Solo falta firmar y guardar');
     } else if(borrador?.previewEditado){
       // Generó el informe en la llamada pero se recargó la página: recuperar el preview del borrador
@@ -4005,6 +4092,8 @@ async function abrirDictamenParaTurno(t, dur){
         firmaWrap.style.display = 'block';
         setTimeout(() => { if(!firmaContext) inicializarFirmaCanvas(); }, 100);
       }
+      colapsarPaso1('dict');
+      renderChatCorreccion('dict');
       addLog('green','Informe recuperado del borrador','Revisá, firmá y guardá');
     } else if(borrador?.textoLibre){
       addLog('green','Notas de la llamada recuperadas','Tu dictado está en el cuadro — generá el informe cuando quieras');
@@ -4113,6 +4202,11 @@ function cargarDictamenEnFormulario(d){
   if(btnDeshacerExistente) btnDeshacerExistente.style.display = 'none';
   const correccionInputExistente = document.getElementById('dict-correccion-texto');
   if(correccionInputExistente) correccionInputExistente.value = '';
+  // Al abrir un dictamen ya emitido no hay nada que "dictar de cero": se arranca directo en
+  // el chat de ajustes, sin el cuadro de dictado compitiendo arriba.
+  window._iaCorreccionesHistorial = [];
+  colapsarPaso1('dict');
+  renderChatCorreccion('dict');
 
   window.scrollTo({top:0,behavior:'smooth'});
 }
