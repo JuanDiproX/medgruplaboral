@@ -1077,7 +1077,7 @@ td.no-label::before{display:none;}
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="t-paciente" list="pacientes-datalist" oninput="onPacienteTurnoInput()" placeholder="Apellido, Nombre del paciente"/><datalist id="pacientes-datalist"></datalist></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
-        <select id="t-hora"><option>08:00</option><option>08:30</option><option>09:00</option><option>09:30</option><option>10:00</option><option>10:30</option><option>11:00</option><option>11:30</option><option>12:00</option><option>14:00</option><option>14:30</option><option>15:00</option><option>15:30</option><option selected>16:00</option><option>16:30</option><option>17:00</option></select>
+        <input type="time" id="t-hora" value="16:00"/>
       </div>
       <div class="form-group"><label class="form-lbl">Tipo de consulta</label>
         <select id="t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento médico</option></select>
@@ -1125,7 +1125,7 @@ td.no-label::before{display:none;}
       <div class="form-group full"><label class="form-lbl">Paciente</label><input type="text" id="edit-t-paciente" placeholder="Apellido, Nombre del paciente"/></div>
       <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="edit-t-fecha"/></div>
       <div class="form-group"><label class="form-lbl">Hora</label>
-        <select id="edit-t-hora"><option>08:00</option><option>08:30</option><option>09:00</option><option>09:30</option><option>10:00</option><option>10:30</option><option>11:00</option><option>11:30</option><option>12:00</option><option>14:00</option><option>14:30</option><option>15:00</option><option>15:30</option><option>16:00</option><option>16:30</option><option>17:00</option></select>
+        <input type="time" id="edit-t-hora"/>
       </div>
       <div class="form-group"><label class="form-lbl">Tipo de consulta</label>
         <select id="edit-t-tipo"><option>Junta médica</option><option>Control de licencia</option><option>Examen ocupacional</option><option>Seguimiento médico</option><option>Consulta</option></select>
@@ -1492,7 +1492,7 @@ td.no-label::before{display:none;}
       <div class="form-grid">
         <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="prog-fecha"/></div>
         <div class="form-group"><label class="form-lbl">Hora</label>
-          <select id="prog-hora"><option>08:00</option><option>09:00</option><option>10:00</option><option>11:00</option><option>12:00</option><option>14:00</option><option>15:00</option><option selected>16:00</option><option>17:00</option></select>
+          <input type="time" id="prog-hora" value="16:00"/>
         </div>
         <div class="form-group full"><label class="form-lbl">Tipo de control</label>
           <select id="prog-tipo-control">
@@ -3134,12 +3134,7 @@ async function abrirModalEditar(id){
   document.getElementById('edit-t-paciente').value = t.paciente || '';
   document.getElementById('edit-t-telefono').value = t.telefono || '';
   document.getElementById('edit-t-fecha').value = t.fecha.split('T')[0];
-  // Si la hora no está en el select, agregarla como opción
-  const selHora = document.getElementById('edit-t-hora');
-  if(t.hora && ![...selHora.options].some(o=>o.value===t.hora)){
-    const opt=document.createElement('option');opt.value=t.hora;opt.textContent=t.hora;selHora.appendChild(opt);
-  }
-  selHora.value = t.hora || '16:00';
+  document.getElementById('edit-t-hora').value = t.hora || '16:00';
   // Idem tipo
   const selTipo = document.getElementById('edit-t-tipo');
   if(t.tipo && ![...selTipo.options].some(o=>o.value===t.tipo)){
@@ -4148,7 +4143,7 @@ function cargarDictamenEnFormulario(d){
   document.getElementById('cert-pdf-links').innerHTML=`
     <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-      Informe de Junta Médica
+      ${turnoDictamenActual?.tipo ? 'Informe de '+turnoDictamenActual.tipo : 'Informe médico-laboral firmado'}
     </a>
     ${turnoDictamenActual?`<a href="/api/turnos/${turnoDictamenActual.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
