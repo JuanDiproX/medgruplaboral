@@ -1868,6 +1868,14 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     // anteponerle "MN/MP" otra vez imprimía "MN/MP MN 102128 / MP 603".
     const rotuloMatricula = m => !m ? '' : (/^(MN|MP|M\.N|M\.P)/i.test(String(m).trim()) ? m : 'MN/MP ' + m);
 
+    // Determinar tipo de informe según el turno (se usa acá abajo para el pie de firmas y más
+    // abajo para el título del documento)
+    let turnoInfo = null;
+    if (d.turno_id) {
+      const tr = await pool.query('SELECT tipo, fecha, hora, modalidad FROM turnos WHERE id=$1', [d.turno_id]);
+      if (tr.rows.length) turnoInfo = tr.rows[0];
+    }
+
     // El pie es de los profesionales que intervinieron, no de quien cargó el informe en el
     // sistema. Cuando lo carga el admin por el médico, el autor del dictamen es "Administrador":
     // sin matrícula y sin especialidad, firmando un documento médico-legal. Se lo deja afuera.
@@ -1925,6 +1933,11 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
         img: d.firma_doctor || null
       });
     }
+    // En una auditoría psiquiátrica no corresponde firmar como médico del trabajo: se saca esa
+    // parte de la especialidad, solo para este tipo de informe. El perfil del médico no se toca.
+    if (turnoInfo?.tipo === 'Auditoría psiquiátrica') {
+      firmantesRender.forEach(m => { m.especialidad = (m.especialidad || '').replace(/\s*y\s*Médico del Trabajo\s*/i, '').trim() || m.especialidad; });
+    }
 
     const firmasHtml = firmantesRender.map(m => {
       const firmaImg = m.img
@@ -1948,13 +1961,6 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
     const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
     const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
-
-    // Determinar tipo de informe según el turno
-    let turnoInfo = null;
-    if (d.turno_id) {
-      const tr = await pool.query('SELECT tipo, fecha, hora, modalidad FROM turnos WHERE id=$1', [d.turno_id]);
-      if (tr.rows.length) turnoInfo = tr.rows[0];
-    }
 
     // El control de ausentismo no se informa como una evaluación clínica: alcanza con qué
     // refirió el trabajador y si estaba en su domicilio. Por eso lleva su propio formato,
