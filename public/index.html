@@ -294,6 +294,10 @@ tr:hover td{background:var(--azul-light);}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
 @keyframes spin{to{transform:rotate(360deg);}}
+/* Llama la atención al botón de guardar después de un "Corregir": el ajuste ya quedó en el
+   borrador, pero si no se guarda el informe emitido sigue siendo el de antes. */
+@keyframes pulsoGuardar{0%,100%{box-shadow:0 0 0 0 rgba(58,110,168,0.55);}50%{box-shadow:0 0 0 8px rgba(58,110,168,0);}}
+.btn-pulso{animation:pulsoGuardar 1s ease-out 3;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:3px;}
 
@@ -2197,6 +2201,16 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     if(esCorreccion){
       window._iaCorreccionesHistorial = [...(window._iaCorreccionesHistorial||[]),
         { texto: mensajeCorreccion, hora: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) }];
+      // Corregir solo cambia el borrador en el navegador — si no se guarda, el próximo PDF
+      // sale igual que antes. Se le llama la atención al botón de guardar para que no quede
+      // ahí, aplicado pero sin persistir (pasó de verdad, un médico creyó que ya había quedado).
+      if(destino === 'dict'){
+        const btnGuardar = document.getElementById('btn-guardar-dict');
+        if(btnGuardar){
+          btnGuardar.classList.remove('btn-pulso'); void btnGuardar.offsetWidth; btnGuardar.classList.add('btn-pulso');
+          btnGuardar.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      }
     } else {
       window._iaCorreccionesHistorial = [];
       colapsarPaso1(destino);
@@ -2286,7 +2300,7 @@ function renderChatCorreccion(destino){
       <div style="max-width:88%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:7px 11px;border-radius:11px 11px 2px 11px;font-size:11.5px;line-height:1.5;white-space:pre-wrap;">${escaparHtml(h.texto)}</div>
     </div>
     <div style="display:flex;justify-content:flex-start;margin-bottom:8px;">
-      <div style="max-width:88%;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:11px 11px 11px 2px;font-size:10.5px;">✓ Informe actualizado · ${h.hora}</div>
+      <div style="max-width:88%;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:11px 11px 11px 2px;font-size:10.5px;">✓ Aplicado al borrador · ${h.hora} — todavía falta guardar</div>
     </div>
   `).join('');
   cont.scrollTop = cont.scrollHeight;

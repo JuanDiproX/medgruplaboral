@@ -1848,7 +1848,7 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
     const qrVerificacion = await generarQRDataUrl(d.numero);
-    const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
+    const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto' };
     // Antes se agregaba sola una línea por médico diciendo "Evaluación remota vía MEDGRUP
     // Telemedicina". Sobraba —los profesionales ya constan al pie con su matrícula— y encima
     // era falsa cuando la evaluación fue presencial. La metodología la redacta el médico.
@@ -2213,11 +2213,19 @@ ${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2
 <h2>${romano(n())}. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
-${!d.sin_aptitud ? `<div class="conc-box">
+${!d.sin_aptitud ? (()=>{
+  // "Sin reposo indicado" al lado de "No apto" queda contradictorio — si hay días, se
+  // muestran igual; si no los hay, esa aclaración solo tiene sentido cuando SÍ está apto.
+  const partesSub = [];
+  if (d.dias_reposo>0) partesSub.push(`${d.dias_reposo} día(s) de reposo indicado`);
+  else if (d.aptitud !== 'no-apto') partesSub.push('Sin reposo indicado');
+  if (d.derivacion && d.derivacion!=='Sin derivación') partesSub.push('Derivación a: '+d.derivacion);
+  return `<div class="conc-box">
   <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
   ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
-  <div class="conc-sub">${d.dias_reposo>0?d.dias_reposo+' día(s) de reposo indicado':'Sin reposo indicado'}${d.derivacion&&d.derivacion!=='Sin derivación'?' · Derivación a: '+d.derivacion:''}</div>
-</div>` : ''}
+  ${partesSub.length ? `<div class="conc-sub">${partesSub.join(' · ')}</div>` : ''}
+</div>`;
+})() : ''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
 
 <p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
