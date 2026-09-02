@@ -1431,20 +1431,54 @@ td.no-label::before{display:none;}
   </div>
 </div>
 
-<!-- MODAL VISTA PREVIA DEL INFORME (cómo queda con lo editado/corregido) -->
+<!-- MODAL VISTA PREVIA DEL INFORME: el informe completo (texto + aptitud/reposo), editable a
+     mano acá mismo, con su propio cuadro de "Corregir con IA" para no tener que ir y volver. -->
 <div class="modal-bg" id="modal-vista-previa-informe">
-  <div class="modal" style="max-width:640px;padding:0;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+  <div class="modal" style="max-width:660px;padding:0;overflow:hidden;">
+    <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div style="color:white;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
         Así queda el informe
       </div>
       <button onclick="cerrarVistaPreviaInforme()" style="background:rgba(255,255,255,0.18);border:none;color:white;cursor:pointer;font-size:16px;line-height:1;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">×</button>
     </div>
-    <div id="vista-previa-informe-cuerpo" style="padding:22px 26px;max-height:60vh;overflow-y:auto;background:white;"></div>
-    <div style="padding:14px 20px;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+    <div style="padding:20px 24px 4px;max-height:64vh;overflow-y:auto;background:white;">
+      <div style="font-size:10.5px;color:var(--text3);margin-bottom:8px;">Es el mismo texto del informe — lo que edites acá queda, no hace falta volver.</div>
+      <textarea id="vp-informe-texto" oninput="sincronizarDesdeVistaPrevia()" style="width:100%;min-height:320px;font-size:12.5px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+      <div style="margin-top:12px;border-radius:10px;padding:13px 15px;background:var(--surface2);border:1.5px solid var(--border2);">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:9px;">Aptitud y reposo — así sale impreso</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:170px;">
+            <label class="form-lbl" style="display:block;font-size:10px;margin-bottom:4px;">Aptitud</label>
+            <select id="vp-aptitud" onchange="sincronizarDesdeVistaPrevia()" style="width:100%;">
+              <option value="apto">Aptitud Laboral Total</option>
+              <option value="restricc">Apto con restricciones</option>
+              <option value="no-apto">No apto</option>
+            </select>
+          </div>
+          <div style="width:110px;">
+            <label class="form-lbl" style="display:block;font-size:10px;margin-bottom:4px;">Días de reposo</label>
+            <input type="text" id="vp-reposo" oninput="sincronizarDesdeVistaPrevia()" placeholder="0"/>
+          </div>
+          <div id="vp-derivacion-wrap" style="flex:1;min-width:170px;">
+            <label class="form-lbl" style="display:block;font-size:10px;margin-bottom:4px;">Derivación</label>
+            <input type="text" id="vp-derivacion" oninput="sincronizarDesdeVistaPrevia()" placeholder="Sin derivación"/>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding-bottom:16px;">
+        <div style="font-size:10.5px;font-weight:700;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:#6366f1;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          O pedile otro ajuste a la IA sin salir de acá
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="vp-correccion-texto" placeholder="Ej: sacá los antecedentes, hacelo más corto..." style="flex:1;min-width:0;font-size:12.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirDesdeVistaPrevia();}"/>
+          <button onclick="corregirDesdeVistaPrevia()" id="btn-vp-corregir" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border);background:var(--surface2);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;flex-shrink:0;">
       <button class="btn btn-ghost" onclick="cerrarVistaPreviaInforme()">Cerrar</button>
-      <button class="btn btn-ghost" id="btn-vp-otro-ajuste" onclick="pedirOtroAjusteDesdeVistaPrevia()">🔄 Pedir otro ajuste</button>
       <button class="btn btn-primary" id="btn-vp-guardar" style="display:none;" onclick="guardarDesdeVistaPrevia()">💾 Actualizar mi dictamen</button>
     </div>
   </div>
@@ -2330,66 +2364,81 @@ function renderChatCorreccion(destino){
   cont.scrollTop = cont.scrollHeight;
 }
 
-// Convierte el texto plano del preview (el mismo que ya arma armarPreviewInforme) en HTML con
-// formato — encabezados de sección con fondo, viñetas, ítems numerados — para que la vista
-// previa se vea como un documento y no como un textarea. Se basa en el texto YA en pantalla,
-// así que respeta también los cambios que el médico haya tipeado a mano.
-function formatearInformePreviewHtml(texto){
-  if(!texto || !texto.trim()) return '<div style="text-align:center;color:var(--text3);padding:2rem 0;">Todavía no hay nada generado.</div>';
-  const lineas = texto.split('\n');
-  let html = '', parrafo = [];
-  const cerrarParrafo = () => {
-    if(parrafo.length){ html += `<p style="margin:0 0 10px;line-height:1.75;font-size:13px;color:var(--text);">${parrafo.join(' ')}</p>`; parrafo = []; }
-  };
-  for(const cruda of lineas){
-    const l = cruda.trim();
-    if(!l){ cerrarParrafo(); continue; }
-    // Encabezado de sección: línea entera en mayúsculas, sin dos puntos (p. ej. "I. DATOS
-    // PERSONALES DEL EVALUADO" o "INFORME DE AUDITORÍA MÉDICA LABORAL")
-    const esEncabezado = l === l.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(l) && !l.includes(':') && l.length > 3;
-    if(esEncabezado){
-      cerrarParrafo();
-      html += `<div style="background:var(--grad-azul);color:white;padding:7px 13px;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:0.3px;margin:16px 0 10px;">${escaparHtml(l)}</div>`;
-      continue;
-    }
-    if(l.startsWith('●')){
-      cerrarParrafo();
-      html += `<div style="display:flex;gap:7px;margin-bottom:6px;font-size:13px;line-height:1.6;color:var(--text);"><span style="color:var(--azul);flex-shrink:0;">●</span><span>${escaparHtml(l.replace(/^●\s*/,''))}</span></div>`;
-      continue;
-    }
-    if(/^\d+\.\s/.test(l)){
-      cerrarParrafo();
-      html += `<div style="margin-bottom:9px;line-height:1.7;font-size:13px;color:var(--text);">${escaparHtml(l)}</div>`;
-      continue;
-    }
-    parrafo.push(escaparHtml(l));
-  }
-  cerrarParrafo();
-  return html;
-}
-
+// La vista previa es el informe real, editable ahí mismo: el textarea y los campos de
+// aptitud/reposo/derivación son los MISMOS datos que dict-*/notas-* (hidden), solo que acá se
+// ven. Cualquier tecla escrita se vuelca de inmediato a los campos reales con
+// sincronizarDesdeVistaPrevia(), así que cerrar el modal no pierde nada.
 let vpDestinoActual = null;
+
 function abrirVistaPreviaInforme(destino){
   vpDestinoActual = destino;
+  const pref = destino==='notas' ? 'notas-' : 'dict-';
   const previewId = destino==='notas' ? 'notas-preview-text' : 'informe-preview-text';
-  const texto = document.getElementById(previewId)?.value || '';
-  document.getElementById('vista-previa-informe-cuerpo').innerHTML = formatearInformePreviewHtml(texto);
+  document.getElementById('vp-informe-texto').value = document.getElementById(previewId)?.value || '';
+  document.getElementById('vp-aptitud').value = document.getElementById(pref+'aptitud')?.value || 'apto';
+  document.getElementById('vp-reposo').value = document.getElementById(pref+'reposo')?.value || '0';
+  // La derivación solo existe como campo en el dictamen (no en las notas en vivo durante la llamada).
+  const derivWrap = document.getElementById('vp-derivacion-wrap');
+  if(destino==='dict'){
+    derivWrap.style.display = '';
+    const d = document.getElementById('dict-derivacion')?.value || '';
+    document.getElementById('vp-derivacion').value = (d==='Sin derivación') ? '' : d;
+  } else {
+    derivWrap.style.display = 'none';
+  }
+  document.getElementById('vp-correccion-texto').value = '';
   // Guardar el dictamen solo tiene sentido en la pantalla del dictamen (no durante la llamada,
   // ahí se guarda recién al finalizar la consulta).
   document.getElementById('btn-vp-guardar').style.display = destino==='dict' ? 'inline-flex' : 'none';
   document.getElementById('modal-vista-previa-informe').classList.add('open');
 }
+
 function cerrarVistaPreviaInforme(){
   document.getElementById('modal-vista-previa-informe').classList.remove('open');
 }
-function pedirOtroAjusteDesdeVistaPrevia(){
-  cerrarVistaPreviaInforme();
-  const input = document.getElementById(vpDestinoActual==='notas' ? 'notas-correccion-texto' : 'dict-correccion-texto');
-  if(input){ input.focus(); input.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+// Vuelca lo que se está tipeando en el modal a los campos reales del informe.
+function sincronizarDesdeVistaPrevia(){
+  if(!vpDestinoActual) return;
+  const pref = vpDestinoActual==='notas' ? 'notas-' : 'dict-';
+  const previewId = vpDestinoActual==='notas' ? 'notas-preview-text' : 'informe-preview-text';
+  const previewEl = document.getElementById(previewId);
+  if(previewEl) previewEl.value = document.getElementById('vp-informe-texto')?.value ?? '';
+  const elApt = document.getElementById(pref+'aptitud');
+  if(elApt) elApt.value = document.getElementById('vp-aptitud')?.value || 'apto';
+  const elReposo = document.getElementById(pref+'reposo');
+  if(elReposo) elReposo.value = document.getElementById('vp-reposo')?.value ?? '0';
+  if(vpDestinoActual==='dict'){
+    const elDeriv = document.getElementById('dict-derivacion');
+    if(elDeriv) elDeriv.value = document.getElementById('vp-derivacion')?.value?.trim() || 'Sin derivación';
+  } else {
+    guardarNotaBorrador();
+  }
 }
+
 function guardarDesdeVistaPrevia(){
   cerrarVistaPreviaInforme();
   guardarDictamen();
+}
+
+// Corregir con IA sin salir del modal: reusa corregirInformeIA() de siempre (mismo endpoint,
+// mismo historial de chat), solo que el pedido se escribe acá. Al terminar, generarInformeIA()
+// vuelve a llamar a abrirVistaPreviaInforme() y el modal se refresca solo con lo nuevo.
+async function corregirDesdeVistaPrevia(){
+  const pedido = document.getElementById('vp-correccion-texto')?.value?.trim();
+  if(!pedido){ mostrarError('Escribí qué querés corregir o agregar.'); return; }
+  const inputReal = document.getElementById(vpDestinoActual==='notas' ? 'notas-correccion-texto' : 'dict-correccion-texto');
+  if(inputReal) inputReal.value = pedido;
+  const btn = document.getElementById('btn-vp-corregir');
+  const campos = ['vp-informe-texto','vp-aptitud','vp-reposo','vp-derivacion','vp-correccion-texto'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(btn){ btn.disabled=true; btn.textContent='Ajustando…'; }
+  campos.forEach(el=>el.disabled=true);
+  try{
+    await corregirInformeIA();
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Corregir'; }
+    campos.forEach(el=>el.disabled=false);
+  }
 }
 
 // Vuelve al informe de antes de la última corrección (foto tomada en generarInformeIA justo
