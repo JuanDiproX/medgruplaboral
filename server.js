@@ -28,7 +28,16 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Toda la app vive en un solo index.html (sin bundler ni nombres con hash): sin esto, el
+// navegador podía quedarse con una copia vieja en caché y no mostrar los cambios ni con un
+// deploy nuevo, hasta que alguien hacía un refresh forzado a mano. Con no-cache el navegador
+// puede seguir guardando el archivo, pero tiene que revalidarlo contra el servidor en cada
+// carga (con ETag, así que si no cambió no se vuelve a bajar entero).
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+  }
+}));
 
 const ZONA_ARG = 'America/Argentina/Buenos_Aires';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
