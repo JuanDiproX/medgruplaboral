@@ -852,6 +852,20 @@ td.no-label::before{display:none;}
             <div id="medico-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
           </div>
         </div>
+        <div class="card" style="margin-top:1.25rem;">
+          <div class="card-hdr"><div class="card-title">Otro acceso de administrador</div></div>
+          <div class="card-body">
+            <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5;">Para una demo o un segundo admin — ve todo lo mismo que esta cuenta, no es un médico y no tiene turnos propios.</div>
+            <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Nombre</label><input type="text" id="new-admin-nombre" placeholder="Ej: Demo MEDGRUP"/></div>
+              <div class="form-group"><label class="form-lbl">Email de acceso</label><input type="text" id="new-admin-email" placeholder="demo@medgrup.com"/></div>
+              <div class="form-group"><label class="form-lbl">Contraseña</label><input type="text" id="new-admin-password" placeholder="Mínimo 6 caracteres"/></div>
+            </div>
+            <button class="btn btn-ghost btn-full" onclick="agregarAdmin()">Crear acceso de admin</button>
+            <div id="admin-nuevo-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--azul);">✓ Acceso creado</div>
+            <div id="admin-nuevo-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2920,6 +2934,23 @@ async function agregarMedico(){
     ? '✓ Médico agregado con acceso a la app — puede loguearse y firmar juntas'
     : '✓ Médico agregado';
   await cargarMedicos();
+}
+async function agregarAdmin(){
+  const nombre=document.getElementById('new-admin-nombre').value.trim();
+  const email=document.getElementById('new-admin-email').value.trim();
+  const password=document.getElementById('new-admin-password').value;
+  const okEl=document.getElementById('admin-nuevo-ok'), errEl=document.getElementById('admin-nuevo-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if(!nombre||!email||!password){ errEl.style.display='block'; errEl.textContent='Completá nombre, email y contraseña'; return; }
+  try{
+    const res=await fetch('/api/usuarios/admin',{method:'POST',headers:apiHeaders(),body:JSON.stringify({nombre,email,password})});
+    const data=await res.json();
+    if(!data.ok){ errEl.style.display='block'; errEl.textContent=data.error||'Error al crear el acceso'; return; }
+    document.getElementById('new-admin-nombre').value='';
+    document.getElementById('new-admin-email').value='';
+    document.getElementById('new-admin-password').value='';
+    okEl.style.display='block';
+  }catch(e){ errEl.style.display='block'; errEl.textContent='Error de conexión'; }
 }
 async function eliminarMedico(id){
   if(!(await confirmar('¿Eliminar este médico del equipo?', { titulo: 'Eliminar médico' }))) return;

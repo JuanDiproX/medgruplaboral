@@ -825,6 +825,22 @@ app.post('/api/medicos', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Crear otro acceso de administrador (ej. una cuenta aparte para hacer demos, sin prestar la
+// cuenta real). No crea fila en "medicos": un admin no es un médico, no tiene turnos propios.
+app.post('/api/usuarios/admin', adminMiddleware, async (req, res) => {
+  const { nombre, email, password } = req.body;
+  if (!nombre || !email || !password) return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  try {
+    const hash = hashPassword(password);
+    await pool.query(
+      `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'admin')
+       ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3, rol='admin'`,
+      [nombre, email.toLowerCase().trim(), hash]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===== FIRMA EXPRESS PARA JUNTAS MÉDICAS =====
 
 // Hash del contenido del dictamen al momento de firmar (integridad / trazabilidad)
