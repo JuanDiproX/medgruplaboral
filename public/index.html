@@ -576,6 +576,7 @@ td.no-label::before{display:none;}
     <div class="nav-section">
       <div class="nav-lbl">Principal</div>
       <div class="nav-item active" id="nav-agenda" onclick="showSection('agenda',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</div>
+      <div class="nav-item" id="nav-reuniones" onclick="showSection('reuniones',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Reuniones</div>
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
       <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>Presupuestos</div>
@@ -823,6 +824,60 @@ td.no-label::before{display:none;}
           </div>
         </div>
         <div id="links-box" style="display:none;"><div class="card"><div class="card-hdr"><div class="card-title">Links del turno</div></div><div class="card-body" id="links-body"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REUNIONES (empresa/negocios — sin informes ni actas) ═══ -->
+  <div id="sec-reuniones" style="display:none;">
+    <div class="two-col">
+      <div>
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Reuniones</div>
+            <span class="badge b-blue" id="badge-reuniones">0</span>
+          </div>
+          <div id="reuniones-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+        </div>
+        <div id="reunion-video-container" class="video-container" style="margin-top:1.25rem;">
+          <div class="video-topbar">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="rec-pill" style="background:rgba(58,110,168,0.85);"><span id="reunion-video-label">Reunión</span></div>
+            </div>
+            <button class="btn" onclick="abrirReunionAparte()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;font-size:11.5px;" title="Abrir en una pestaña aparte">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Abrir aparte
+            </button>
+          </div>
+          <iframe id="reunion-daily-frame" allow="camera; microphone; fullscreen; display-capture" style="width:100%;height:480px;border:none;"></iframe>
+          <div class="video-bottombar">
+            <div class="video-timer" id="reunion-video-timer">00:00:00</div>
+            <button class="btn btn-danger" onclick="finalizarReunion()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Finalizar reunión</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Programar reunión</div></div>
+          <div class="card-body">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5;">Videollamada de empresa o negocios — sin informe ni acta, solo la reunión y la invitación a los participantes.</div>
+            <div class="form-grid">
+              <div class="form-group full"><label class="form-lbl">Título / motivo</label><input type="text" id="reu-titulo" placeholder="Ej: Reunión comercial con Logant S.A"/></div>
+              <div class="form-group"><label class="form-lbl">Fecha</label><input type="date" id="reu-fecha"/></div>
+              <div class="form-group"><label class="form-lbl">Hora</label><input type="text" id="reu-hora" value="16:00" placeholder="Ej: 10:45" maxlength="5" pattern="[0-2][0-9]:[0-5][0-9]" title="Formato HH:MM, ej. 10:45"/></div>
+              <div class="form-group full"><label class="form-lbl">Notas (opcional)</label><textarea id="reu-notas" placeholder="Agenda, temas a tratar..." style="min-height:60px;"></textarea></div>
+            </div>
+            <div class="divider">Invitados</div>
+            <div id="reu-invitados-lista"></div>
+            <button class="btn btn-ghost" style="margin-top:4px;" onclick="agregarFilaInvitadoReunion()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar invitado
+            </button>
+            <button class="btn btn-primary btn-full" style="margin-top:14px;" onclick="programarReunion()" id="btn-programar-reunion">Programar y generar invitaciones</button>
+            <div id="reunion-resultado" style="display:none;margin-top:14px;"></div>
+            <div id="reunion-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2765,6 +2820,7 @@ function mostrarApp(){
   document.getElementById('sidebar-email').textContent=usuarioActual.email;
   document.getElementById('current-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('t-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('reu-fecha').value=new Date().toISOString().split('T')[0];
   if(usuarioActual.rol==='admin'){
     document.getElementById('nav-empresas').style.display='flex';
     document.getElementById('nav-medicos').style.display='flex';
@@ -2820,7 +2876,7 @@ function actualizarBotonMenu(){
 window.addEventListener('resize', actualizarBotonMenu);
 
 function showSection(id,el){
-  ['agenda','medicos','perfil','empresas','presupuestos','ausentismo'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
+  ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
   secActiva.style.display='block';
@@ -2829,9 +2885,10 @@ function showSection(id,el){
   secActiva.classList.add('sec-anim');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],reuniones:['Reuniones','Videollamadas de empresa y negocios'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
+  if(id==='reuniones')cargarReuniones();
   if(id==='medicos')cargarMedicos();
   if(id==='perfil')setupPerfil();
   if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
@@ -5249,6 +5306,192 @@ function edToggleAptitud(){
 function edIrA(id){
   const el = document.getElementById(id);
   if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ===== REUNIONES (empresa/negocios) =====
+// Módulo aparte de los turnos médicos: comparte la videollamada (Daily.co) pero no tiene
+// informe, acta ni asignación por médico — cualquier usuario logueado la ve y la gestiona.
+// Timer e id de "reunión activa" son variables propias, para no tocar nada del timer/estado
+// que usa la videollamada médica.
+let reunionesData = [];
+let reunionActualId = null;
+let reunionTimerInterval = null, reunionTimerStart = null;
+
+async function cargarReuniones(){
+  const cont = document.getElementById('reuniones-lista');
+  try{
+    const res = await fetch('/api/reuniones', {headers:apiHeaders()});
+    if(res.status===401){doLogout();return;}
+    const data = await res.json();
+    if(!data.ok){ cont.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar las reuniones.</div>'; return; }
+    reunionesData = data.reuniones;
+    document.getElementById('badge-reuniones').textContent = reunionesData.length;
+    renderReuniones();
+  }catch(e){
+    cont.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error de conexión.</div>';
+  }
+}
+
+function renderReuniones(){
+  const cont = document.getElementById('reuniones-lista');
+  if(!reunionesData.length){
+    cont.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Todavía no hay reuniones programadas.</div>';
+    return;
+  }
+  const esAdmin = usuarioActual?.rol === 'admin';
+  cont.innerHTML = reunionesData.map(r=>{
+    const fl = new Date(r.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+    const eb = r.estado==='completado' ? '<span class="badge b-green">✓ Completada</span>'
+      : r.estado==='en-curso' ? '<span class="badge b-rosa">● En curso</span>'
+      : r.estado==='cancelado' ? '<span class="badge b-gray">Cancelada</span>'
+      : '<span class="badge b-gray">Pendiente</span>';
+    const bi = r.estado==='pendiente' ? `<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="entrarReunion('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><polygon points="5,3 19,12 5,21"/></svg>Iniciar</button>` : '';
+    const bj = r.estado==='en-curso' ? `<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="entrarReunion('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14M3 6h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>Unirse</button>` : '';
+    const bfin = r.estado==='en-curso' ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="cambiarEstadoReunion('${r.id}','completado')" title="Cerrar la reunión">Finalizar</button>` : '';
+    const bcancel = r.estado==='pendiente' ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="cambiarEstadoReunion('${r.id}','cancelado')">Cancelar</button>` : '';
+    const belim = esAdmin ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="eliminarReunion('${r.id}')">Eliminar</button>` : '';
+    const invitadosTxt = r.invitados.length ? r.invitados.map(i=>i.nombre).join(', ') : 'Sin invitados';
+    return `<div class="turno-item">
+      <div class="turno-time"><div class="turno-hora">${r.hora}</div><div class="turno-fecha">${fl}</div></div>
+      <div class="turno-info">
+        <div class="turno-paciente"><span>${r.titulo}</span>${eb}</div>
+        <div class="turno-meta"><span>${invitadosTxt}</span></div>
+        ${r.motivo?`<div style="font-size:12px;color:var(--text3);margin-top:3px;">${r.motivo}</div>`:''}
+      </div>
+      <div class="turno-actions">${bi}${bj}${bfin}${bcancel}${belim}</div>
+    </div>`;
+  }).join('');
+}
+
+function agregarFilaInvitadoReunion(){
+  const cont = document.getElementById('reu-invitados-lista');
+  const row = document.createElement('div');
+  row.className = 'reu-invitado-row';
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML = `
+    <input type="text" class="reu-inv-nombre" placeholder="Nombre" style="flex:1.2;min-width:0;"/>
+    <input type="text" class="reu-inv-email" placeholder="Email (opcional)" style="flex:1.3;min-width:0;"/>
+    <input type="text" class="reu-inv-telefono" placeholder="WhatsApp (opcional)" style="flex:1;min-width:0;"/>
+    <button type="button" onclick="this.closest('.reu-invitado-row').remove()" style="background:none;border:none;color:var(--rosa-dark);cursor:pointer;font-size:18px;padding:4px 6px;flex-shrink:0;line-height:1;" title="Quitar invitado">×</button>
+  `;
+  cont.appendChild(row);
+}
+
+async function programarReunion(){
+  const titulo = document.getElementById('reu-titulo').value.trim();
+  const fecha = document.getElementById('reu-fecha').value;
+  const hora = document.getElementById('reu-hora').value.trim();
+  const motivo = document.getElementById('reu-notas').value.trim();
+  const errEl = document.getElementById('reunion-err');
+  const okEl = document.getElementById('reunion-resultado');
+  errEl.style.display='none'; okEl.style.display='none';
+  if(!titulo){ errEl.style.display='block'; errEl.textContent='Ingresá un título'; return; }
+  if(!fecha || !hora){ errEl.style.display='block'; errEl.textContent='Indicá fecha y hora'; return; }
+  const invitados = [...document.querySelectorAll('#reu-invitados-lista .reu-invitado-row')].map(row=>({
+    nombre: row.querySelector('.reu-inv-nombre').value.trim(),
+    email: row.querySelector('.reu-inv-email').value.trim(),
+    telefono: row.querySelector('.reu-inv-telefono').value.trim()
+  })).filter(i=>i.nombre);
+
+  const btn = document.getElementById('btn-programar-reunion');
+  btn.disabled = true; btn.textContent = 'Programando...';
+  try{
+    const res = await fetch('/api/reuniones', {method:'POST', headers:apiHeaders(), body:JSON.stringify({titulo,fecha,hora,motivo,invitados})});
+    const data = await res.json();
+    if(!data.ok){ errEl.style.display='block'; errEl.textContent = data.error || 'No se pudo programar la reunión'; return; }
+    document.getElementById('reu-titulo').value='';
+    document.getElementById('reu-notas').value='';
+    document.getElementById('reu-invitados-lista').innerHTML='';
+
+    if(data.invitados.length){
+      // El mensaje de WhatsApp va indexado en una variable, no inline en el onclick: si el
+      // nombre o el título de la reunión traen una comilla, un onclick inline queda roto.
+      window._reunionMensajesWA = {};
+      okEl.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px;">✓ Reunión programada — invitaciones:</div>` +
+        data.invitados.map((i,idx)=>{
+          const key = 'reu_'+idx;
+          window._reunionMensajesWA[key] = `Hola ${i.nombre}, te invitamos a "${data.reunion.titulo}" el ${new Date(data.reunion.fecha+'T12:00').toLocaleDateString('es-AR')} a las ${data.reunion.hora} hs. Ingresá acá: ${i.link}`;
+          const wa = i.telefono ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;color:#1e9d5a;" onclick="abrirWANumero('${i.telefono.replace(/'/g,'')}',window._reunionMensajesWA['${key}'])">WhatsApp</button>` : '';
+          const emailInfo = i.email ? (i.email_enviado ? '<span class="badge b-green" style="font-size:10px;margin-left:6px;">✓ Email enviado</span>' : '<span class="badge b-gray" style="font-size:10px;margin-left:6px;">Email no enviado</span>') : '';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <div style="font-size:12.5px;">${escaparHtml(i.nombre)}${emailInfo}</div>
+            <div style="display:flex;gap:6px;">${wa}</div>
+          </div>`;
+        }).join('');
+    } else {
+      okEl.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--azul);">✓ Reunión programada</div>`;
+    }
+    okEl.style.display='block';
+    await cargarReuniones();
+  }catch(e){
+    errEl.style.display='block'; errEl.textContent='Error de conexión';
+  }finally{
+    btn.disabled=false; btn.textContent='Programar y generar invitaciones';
+  }
+}
+
+function iniciarReunionTimer(){
+  reunionTimerStart = Date.now();
+  reunionTimerInterval = setInterval(()=>{
+    const s = Math.floor((Date.now()-reunionTimerStart)/1000);
+    document.getElementById('reunion-video-timer').textContent =
+      String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  }, 1000);
+}
+
+async function entrarReunion(id){
+  const r = reunionesData.find(x=>x.id===id);
+  if(!r) return;
+  try{
+    const res = await fetch('/api/reuniones/'+id+'/mi-link', {headers:apiHeaders()});
+    const data = await res.json();
+    if(!data.ok){ mostrarError(data.error||'No se pudo obtener el link de la reunión'); return; }
+    reunionActualId = id;
+    if(r.estado === 'pendiente'){
+      await fetch('/api/reuniones/'+id+'/estado', {method:'PATCH', headers:apiHeaders(), body:JSON.stringify({estado:'en-curso'})});
+    }
+    document.getElementById('reunion-daily-frame').src = data.link;
+    document.getElementById('reunion-video-label').textContent = r.titulo;
+    document.getElementById('reunion-video-container').classList.add('active');
+    clearInterval(reunionTimerInterval); iniciarReunionTimer();
+    document.getElementById('reunion-video-container').scrollIntoView({behavior:'smooth'});
+    await cargarReuniones();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+function abrirReunionAparte(){
+  const frame = document.getElementById('reunion-daily-frame');
+  if(!frame.src){ mostrarToast('No hay una reunión activa','#c0365a'); return; }
+  window.open(frame.src, '_blank');
+}
+
+function cerrarVideoReunion(){
+  clearInterval(reunionTimerInterval);
+  document.getElementById('reunion-video-container').classList.remove('active');
+  document.getElementById('reunion-daily-frame').src = '';
+  reunionActualId = null;
+}
+
+async function cambiarEstadoReunion(id, estado){
+  if(estado==='cancelado' && !(await confirmar('¿Cancelar esta reunión?', {titulo:'Cancelar reunión', textoConfirmar:'Cancelar', danger:true}))) return;
+  try{
+    await fetch('/api/reuniones/'+id+'/estado', {method:'PATCH', headers:apiHeaders(), body:JSON.stringify({estado})});
+    if(estado==='completado' && reunionActualId===id) cerrarVideoReunion();
+    await cargarReuniones();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+function finalizarReunion(){
+  if(reunionActualId) cambiarEstadoReunion(reunionActualId, 'completado');
+}
+
+async function eliminarReunion(id){
+  if(!(await confirmar('Se va a eliminar esta reunión definitivamente.', {titulo:'Eliminar reunión', textoConfirmar:'Eliminar', danger:true}))) return;
+  try{
+    await fetch('/api/reuniones/'+id, {method:'DELETE', headers:apiHeaders()});
+    await cargarReuniones();
+    mostrarToast('✓ Reunión eliminada','#9a2847');
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 // ===== CONTROL DE AUSENTISMO =====

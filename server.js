@@ -281,6 +281,33 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_casos_empresa   ON casos_ausentismo (empresa_nombre);
       CREATE INDEX IF NOT EXISTS idx_casos_estado    ON casos_ausentismo (estado);
       CREATE INDEX IF NOT EXISTS idx_casos_prof      ON casos_ausentismo (profesional_id);
+
+      -- Reuniones de empresa/negocios: comparten la infraestructura de videollamada (Daily.co)
+      -- con los turnos médicos, pero es un módulo aparte, sin dictamen ni acta. Los invitados
+      -- son gente suelta cargada a mano (no necesariamente pacientes ni empresas clientes).
+      CREATE TABLE IF NOT EXISTS reuniones (
+        id VARCHAR(50) PRIMARY KEY,
+        titulo VARCHAR(300) NOT NULL,
+        fecha DATE NOT NULL,
+        hora VARCHAR(20) NOT NULL,
+        motivo TEXT,
+        estado VARCHAR(30) DEFAULT 'pendiente',
+        sala VARCHAR(200),
+        link_organizador TEXT,
+        creado_por VARCHAR(200),
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS reunion_invitados (
+        id SERIAL PRIMARY KEY,
+        reunion_id VARCHAR(50) NOT NULL REFERENCES reuniones(id) ON DELETE CASCADE,
+        nombre VARCHAR(200) NOT NULL,
+        email VARCHAR(200),
+        telefono VARCHAR(50),
+        link TEXT,
+        email_enviado BOOLEAN DEFAULT false,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_reunion_invitados_reunion ON reunion_invitados (reunion_id);
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -1548,6 +1575,113 @@ async function crearTurnoConVideollamada({ paciente, medicos: ml, tipo, fecha, h
 
   return { turnoId, sala: sala.name, url: sala.url, linkPaciente, linkMedicoGenerico, linksMedicos };
 }
+
+// ===== REUNIONES (empresa/negocios — comparten Daily.co con los turnos, nada más) =====
+// Sin dictamen, sin acta, sin "paciente": es agenda + videollamada + invitación, y listo.
+app.post('/api/reuniones', authMiddleware, async (req, res) => {
+  const { titulo, fecha, hora, motivo, invitados } = req.body;
+  if (!titulo) return res.status(400).json({ error: 'Falta el título de la reunión' });
+  if (!fecha || !hora) return res.status(400).json({ error: 'Indicá fecha y hora' });
+  const listaInvitados = Array.isArray(invitados) ? invitados.filter(i => i && i.nombre) : [];
+  try {
+    const nombreSala = `medgrup-reunion-${Date.now()}`;
+    const resp = await fetch('https://api.daily.co/v1/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
+      body: JSON.stringify({
+        name: nombreSala,
+        properties: {
+          enable_chat: true,
+          exp: Math.floor(Date.now()/1000)+(60*60*24*30),
+          max_participants: 20,
+          enable_prejoin_ui: false,
+          lang: 'es'
+        }
+      })
+    });
+    const sala = await resp.json();
+    if (!resp.ok) { const e = new Error('No se pudo crear la sala de videollamada'); e.detalle = sala; throw e; }
+
+    // El organizador (quien programa) entra como moderador/owner de la sala
+    const tokenOrganizador = await crearMeetingToken(sala.name, req.usuario.nombre, true);
+    const linkOrganizador = `${sala.url}?t=${tokenOrganizador}`;
+
+    const reunionId = `reunion-${Date.now()}`;
+    await pool.query(
+      `INSERT INTO reuniones (id,titulo,fecha,hora,motivo,estado,sala,link_organizador,creado_por)
+       VALUES ($1,$2,$3,$4,$5,'pendiente',$6,$7,$8)`,
+      [reunionId, titulo, fecha, hora, motivo||'', sala.name, linkOrganizador, req.usuario.nombre]);
+
+    // Cada invitado entra con su propio link a nombre suyo (no moderador)
+    const invitadosCreados = [];
+    for (const inv of listaInvitados) {
+      const token = await crearMeetingToken(sala.name, inv.nombre, false);
+      const link = `${sala.url}?t=${token}`;
+      const r = await pool.query(
+        `INSERT INTO reunion_invitados (reunion_id,nombre,email,telefono,link) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        [reunionId, inv.nombre, inv.email||'', inv.telefono||'', link]);
+      invitadosCreados.push(r.rows[0]);
+    }
+
+    // Invitación por email a quien tenga email cargado — si falla uno no se corta el resto
+    const fechaTexto = new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    for (const inv of invitadosCreados) {
+      if (!inv.email) continue;
+      const ok = await enviarEmail(inv.email, `Invitación: ${titulo}`, `
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+          <h2 style="color:#3a6ea8;">${titulo}</h2>
+          <p>Hola ${inv.nombre},</p>
+          <p>Te invitamos a una videollamada con MEDGRUP:</p>
+          <p><strong>Fecha:</strong> ${fechaTexto}<br/><strong>Hora:</strong> ${hora} hs</p>
+          ${motivo ? `<p><strong>Motivo:</strong> ${motivo}</p>` : ''}
+          <p style="margin:24px 0;"><a href="${inv.link}" style="background:#3a6ea8;color:white;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Ingresar a la reunión</a></p>
+          <p style="font-size:12px;color:#888;">Este link es personal, no lo compartas.</p>
+        </div>`);
+      if (ok) await pool.query('UPDATE reunion_invitados SET email_enviado=true WHERE id=$1', [inv.id]);
+    }
+
+    const invitadosFinales = (await pool.query('SELECT * FROM reunion_invitados WHERE reunion_id=$1 ORDER BY id', [reunionId])).rows;
+    res.json({ ok: true, reunion: { id: reunionId, titulo, fecha, hora, motivo, estado: 'pendiente' }, invitados: invitadosFinales });
+  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
+});
+
+app.get('/api/reuniones', authMiddleware, async (req, res) => {
+  try {
+    const reuniones = (await pool.query('SELECT * FROM reuniones ORDER BY fecha DESC, hora DESC')).rows;
+    const invitados = (await pool.query('SELECT * FROM reunion_invitados ORDER BY id')).rows;
+    const porReunion = {};
+    for (const i of invitados) { (porReunion[i.reunion_id] ||= []).push(i); }
+    res.json({ ok: true, reuniones: reuniones.map(r => ({ ...r, invitados: porReunion[r.id] || [] })) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// El link del organizador es siempre el mismo (quien programó la reunión) — cualquier otro
+// usuario logueado que necesite entrar usa su link de invitado si lo tiene, o el organizador
+// se lo comparte. No hay noción de "asignado" como en los turnos médicos.
+app.get('/api/reuniones/:id/mi-link', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT link_organizador, creado_por FROM reuniones WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Reunión no encontrada' });
+    res.json({ ok: true, link: r.rows[0].link_organizador });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/reuniones/:id/estado', authMiddleware, async (req, res) => {
+  const { estado } = req.body;
+  if (!['pendiente','en-curso','completado','cancelado'].includes(estado)) return res.status(400).json({ error: 'Estado inválido' });
+  try {
+    const r = await pool.query('UPDATE reuniones SET estado=$1 WHERE id=$2 RETURNING id', [estado, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Reunión no encontrada' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/reuniones/:id', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM reuniones WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
   try {
