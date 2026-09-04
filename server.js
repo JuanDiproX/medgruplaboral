@@ -713,7 +713,7 @@ app.get('/api/presupuestos/:id/pdf', async (req, res) => {
 <title>Presupuesto ${p.numero}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
@@ -2223,7 +2223,7 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
 <title>Informe ${d.numero}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:14px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
@@ -2301,7 +2301,7 @@ ${constanciaGeo}
 <title>Informe ${d.numero}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
+body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #3a6ea8;margin-bottom:6px;}
 .logo-img{height:40px;width:auto;object-fit:contain;}
 .doc-ref{text-align:right;font-size:10.5px;color:#5a5750;line-height:1.7;}
@@ -2501,7 +2501,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
 
         const htmlInasistencia = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta de inasistencia - ${t.paciente}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
@@ -2600,7 +2600,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${t.paciente}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
+*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
 .logo-img{height:42px;width:auto;object-fit:contain;}h1{font-size:17px;font-weight:700;margin-bottom:6px;}
 .subt{font-size:11px;color:#5a5750;margin-bottom:18px;}p{text-align:justify;margin-bottom:10px;}
