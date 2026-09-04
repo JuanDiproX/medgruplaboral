@@ -48,6 +48,15 @@ pool.on('connect', c => c.query(`SET TIME ZONE '${ZONA_ARG}'`));
 function hashPassword(p) { return crypto.createHmac('sha256', SESSION_SECRET).update(p).digest('hex'); }
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
+// A pesar de la instrucción de no usar markdown, la IA a veces desliza un **texto** o __texto__
+// de énfasis. Los informes imprimen estos campos tal cual llegan de la base, sin intérprete de
+// markdown, así que quedaban los asteriscos/guiones sueltos (o una sola letra "marcada") en el
+// documento final. Se le saca el marcador y se deja el texto limpio, sin negrita.
+function limpiarMarkdown(s) {
+  if (!s) return s;
+  return String(s).replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1');
+}
+
 // Envío de emails transaccionales vía Resend (REST simple, sin SDK — mismo patrón que Daily/Anthropic)
 async function enviarEmail(to, subject, html) {
   if (!RESEND_API_KEY) { console.error('⚠ RESEND_API_KEY no configurada: no se pudo enviar email a', to); return false; }
@@ -1997,6 +2006,11 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
     const r = await pool.query('SELECT * FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     const d = r.rows[0];
+    // Los campos redactados por la IA (o tipeados a mano) se imprimen tal cual, sin intérprete
+    // de markdown: si alguno trae **negrita** o __negrita__ suelta, se limpia antes de armar el HTML.
+    for (const campo of ['metodologia','antecedentes','hallazgos','analisis','conclusion','situacion_licencia','indicaciones','aptitud_texto']) {
+      if (d[campo]) d[campo] = limpiarMarkdown(d[campo]);
+    }
     const otros = d.turno_id ? (await pool.query('SELECT * FROM dictamenes WHERE turno_id=$1 AND id!=$2 ORDER BY creado_en ASC', [d.turno_id, d.id])).rows : [];
     const todos = [d, ...otros];
 

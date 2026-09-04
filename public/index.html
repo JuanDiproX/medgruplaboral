@@ -1948,7 +1948,9 @@ o hay uno pero no lo contradice, o la relación no es clara, dejá el campo vac�
 vacío: una alerta que no corresponde es peor que no alertar.
 
 === FORMATO DE LA RESPUESTA ===
-1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
+1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown: ni en la
+   respuesta en general ni DENTRO de los valores de cada campo — nada de **negrita**,
+   __negrita__, *cursiva*, títulos con #, ni viñetas con - o *. Texto plano, nada más.
 2. CUIDADO CON LAS COMILLAS: las comillas internas van escapadas como \\" y los saltos de línea
    dentro de un valor como \\n, nunca literales. Una comilla suelta rompe el informe entero.
 
@@ -2050,7 +2052,9 @@ contradice, o la relación no es clara, dejá el campo vacío "". Ante la duda, 
 que no corresponde es peor que no alertar.
 
 === FORMATO DE LA RESPUESTA ===
-1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown.
+1. Respondé ÚNICAMENTE con JSON válido. Sin texto antes ni después. Sin markdown: ni en la
+   respuesta en general ni DENTRO de los valores de cada campo — nada de **negrita**,
+   __negrita__, *cursiva*, títulos con #, ni viñetas con - o *. Texto plano, nada más.
 2. CUIDADO CON LAS COMILLAS: si citás textualmente al paciente, escribí las comillas internas
    escapadas como \\" (por ejemplo: "refiere \\"no puedo más\\" al describir..."). Los saltos
    de línea dentro de un valor van como \\n, nunca literales. Una comilla sin escapar rompe
@@ -2257,6 +2261,13 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       }
     }
 
+    // Pese a la instrucción de no usar markdown, a veces desliza un **texto** o __texto__ de
+    // énfasis — como acá no hay intérprete de markdown, quedaban los asteriscos sueltos (o una
+    // sola letra "marcada") en el preview y en el informe final. Se limpia antes de usarlo.
+    ['metodologia','antecedentes','hallazgos','analisis','conclusion','situacion_licencia','indicaciones'].forEach(campo=>{
+      if(info[campo]) info[campo] = limpiarMarkdown(info[campo]);
+    });
+
     window._informeIA = info;
     // Se guarda recién acá, con la respuesta ya confirmada válida: si se guardara antes y la
     // IA devolviera algo ilegible, la próxima corrección arrancaría de un turno roto.
@@ -2393,6 +2404,13 @@ function mostrarAlertaDiagnostico(id, texto){
 
 function escaparHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Mismo saneo que limpiarMarkdown() del lado del servidor: saca **negrita**/__negrita__ sueltas
+// que la IA desliza pese a la instrucción de no usar markdown.
+function limpiarMarkdown(s){
+  if(!s) return s;
+  return String(s).replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1');
 }
 
 // Colapsa el paso "Dictá el caso" a un link chico una vez que ya hay un informe generado: ver
