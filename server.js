@@ -1669,9 +1669,19 @@ app.get('/api/reuniones', authMiddleware, async (req, res) => {
 // se lo comparte. No hay noción de "asignado" como en los turnos médicos.
 app.get('/api/reuniones/:id/mi-link', authMiddleware, async (req, res) => {
   try {
-    const r = await pool.query('SELECT link_organizador, creado_por FROM reuniones WHERE id=$1', [req.params.id]);
+    const r = await pool.query('SELECT sala, link_organizador, creado_por FROM reuniones WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Reunión no encontrada' });
-    res.json({ ok: true, link: r.rows[0].link_organizador });
+    const reunion = r.rows[0];
+    // El link guardado es del organizador (quien la programó). Si OTRO usuario de la app
+    // también entra desde "Reuniones" (ej. otro médico que participa), necesita su propio
+    // token — si comparte el mismo link que el organizador, las dos sesiones pisan el mismo
+    // participante y una puede echar a la otra de la sala.
+    if (req.usuario.nombre === reunion.creado_por) {
+      return res.json({ ok: true, link: reunion.link_organizador });
+    }
+    const token = await crearMeetingToken(reunion.sala, req.usuario.nombre, true);
+    const linkPropio = `${reunion.link_organizador.split('?')[0]}?t=${token}`;
+    res.json({ ok: true, link: linkPropio });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
