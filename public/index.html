@@ -823,7 +823,17 @@ td.no-label::before{display:none;}
             <div class="timeline" id="log-timeline"><div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">Sin actividad aún</div></div>
           </div>
         </div>
-        <div id="links-box" style="display:none;"><div class="card"><div class="card-hdr"><div class="card-title">Links del turno</div></div><div class="card-body" id="links-body"></div></div></div>
+        <div id="links-box" style="display:none;"><div class="card"><div class="card-hdr"><div class="card-title">Links del turno</div></div><div class="card-body">
+          <div id="links-body"></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <div style="font-size:11.5px;color:var(--text3);margin-bottom:8px;">¿Alguien más necesita entrar a esta videollamada (no es médico ni paciente)? Generale un link propio.</div>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="link-invitado-nombre" placeholder="Nombre del invitado" style="flex:1;min-width:0;" onkeydown="if(event.key==='Enter'){event.preventDefault();generarLinkInvitado();}"/>
+              <button class="btn btn-ghost" style="flex-shrink:0;" onclick="generarLinkInvitado()">+ Generar link</button>
+            </div>
+            <div id="links-invitados-extra"></div>
+          </div>
+        </div></div></div>
       </div>
     </div>
   </div>
@@ -3130,7 +3140,7 @@ async function guardarEdicionMedico(){
   }catch(e){ errEl.textContent='Error de conexión: '+e.message; errEl.style.display='block'; }
 }
 
-let turnos=[],consultaActual=null,dictCount=0;
+let turnos=[],consultaActual=null,dictCount=0,linksTurnoActualId=null;
 async function cargarTurnos(){
   try{
     const res=await fetch('/api/turnos',{headers:apiHeaders()});
@@ -3726,8 +3736,38 @@ function recordarTurnoWA(id){
 function verLinks(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
   document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  linksTurnoActualId=t.id;
+  document.getElementById('links-invitados-extra').innerHTML='';
+  document.getElementById('link-invitado-nombre').value='';
   document.getElementById('links-box').style.display='block';
   document.getElementById('links-box').scrollIntoView({behavior:'smooth'});
+}
+
+// Un tercero que no es médico ni paciente pero necesita entrar a esta videollamada puntual
+// (ej. un administrativo de un penal, un perito). Se le genera un link propio contra la misma
+// sala, sin guardarlo en ningún lado — cada vez que hace falta se vuelve a pedir uno.
+async function generarLinkInvitado(){
+  const nombre = document.getElementById('link-invitado-nombre').value.trim();
+  if(!nombre){ mostrarError('Escribí el nombre del invitado'); return; }
+  if(!linksTurnoActualId){ mostrarError('No hay un turno seleccionado'); return; }
+  try{
+    const res = await fetch('/api/turnos/'+linksTurnoActualId+'/invitados', {method:'POST', headers:apiHeaders(), body:JSON.stringify({nombre})});
+    const data = await res.json();
+    if(!data.ok){ mostrarError(data.error||'No se pudo generar el link'); return; }
+    const t = turnos.find(x=>x.id===linksTurnoActualId);
+    const fl = t ? new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}) : '';
+    const key = 'inv_'+Date.now();
+    mensajesLinks[key] = `Hola ${data.nombre}, te enviamos el link para la videollamada con MEDGRUP.\n\n🎥 Link: ${data.link}\n\n${t?`Fecha: ${fl} a las ${t.hora} hs\n\n`:''}No necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+    document.getElementById('links-invitados-extra').insertAdjacentHTML('beforeend', `<div class="participante-link">
+      <div class="participante-nombre">${escaparHtml(data.nombre)} <span class="participante-rol rol-medico">Invitado</span></div>
+      <div class="link-row"><div class="link-url">${data.link}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${data.link}')">Copiar</button></div>
+      <div class="share-btns">
+        <button class="btn-wa" onclick="abrirWA('${key}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button>
+        <button class="btn-gmail" onclick="abrirGmail('${key}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>Gmail</button>
+      </div>
+    </div>`);
+    document.getElementById('link-invitado-nombre').value='';
+  }catch(e){ mostrarError('Error de conexión'); }
 }
 
 function abrirModalTurno(){document.getElementById('modal-turno').classList.add('open');document.getElementById('turno-resultado').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';document.getElementById('loading-turno').style.display='none';pacientesTurnoActual=[];document.getElementById('pacientes-datalist').innerHTML='';document.getElementById('t-modalidad').value='telemedicina';document.getElementById('t-paciente-presencial').checked=false;onModalidadTurnoChange();cargarMedicos();cargarEmpresasSelect();}
@@ -3973,6 +4013,9 @@ async function unirseTurno(id){
   document.getElementById('video-sala').textContent=t.sala;
 
   document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  linksTurnoActualId=t.id;
+  document.getElementById('links-invitados-extra').innerHTML='';
+  document.getElementById('link-invitado-nombre').value='';
   document.getElementById('links-box').style.display='block';
   consultaActual=t;
   clearInterval(timerInterval);startTimer();
@@ -4097,6 +4140,9 @@ async function iniciarTurno(id){
   document.getElementById('video-sala').textContent=t.sala;
 
   document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  linksTurnoActualId=t.id;
+  document.getElementById('links-invitados-extra').innerHTML='';
+  document.getElementById('link-invitado-nombre').value='';
   document.getElementById('links-box').style.display='block';
   consultaActual=t;startTimer();
   cargarCasoDeLlamada(id);

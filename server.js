@@ -1787,6 +1787,24 @@ app.get('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Un tercero que no es médico ni paciente pero necesita estar en la videollamada (ej. un
+// administrativo de un penal, un perito, un familiar autorizado). Se le genera un link propio
+// a su nombre contra la MISMA sala del turno, sin moderador — no se guarda en turno_medicos
+// (esa tabla es de médicos, con matrícula/especialidad) ni en ningún lado: se arma al toque
+// cada vez que se pide, así que no aparece luego en el acta como si fuera personal médico.
+app.post('/api/turnos/:id/invitados', authMiddleware, async (req, res) => {
+  const nombre = (req.body.nombre || '').trim();
+  if (!nombre) return res.status(400).json({ error: 'Falta el nombre del invitado' });
+  try {
+    const t = await pool.query('SELECT sala, link_paciente FROM turnos WHERE id=$1', [req.params.id]);
+    if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
+    if (!t.rows[0].sala) return res.status(400).json({ error: 'Este turno todavía no tiene sala de videollamada' });
+    const token = await crearMeetingToken(t.rows[0].sala, nombre, false);
+    const base = (t.rows[0].link_paciente || '').split('?')[0];
+    res.json({ ok: true, nombre, link: `${base}?t=${token}` });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Editar hora/participante de un evento (solo admin)
 app.patch('/api/eventos/:id', adminMiddleware, async (req, res) => {
   try {
