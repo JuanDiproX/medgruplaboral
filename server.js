@@ -2303,13 +2303,13 @@ ${d.paciente_dni?`<div class="dato"><span class="dato-lbl">DNI:</span> ${d.pacie
 ${horaControl?`<div class="dato"><span class="dato-lbl">Hora de inicio del control:</span> ${horaControl} hs</div>`:''}
 <div class="dato"><span class="dato-lbl">Modalidad:</span> ${modalidad}</div>
 ${casoControl.domicilio?`<div class="dato"><span class="dato-lbl">Domicilio informado:</span> ${casoControl.domicilio}</div>`:''}
-${bloqueUbicacion}
+${casoControl?.excepcion_geo ? '' : bloqueUbicacion}
 
 <h2>Informe</h2>
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
-${casoControl?.excepcion_geo ? '<div class="constancia">Control por videollamada con ingreso autorizado excepcionalmente sin validación geográfica. El domicilio consignado es el informado; no se certifica su ubicación mediante geolocalización.</div>' : constanciaGeo}
+${casoControl?.excepcion_geo ? '' : constanciaGeo}
 
 <div class="bloque-firmas">
   <div class="firma-tit">Firma y sello del profesional actuante</div>
@@ -2667,7 +2667,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}${t.modalidad==='presencial'?' (Presencial)':(t.paciente_presencial?' (Paciente presente)':'')}</div></div>
 </div>
 ${seccionEventosHtml}
-${casoActa?.excepcion_geo ? `<p><strong>Domicilio informado:</strong> ${String(casoActa.domicilio || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p><p>Control por videollamada con ingreso autorizado excepcionalmente sin validación geográfica. No se certifica la ubicación del dispositivo en el domicilio informado.</p>` : seccionGeoHtml}
+${casoActa?.excepcion_geo ? `<p><strong>Domicilio informado:</strong> ${String(casoActa.domicilio || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p>` : seccionGeoHtml}
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="verif">${verifTexto}</div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
