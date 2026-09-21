@@ -371,6 +371,7 @@ async function initDB() {
       // guarda esa dirección, sus coordenadas y con cuánto margen se considera "en casa".
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio VARCHAR(400)`,
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio_lat DOUBLE PRECISION`,
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS excepcion_geo BOOLEAN NOT NULL DEFAULT false`,
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS domicilio_lng DOUBLE PRECISION`,
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS radio_metros INTEGER DEFAULT 300`,
       // El link que se le manda al trabajador no puede ser adivinable: el id del turno sí lo es
@@ -2308,7 +2309,7 @@ ${bloqueUbicacion}
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
-${constanciaGeo}
+${casoControl?.excepcion_geo ? '<div class="constancia">Control por videollamada con ingreso autorizado excepcionalmente sin validación geográfica. El domicilio consignado es el informado; no se certifica su ubicación mediante geolocalización.</div>' : constanciaGeo}
 
 <div class="bloque-firmas">
   <div class="firma-tit">Firma y sello del profesional actuante</div>
@@ -2500,7 +2501,7 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
         `SELECT * FROM ingresos_ubicacion WHERE caso_id=$1 ORDER BY creado_en ASC`, [casoActa.id])).rows;
       const aceptados = intentos.filter(i => i.resultado === 'aceptado');
       verificacionActa = aceptados[aceptados.length - 1] || null;
-      const ingreso = aceptados.length > 0;
+      const ingreso = aceptados.length > 0 || intentos.some(i => i.resultado === "excepcion_geo");
       const sePresento = eventos.some(e => e.tipo === 'union_paciente');
 
       if (!ingreso && !sePresento) {
@@ -2666,7 +2667,7 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}${t.modalidad==='presencial'?' (Presencial)':(t.paciente_presencial?' (Paciente presente)':'')}</div></div>
 </div>
 ${seccionEventosHtml}
-${seccionGeoHtml}
+${casoActa?.excepcion_geo ? `<p><strong>Domicilio informado:</strong> ${String(casoActa.domicilio || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p><p>Control por videollamada con ingreso autorizado excepcionalmente sin validación geográfica. No se certifica la ubicación del dispositivo en el domicilio informado.</p>` : seccionGeoHtml}
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="verif">${verifTexto}</div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
@@ -2990,6 +2991,7 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
 
 // --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
 app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
+  if (req.body.excepcion_geo !== undefined && typeof req.body.excepcion_geo !== 'boolean') return res.status(400).json({error:'Excepción inválida'});
   const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre,
           domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control } = req.body;
   if (tipo_control && !TIPOS_CONTROL[tipo_control]) return res.status(400).json({ error: 'Tipo de control desconocido' });
@@ -3026,11 +3028,12 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
          domicilio_lat       = CASE WHEN $10::boolean THEN $11 ELSE domicilio_lat END,
          domicilio_lng       = CASE WHEN $10::boolean THEN $12 ELSE domicilio_lng END,
          radio_metros        = COALESCE($13, radio_metros),
-         tipo_control        = COALESCE($14, tipo_control)
+         tipo_control        = COALESCE($14, tipo_control),
+         excepcion_geo       = COALESCE($16, excepcion_geo)
        WHERE id = $15`,
       [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
        trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null,
-       domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, tipo_control || null, req.params.id]);
+       domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, tipo_control || null, req.params.id, req.body.excepcion_geo ?? null]);
     // Si la entrevista ya estaba creada, el tipo tiene que seguir al caso: el acta y el
     // informe se nombran desde el turno, no desde acá.
     if (tipo_control && chk.rows[0].turno_id) {
@@ -3197,7 +3200,7 @@ app.get('/ingreso/:token', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/api/ingreso/:token', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, c.tipo_control, t.fecha, t.hora
+      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, c.tipo_control, c.excepcion_geo, t.fecha, t.hora
       FROM casos_ausentismo c LEFT JOIN turnos t ON t.id = c.turno_id
       WHERE c.token_ingreso=$1`, [req.params.token]);
     if (!r.rows.length) return res.status(404).json({ error: 'Este link no es válido o ya venció.' });
@@ -3205,7 +3208,7 @@ app.get('/api/ingreso/:token', async (req, res) => {
     // El trabajador ve el nombre del control que le corresponde: la página es la misma, pero
     // no se le puede decir "control de ausentismo" a quien viene por un examen periódico.
     res.json({ ok: true, trabajador: c.trabajador_nombre, fecha: c.fecha, hora: c.hora,
-      domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null,
+      domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null, excepcion_geo: c.excepcion_geo,
       tipo_control: c.tipo_control || TIPO_CONTROL_DEFECTO, control: etiquetaControl(c.tipo_control),
       cerrado: ['resuelto','cancelado'].includes(c.estado) });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -3235,6 +3238,12 @@ app.post('/api/ingreso/:token/verificar', async (req, res) => {
     if (!caso.link_paciente) {
       await registrar('sin_entrevista', null);
       return res.status(403).json({ code:'SIN_ENTREVISTA', error: 'Todavía no hay una entrevista programada. Aguardá a que te avisemos.' });
+    }
+    if (caso.excepcion_geo === true) {
+      await pool.query(
+        "INSERT INTO ingresos_ubicacion (caso_id,turno_id,resultado,ip) VALUES ($1,$2,'excepcion_geo',$3)",
+        [caso.id, caso.turno_id, ip]);
+      return res.json({ok:true, link:caso.link_paciente, excepcion_geo:true});
     }
     if (caso.domicilio_lat == null || caso.domicilio_lng == null) {
       await registrar('domicilio_sin_coordenadas', null);
@@ -3597,7 +3606,7 @@ app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, r
     // Contra el registro no se discute: si el trabajador entró, no hay inasistencia que
     // declarar. El acta saldría contradiciendo sus propios datos.
     const entro = await pool.query(
-      `SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado='aceptado' LIMIT 1`, [caso.id]);
+      `SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado IN ('aceptado','excepcion_geo') LIMIT 1`, [caso.id]);
     if (entro.rows.length) return res.status(409).json({
       error: 'El trabajador confirmó su ubicación e ingresó al control, así que no se puede registrar inasistencia.' });
     const seSumo = await pool.query(

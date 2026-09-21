@@ -74,6 +74,7 @@ function aviso(tipo, texto){
   $('aviso').innerHTML = texto ? `<div class="aviso aviso-${tipo}">${texto}</div>` : '';
 }
 
+let excepcionGeo = false;
 async function cargar(){
   try{
     const r = await fetch('/api/ingreso/' + encodeURIComponent(token));
@@ -89,6 +90,14 @@ async function cargar(){
       $('datos').style.display = 'block';
     }
     if(d.cerrado){ aviso('alerta','Esta entrevista ya está cerrada.'); return; }
+    excepcionGeo = d.excepcion_geo === true;
+    if(excepcionGeo){
+      aviso('info','MEDGRUP autorizó el ingreso sin validación geográfica para esta entrevista.');
+      $('btn').textContent = 'Continuar a la entrevista';
+      $('btn').style.display = 'block';
+      $('pie').textContent = 'El domicilio mostrado es el informado, sin verificación geográfica.';
+      return;
+    }
     if(!d.tiene_domicilio){
       aviso('alerta','Tu domicilio todavía no está verificado en el sistema. Avisale a tu empresa antes de la entrevista.');
       return;
@@ -116,7 +125,7 @@ async function verificar(){
   $('cargando').style.display = 'flex';
   aviso('', '');
   try{
-    const pos = await ubicacionActual();
+    const pos = excepcionGeo ? null : await ubicacionActual();
     $('cargando-txt').textContent = 'Confirmando...';
     const r = await fetch('/api/ingreso/' + encodeURIComponent(token) + '/verificar', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -126,7 +135,7 @@ async function verificar(){
     $('cargando').style.display = 'none';
 
     if(d.ok){
-      aviso('ok','Listo, confirmamos que estás en tu domicilio. Ya podés entrar.');
+      aviso('ok',d.excepcion_geo ? 'Ingreso autorizado sin validación geográfica.' : 'Listo, confirmamos que estás en tu domicilio. Ya podés entrar.');
       $('link-llamada').href = d.link;
       $('link-llamada').style.display = 'block';
       $('pie').textContent = 'Tocá el botón verde para entrar. Quedate en el domicilio durante toda la entrevista.';

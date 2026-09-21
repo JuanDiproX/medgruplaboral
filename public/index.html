@@ -1673,6 +1673,7 @@ td.no-label::before{display:none;}
     <div class="form-grid" style="margin-top:12px;">
       <div class="form-group"><label class="form-lbl">Latitud</label><input type="text" id="dom-lat" placeholder="-53.7877"/></div>
       <div class="form-group"><label class="form-lbl">Longitud</label><input type="text" id="dom-lng" placeholder="-67.7093"/></div>
+      <div class="form-group full"><label><input type="checkbox" id="dom-excepcion"/> Permitir ingreso sin validar ubicación solo en este caso</label><div>Usar si el mapa no ubica el domicilio. Los documentos conservarán el domicilio informado, sin certificar su ubicación.</div></div>
       <div class="form-group"><label class="form-lbl">Radio permitido (metros)</label><input type="number" id="dom-radio" min="50" max="5000" step="50" placeholder="300"/></div>
       <div class="form-group" style="display:flex;align-items:flex-end;">
         <button class="btn btn-ghost btn-full" style="padding:9px;" onclick="buscarCoordenadasDomicilio()">Buscar coordenadas</button>
@@ -5749,6 +5750,7 @@ function abrirDomicilioCaso(id){
   document.getElementById('dom-lat').value = c.domicilio_lat ?? '';
   document.getElementById('dom-lng').value = c.domicilio_lng ?? '';
   document.getElementById('dom-radio').value = c.radio_metros || 300;
+  document.getElementById('dom-excepcion').checked = c.excepcion_geo === true;
   avisoDomicilio('', '');
   document.getElementById('dom-ingresos').textContent = 'Cargando...';
   document.getElementById('modal-domicilio-caso').classList.add('open');
@@ -5776,6 +5778,7 @@ async function guardarDomicilioCaso(){
   const lng = document.getElementById('dom-lng').value.trim();
   const cuerpo = {
     domicilio: document.getElementById('dom-direccion').value.trim(),
+    excepcion_geo: document.getElementById('dom-excepcion').checked,
     radio_metros: Number(document.getElementById('dom-radio').value) || 300
   };
   // Las coordenadas solo se mandan si están cargadas a mano: si no, el servidor las resuelve
@@ -5805,6 +5808,7 @@ async function guardarDomicilioCaso(){
 
 const RESULTADO_INGRESO = {
   aceptado: ['Ingresó', '#1e6640'],
+  excepcion_geo: ['Ingreso autorizado sin validación geográfica', '#8f5000'],
   fuera_de_rango: ['Fuera del domicilio', '#8f5000'],
   sin_ubicacion: ['No compartió la ubicación', 'var(--rosa-dark)'],
   precision_baja: ['Señal muy débil', '#8f5000'],
