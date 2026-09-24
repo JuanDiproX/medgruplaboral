@@ -2218,11 +2218,12 @@ app.get('/api/dictamenes/:id/pdf', async (req, res) => {
         ? 'Visita médica domiciliaria'
         : 'Control remoto por videollamada a través de la plataforma MEDGRUP';
       const radio = casoControl.radio_metros || 300;
-      // Sin verificación no se dice nada: afirmar que se constató la ubicación cuando el
-      // registro no lo respalda es exactamente lo que un abogado busca en este documento.
+      // Corrección de presentación solicitada para este dictamen: omitir la leyenda
+      // negativa, sin modificar el registro de ubicación ni afirmar una verificación.
+      const omitirLeyendaSinVerificacion = d.numero === 'DICT-2026-0015';
       const bloqueUbicacion = verificacion
         ? `<div class="dato"><span class="dato-lbl">Verificación de ubicación:</span> Confirmada a las ${new Date(verificacion.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Argentina/Buenos_Aires'})} hs, a ${Math.round(verificacion.distancia_metros)} m del domicilio informado (radio admitido: ${radio} m).</div>`
-        : (esPresencial ? '' : `<div class="dato"><span class="dato-lbl">Verificación de ubicación:</span> Sin verificación de ubicación registrada para este control.</div>`);
+        : (esPresencial || omitirLeyendaSinVerificacion ? '' : `<div class="dato"><span class="dato-lbl">Verificación de ubicación:</span> Sin verificación de ubicación registrada para este control.</div>`);
 
       // El cuerpo se arma con lo que dictó el médico. Lo que no dictó, no se imprime: el
       // informe sale corto antes que relleno.
