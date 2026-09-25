@@ -638,6 +638,7 @@ td.no-label::before{display:none;}
         <div class="video-timer" id="video-timer">00:00:00</div>
         <div class="video-actions" style="display:flex;gap:8px;">
           <button class="btn" id="btn-cert-llamada" onclick="abrirCertificadosDeLlamada()" style="display:none;background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-cert-llamada-txt">Certificado</span></button>
+          <button class="btn" id="btn-chat-llamada" hidden onclick="abrirChatTurno(consultaActual.id)" style="display:none;background:white;color:#254c76">Chat y estudios</button>
           <button class="btn" id="btn-adjuntos-llamada" onclick="abrirInformesTurno(consultaActual.id)" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);" title="Informes adicionales subidos para este turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-adjuntos-llamada-txt">Adjuntos</span></button>
           <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" title="Redactar el informe de esta consulta con ayuda de IA" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:1px solid rgba(255,255,255,0.25);box-shadow:0 2px 10px rgba(99,102,241,0.45);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Redactar informe</button>
           <button class="btn btn-danger" onclick="finalizarConsulta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Finalizar consulta</button>
@@ -3214,6 +3215,9 @@ function cambiarTabTurnos(tab){
   renderAgenda();
 }
 
+function botonChatTurno(id){
+  return window.chatTurnoDisponible ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="abrirChatTurno(decodeURIComponent('${encodeURIComponent(id).replace(/'/g,'%27')}'))">Chat y estudios</button>` : '';
+}
 function renderAgenda(){
  try{
   // Limpiar menús "⋮" que hayan quedado teletransportados a <body> en el render anterior
@@ -3351,7 +3355,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binf}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
  }catch(err){
   console.error('Error en renderAgenda:', err);
@@ -3615,7 +3619,17 @@ function promptTexto(label, opts={}){
 
 const mensajesLinks = {};
 
-function buildLinksHtml(t){
+async function linkPacienteConChat(t){
+  await window.chatTurnoConfig;
+  if(!window.chatTurnoDisponible)return t.linkPaciente;
+  const response=await fetch('/api/turnos/'+encodeURIComponent(t.id)+'/chat/invitacion',{method:'POST',headers:apiHeaders()});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'No se pudo generar la invitación');
+  return new URL(data.link,location.origin).href;
+}
+async function buildLinksHtml(t){
+  try{t={...t,linkPaciente:await linkPacienteConChat(t)};}
+  catch(e){return '<p>No se pudo preparar el enlace personal. Volvé a abrir las invitaciones para reintentar.</p>';}
   const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
 
@@ -3727,17 +3741,25 @@ function cerrarMenuAcciones(id){
 }
 document.addEventListener('click', cerrarTodosLosMenusAcciones);
 
-function recordarTurnoWA(id){
+async function recordarTurnoWA(id){
   const t = turnos.find(x=>x.id===id);
   if(!t) return;
+  const ventana=window.open('about:blank','_blank');
+  if(!ventana){mostrarError('Permití abrir una nueva pestaña para preparar WhatsApp.');return;}
+  ventana.opener=null;
+  let link;
+  try{link=await linkPacienteConChat(t);}catch(e){ventana.close();mostrarError(e.message);return;}
   const fl = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  const mensaje = `Hola ${t.paciente}, te recordamos tu turno de ${t.tipo||'consulta'} con MEDGRUP.\n\n📅 ${fl} a las ${t.hora} hs\n🎥 Link: ${t.linkPaciente}\n\nNo necesitás instalar nada, se ingresa directo desde el celular.\n\nSaludos,\nMEDGRUP Servicio Médico`;
-  abrirWANumero(t.telefono, mensaje);
+  const mensaje = `Hola ${t.paciente}, te recordamos tu turno de ${t.tipo||'consulta'} con MEDGRUP.\n\n📅 ${fl} a las ${t.hora} hs\n🎥 Link: ${link}\n\nNo necesitás instalar nada, se ingresa directo desde el celular.\n\nSaludos,\nMEDGRUP Servicio Médico`;
+  const digitos=normalizarTelefonoAR(t.telefono);
+  if(t.telefono&&!telefonoARValido(digitos)){ventana.close();mostrarError('Corregí el teléfono del turno antes de enviar el recordatorio.');return;}
+  // La pestaña se abrió en el clic inicial para no interrumpir una llamada activa.
+  ventana.location.href=(digitos?'https://wa.me/'+digitos:'https://wa.me/')+'?text='+encodeURIComponent(mensaje);
 }
 
-function verLinks(id){
+async function verLinks(id){
   const t=turnos.find(x=>x.id===id);if(!t)return;
-  document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+  document.getElementById('links-body').innerHTML=await buildLinksHtml(t);
   linksTurnoActualId=t.id;
   document.getElementById('links-invitados-extra').innerHTML='';
   document.getElementById('link-invitado-nombre').value='';
@@ -3855,7 +3877,7 @@ async function guardarTurno(){
     document.getElementById('res-resumen').textContent=`${paciente} — ${fl} ${hora} hs`;
     document.getElementById('links-modal').innerHTML = esPresencial
       ? `<div style="font-size:12.5px;color:var(--text2);line-height:1.5;">Turno presencial cargado. Cuando el médico esté listo, va a la Agenda y hace clic en <strong>"Cargar informe"</strong> para escribir el dictamen — no hace falta ninguna videollamada.</div>`
-      : (tg?buildLinksHtml(tg):'');
+      : (tg?await buildLinksHtml(tg):'');
     document.getElementById('turno-resultado').style.display='block';
     addLog('blue','Turno programado',`${paciente} — ${empresa} — ${fl} ${hora}`);
   }catch(e){document.getElementById('loading-turno').style.display='none';document.getElementById('btn-guardar-turno').style.display='inline-flex';mostrarError('Error: '+e.message);}
@@ -3900,7 +3922,7 @@ async function crearConsultaInmediata(){
     const tg = turnos.find(t=>t.id===data.turno_id)||turnos[turnos.length-1];
     _turnoInmediatoCreado = tg;
     if(tg){
-      document.getElementById('links-body').innerHTML=buildLinksHtml(tg);
+      document.getElementById('links-body').innerHTML=await buildLinksHtml(tg);
       document.getElementById('links-box').style.display='block';
     }
     document.getElementById('ci-resumen').textContent = paciente;
@@ -4017,7 +4039,7 @@ async function unirseTurno(id){
   // Gestionar links (y sumar invitados sueltos) queda para el admin — el médico entra
   // directo a la llamada, sin el panel de links de por medio.
   if(usuarioActual?.rol==='admin'){
-    document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+    document.getElementById('links-body').innerHTML=await buildLinksHtml(t);
     linksTurnoActualId=t.id;
     document.getElementById('links-invitados-extra').innerHTML='';
     document.getElementById('link-invitado-nombre').value='';
@@ -4148,7 +4170,7 @@ async function iniciarTurno(id){
   // Gestionar links (y sumar invitados sueltos) queda para el admin — el médico entra
   // directo a la llamada, sin el panel de links de por medio.
   if(usuarioActual?.rol==='admin'){
-    document.getElementById('links-body').innerHTML=buildLinksHtml(t);
+    document.getElementById('links-body').innerHTML=await buildLinksHtml(t);
     linksTurnoActualId=t.id;
     document.getElementById('links-invitados-extra').innerHTML='';
     document.getElementById('link-invitado-nombre').value='';
@@ -7246,5 +7268,6 @@ async function eliminarServicioCatalogo(id){
 checkSession();
 chequearTokenReset();
 </script>
+<script src="/chat-medico.js"></script>
 </body>
 </html>

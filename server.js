@@ -3244,7 +3244,7 @@ app.post('/api/ingreso/:token/verificar', async (req, res) => {
       await pool.query(
         "INSERT INTO ingresos_ubicacion (caso_id,turno_id,resultado,ip) VALUES ($1,$2,'excepcion_geo',$3)",
         [caso.id, caso.turno_id, ip]);
-      return res.json({ok:true, link:caso.link_paciente, excepcion_geo:true});
+      return res.json({ok:true, link:await turnoChat.verifiedLink(caso.turno_id,caso.link_paciente), excepcion_geo:true});
     }
     if (caso.domicilio_lat == null || caso.domicilio_lng == null) {
       await registrar('domicilio_sin_coordenadas', null);
@@ -3269,7 +3269,7 @@ app.post('/api/ingreso/:token/verificar', async (req, res) => {
     }
 
     await registrar('aceptado', distancia);
-    res.json({ ok: true, link: caso.link_paciente, distancia: Math.round(distancia) });
+    res.json({ ok: true, link: await turnoChat.verifiedLink(caso.turno_id,caso.link_paciente), distancia: Math.round(distancia) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -3572,7 +3572,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     if (caso.turno_id) {
       await pool.query('UPDATE turnos SET fecha=$1, hora=$2, tipo=$3 WHERE id=$4',
         [fecha, hora, etiquetaControl(tipoCaso), caso.turno_id]);
-      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: linkIngreso, reprogramado: true, hora, fecha });
+      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: new URL(await turnoChat.invitationLink(caso.turno_id,linkIngreso), linkIngreso).href, reprogramado: true, hora, fecha });
     }
 
     const creado = await crearTurnoConVideollamada({
@@ -3588,7 +3588,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
       [creado.turnoId, req.params.id]);
     // Se devuelve el link de ingreso, no el de Daily: el de Daily se entrega recién
     // cuando el trabajador confirma que está en su domicilio.
-    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: linkIngreso, estado: 'programado', hora, fecha });
+    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: new URL(await turnoChat.invitationLink(creado.turnoId,linkIngreso), linkIngreso).href, estado: 'programado', hora, fecha });
   } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
@@ -3705,7 +3705,16 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+const turnoChat = require('./lib/turno-chat').createTurnoChat({
+  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false'
+});
+
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-initDB().then(() => { app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`)); registrarWebhookDaily(); });
+initDB().then(async () => {
+  try { await turnoChat.init(); }
+  catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
+  app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));
+  registrarWebhookDaily();
+});
