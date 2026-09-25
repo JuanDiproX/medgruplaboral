@@ -1,1 +1,138 @@
-*{box-sizing:border-box}body{margin:0;background:#edf3f8;color:#20374a;font:15px Arial,sans-serif}header{display:flex;gap:22px;align-items:center;padding:20px 28px;background:white;border-bottom:1px solid #d4e0eb}header img{width:120px}h1{font-size:20px;margin:0}h2{font-size:17px;margin:0 0 12px}p{line-height:1.5}header p{margin:5px 0 0}main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr);gap:18px;padding:20px}section{background:white;border:1px solid #d4e0eb;border-radius:14px;padding:20px;min-width:0}.chat{display:flex;flex-direction:column}iframe{width:100%;height:65vh;border:0;border-radius:10px}button,#ingreso{background:#356fa8;color:white;border:0;border-radius:8px;padding:11px 16px;cursor:pointer;text-decoration:none;font-size:14px}button:disabled{opacity:.5;cursor:default}.hint,small{color:#526777;font-size:12px}#estado{min-height:18px;font-size:13px;color:#a52b49;margin:8px 0}#mensajes{height:40vh;min-height:160px;overflow-y:auto;background:#f5f8fb;padding:12px;border-radius:9px}.mensaje{background:#e4eef8;padding:12px;margin-bottom:10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}.mensaje.medico{background:#e8f4ed}.mensaje small{display:block;margin-bottom:7px}.mensaje button{display:block;margin-top:8px;background:#fff;color:#285f92;border:1px solid #bdcfe0}form{display:grid;gap:8px;margin-top:12px}label{font-size:13px}textarea,input{font:inherit;width:100%;padding:9px;border:1px solid #c9d9e7;border-radius:6px}textarea{resize:vertical}#acciones{margin-bottom:10px}#acciones button{margin:0 4px 7px 0;font-size:12px}small{display:block}body.staff main{display:block;padding:12px}body.staff header{padding:12px}body.staff header img{width:90px}body.staff #mensajes{height:42vh}[hidden]{display:none!important}@media(max-width:760px){main{grid-template-columns:1fr;padding:10px}iframe{height:45vh}header{padding:16px}section{padding:14px}}
+/* Paleta y tipografías de MEDGRUP: el paciente llega acá desde la página de ingreso y tiene
+   que reconocer que sigue en el mismo lugar. */
+:root{
+  --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
+  --rosa:#c0365a;--rosa-dark:#9a2847;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
+  --verde:#1e6640;--verde-light:#eaf5f0;
+  --bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;
+  --text:#1a1916;--text2:#4a4740;--text3:#8a8780;--border:#e4e9f0;--border2:#d4dce8;
+  --r:18px;--r-sm:12px;
+  --sombra:0 10px 30px rgba(20,40,80,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.5;
+  -webkit-text-size-adjust:100%}
+
+/* ---------- Cabecera ---------- */
+header{display:flex;gap:14px;align-items:center;padding:16px 22px;background:var(--surface);
+  border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(20,40,80,.04);
+  padding-top:calc(16px + env(safe-area-inset-top))}
+header img{height:38px;width:auto;object-fit:contain;flex-shrink:0}
+.cabecera-txt{min-width:0}
+h1{font-family:"Syne",sans-serif;font-size:19px;font-weight:700;letter-spacing:-.3px;margin:0}
+header p{margin:3px 0 0;font-size:13.5px;color:var(--text3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- Estructura ---------- */
+main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,1fr);gap:16px;
+  padding:16px;max-width:1180px;margin:0 auto;align-items:start}
+.tarjeta{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;min-width:0;box-shadow:var(--sombra)}
+h2{font-family:"Syne",sans-serif;font-size:15.5px;font-weight:700;margin:0 0 10px;color:var(--azul-dark)}
+p{line-height:1.55;margin:0 0 10px}
+.hint{color:var(--text3);font-size:12.5px;line-height:1.5}
+small{display:block;color:var(--text3);font-size:11.5px;line-height:1.5}
+.solo-lector{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- Botones ---------- */
+.botonera{display:flex;flex-wrap:wrap;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid transparent;border-radius:var(--r-sm);padding:12px 18px;min-height:44px;
+  font-family:inherit;font-size:14.5px;font-weight:600;cursor:pointer;text-decoration:none;
+  transition:transform .12s,box-shadow .12s,background .12s}
+.btn-azul{background:linear-gradient(135deg,var(--azul),var(--azul-dark));color:#fff}
+.btn-verde{background:linear-gradient(135deg,var(--verde),#2d8a5a);color:#fff}
+.btn-borde{background:var(--surface);color:var(--azul-dark);border-color:var(--border2)}
+.btn-ancho{width:100%}
+.btn-chico{padding:9px 13px;min-height:38px;font-size:13px}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,110,168,.28)}
+.btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none}
+.btn:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+
+/* ---------- Videollamada ---------- */
+#video{width:100%;height:min(62vh,540px);border:1px solid var(--border2);border-radius:var(--r-sm);
+  margin-top:12px;background:#0d1520;display:block}
+
+/* ---------- Chat ---------- */
+.chat{display:flex;flex-direction:column}
+#acciones{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:12px;margin-bottom:12px}
+#acciones small{margin-top:8px}
+#invitacion{width:100%;margin-top:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12.5px;padding:10px;border:1px solid var(--border2);border-radius:10px;
+  background:var(--surface);color:var(--azul-dark)}
+
+/* Vacío no ocupa lugar: si no, queda un hueco permanente arriba de la conversación */
+#estado{margin:0 0 10px;padding:10px 13px;border-radius:10px;font-size:13px;line-height:1.5;
+  background:var(--rosa-light);border:1px solid var(--rosa-mid);color:var(--rosa-dark)}
+#estado:empty{display:none}
+
+#mensajes{display:flex;flex-direction:column;gap:9px;
+  height:clamp(230px,42vh,460px);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px}
+#mensajes:empty::after{content:"Todavía no hay mensajes. Escribí o adjuntá un estudio para empezar.";
+  color:var(--text3);font-size:12.5px;margin:auto;text-align:center;padding:0 10px}
+
+.mensaje{max-width:84%;padding:10px 13px;border-radius:14px;border:1px solid var(--border2);
+  white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;
+  box-shadow:0 1px 2px rgba(20,40,80,.04)}
+.mensaje small{color:var(--text3);font-size:11px;margin-bottom:5px}
+.mensaje button{margin-top:9px;padding:8px 12px;min-height:38px;font-size:12.5px;font-weight:600;
+  background:var(--surface);color:var(--azul-dark);border:1px solid var(--border2);
+  border-radius:10px;cursor:pointer;font-family:inherit}
+.mensaje button:hover{background:var(--azul-light);border-color:var(--azul-mid)}
+
+/* La burbuja propia va a la derecha. Quién es "propio" depende de quién mira: el paciente es
+   el que no tiene rol médico, y en el panel del profesional es exactamente al revés. */
+.mensaje{align-self:flex-end;background:var(--azul-light);border-color:var(--azul-mid)}
+.mensaje.medico{align-self:flex-start;background:var(--surface);border-color:var(--border2)}
+body.staff .mensaje{align-self:flex-start;background:var(--surface);border-color:var(--border2)}
+body.staff .mensaje.medico{align-self:flex-end;background:var(--azul-light);border-color:var(--azul-mid)}
+
+/* ---------- Formulario ---------- */
+form{display:grid;gap:8px;margin-top:12px}
+form label{font-size:12.5px;font-weight:600;color:var(--text2)}
+textarea,input[type=file]{font-family:inherit;width:100%;border:1px solid var(--border2);
+  border-radius:var(--r-sm);background:var(--surface);color:var(--text)}
+/* 16px evita que iOS haga zoom al enfocar el campo */
+textarea{font-size:16px;padding:12px;resize:vertical;min-height:84px;line-height:1.5}
+textarea:focus,input[type=file]:focus-visible{outline:none;border-color:var(--azul);
+  box-shadow:0 0 0 3px rgba(58,110,168,.14)}
+input[type=file]{font-size:13px;padding:9px}
+input[type=file]::file-selector-button{font-family:inherit;font-size:13px;font-weight:600;
+  margin-right:10px;padding:8px 13px;border:1px solid var(--border2);border-radius:9px;
+  background:var(--azul-light);color:var(--azul-dark);cursor:pointer}
+input[type=file]::file-selector-button:hover{background:var(--azul-mid)}
+
+/* ---------- Panel del profesional (iframe angosto dentro de la app) ---------- */
+body.staff{background:var(--surface)}
+body.staff header{padding:12px 14px;box-shadow:none}
+body.staff header img{height:28px}
+body.staff h1{font-size:15.5px}
+body.staff header p{font-size:12.5px}
+body.staff main{display:block;padding:12px;max-width:none}
+body.staff .tarjeta{padding:14px;border-radius:var(--r-sm);box-shadow:none}
+body.staff #mensajes{height:clamp(200px,38vh,420px)}
+
+/* Tiene que ir al final: varios elementos se muestran y ocultan con el atributo hidden, y sin
+   esto los display:flex/grid de arriba lo pisarían. */
+[hidden]{display:none!important}
+
+/* ---------- Celular ---------- */
+@media(max-width:860px){
+  main{grid-template-columns:1fr;padding:12px;gap:12px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .tarjeta{padding:16px;border-radius:var(--r-sm)}
+  header{padding:14px 16px;gap:11px;padding-top:calc(14px + env(safe-area-inset-top))}
+  header img{height:32px}
+  h1{font-size:17px}
+  #video{height:min(48vh,380px)}
+  #mensajes{height:clamp(240px,44vh,440px)}
+  .mensaje{max-width:90%}
+}
+@media(prefers-reduced-motion:reduce){
+  .btn{transition:none}
+  .btn:hover:not(:disabled){transform:none}
+}

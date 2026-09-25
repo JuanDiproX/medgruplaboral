@@ -1,9 +1,66 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><title>Atención y documentos | MEDGRUP</title><link rel="stylesheet" href="/atencion.css"></head>
-<body><header><img src="/logo.png" alt="MEDGRUP"><div><h1>Atención y documentos</h1><p id="paciente">Conectando…</p></div></header>
-<main><section id="llamada"><h2>Videollamada</h2><p id="instruccion">Podés escribir al equipo médico y enviar tus estudios desde este espacio.</p><a id="ingreso" hidden>Verificar ubicación e ingresar</a><button id="conectar" hidden>Entrar a la videollamada</button><iframe id="video" title="Videollamada médica" allow="camera; microphone; fullscreen; display-capture" hidden></iframe></section>
-<section class="chat"><h2>Mensajes y estudios</h2><p class="hint">PDF o imágenes (JPG, PNG, WEBP), hasta 5 MB por archivo. Este chat no es un canal de urgencias.</p>
-<div id="acciones" hidden><button id="invitar">Generar enlace para paciente</button><button id="revocar">Revocar enlaces</button><input id="invitacion" readonly hidden aria-label="Enlace personal del paciente"><small>Acceso hasta 48 horas después del turno, o de generar el enlace si el turno ya pasó. Compartilo únicamente con el paciente.</small></div>
-<p id="estado" role="status" aria-live="polite"></p><div id="mensajes" role="log" aria-label="Conversación" aria-live="polite"></div>
-<form id="formulario"><label for="texto">Mensaje</label><textarea id="texto" maxlength="3000" rows="3" placeholder="Escribí un mensaje…"></textarea><label for="archivo">Adjuntar estudio o certificado</label><input id="archivo" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"><button id="enviar" type="submit" disabled>Enviar</button></form>
-</section></main><script src="/atencion.js"></script></body></html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#3a6ea8">
+<title>Atención y documentos | MEDGRUP</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/atencion.css">
+</head>
+<body>
+
+<header>
+  <img src="/logo.png" alt="MEDGRUP">
+  <div class="cabecera-txt">
+    <h1>Atención y documentos</h1>
+    <p id="paciente">Conectando…</p>
+  </div>
+</header>
+
+<main>
+  <section id="llamada" class="tarjeta">
+    <h2>Videollamada</h2>
+    <p id="instruccion">Podés escribir al equipo médico y enviar tus estudios desde este espacio.</p>
+    <div class="botonera">
+      <a id="ingreso" class="btn btn-azul" hidden>Verificar ubicación e ingresar</a>
+      <button id="conectar" class="btn btn-verde" hidden>Entrar a la videollamada</button>
+    </div>
+    <iframe id="video" title="Videollamada médica" allow="camera; microphone; fullscreen; display-capture" hidden></iframe>
+  </section>
+
+  <section class="tarjeta chat">
+    <h2>Mensajes y estudios</h2>
+    <p class="hint">PDF o imágenes (JPG, PNG, WEBP), hasta 5 MB por archivo. Este chat no es un canal de urgencias.</p>
+
+    <div id="acciones" hidden>
+      <div class="botonera">
+        <button id="invitar" class="btn btn-chico btn-azul">Generar enlace para paciente</button>
+        <button id="revocar" class="btn btn-chico btn-borde">Revocar enlaces</button>
+      </div>
+      <input id="invitacion" readonly hidden aria-label="Enlace personal del paciente">
+      <small>Acceso hasta 48 horas después del turno, o de generar el enlace si el turno ya pasó. Compartilo únicamente con el paciente.</small>
+    </div>
+
+    <p id="estado" role="status" aria-live="polite"></p>
+    <div id="mensajes" role="log" aria-label="Conversación" aria-live="polite"></div>
+
+    <form id="formulario">
+      <label for="texto" class="solo-lector">Mensaje</label>
+      <textarea id="texto" maxlength="3000" rows="3" placeholder="Escribí un mensaje…"></textarea>
+      <label for="archivo">Adjuntar estudio o certificado</label>
+      <input id="archivo" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+      <button id="enviar" class="btn btn-azul btn-ancho" type="submit" disabled>Enviar</button>
+    </form>
+  </section>
+</main>
+
+<script src="/atencion.js"></script>
+</body>
+</html>
