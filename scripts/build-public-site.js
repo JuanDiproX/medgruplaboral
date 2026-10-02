@@ -32,7 +32,7 @@ function header(current) {
         ${link('/contacto.html', 'Contacto', 'contacto')}
         <a class="nav-portal" href="/empresa.html">Portal<span class="hide-sm"> empresas</span> ${icon('external')}</a>
       </nav>
-      <a class="btn btn-small" href="/contacto.html">Solicitar presupuesto</a>
+      <a class="btn btn-small" href="/contacto.html"><span class="hide-sm">Solicitar presupuesto</span><span class="show-sm">Presupuesto</span></a>
     </div>
   </header>`;
 }
@@ -44,10 +44,11 @@ const footer = `<footer class="site-footer">
       </a>
       <nav aria-label="Servicios">
         <h2>Servicios</h2>
+        <a href="/servicios/aptos-examenes.html">Aptos y exámenes laborales</a>
         <a href="/servicios/teleconsultas.html">Evaluaciones y teleconsultas</a>
         <a href="/servicios/juntas-medicas.html">Juntas médicas</a>
         <a href="/servicios/ausentismo.html">Control de ausentismo</a>
-        <a href="/servicios/informes.html">Informes y actas</a>
+        <a href="/servicios/informes.html">Informes y documentación</a>
       </nav>
       <nav aria-label="MEDGRUP">
         <h2>MEDGRUP</h2>
@@ -61,9 +62,10 @@ const footer = `<footer class="site-footer">
         <a href="/index.html">Acceso profesionales ${icon('external')}</a>
       </nav>
     </div>
-  </footer>`;
+  </footer>
+  <a class="btn mobile-cta" href="/contacto.html">Solicitar presupuesto</a>`;
 
-function page({ title, description, current, body, script = false }) {
+function page({ title, description, current, body }) {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -88,7 +90,7 @@ function page({ title, description, current, body, script = false }) {
 ${body}
   </main>
 
-  ${footer}${script ? '\n  <script src="/public-site.js" defer></script>' : ''}
+  ${current === 'contacto' ? footer.replace(/\n  <a class="btn mobile-cta"[^\n]*<\/a>/, '') : footer}\n  <script src="/public-site.js" defer></script>
 </body>
 </html>
 `;
@@ -102,8 +104,13 @@ function closing(id, heading, text, extra = '') {
         <h2 id="${id}">${heading}</h2>
         <div class="closing-copy">
           <p>${text}</p>
+          <ol class="next-steps">
+            <li>Nos contás qué necesita tu empresa.</li>
+            <li>Definimos juntos el alcance de los servicios.</li>
+            <li>Te enviamos una propuesta con su presupuesto.</li>
+          </ol>
           <div class="closing-actions">
-            <a class="btn btn-on-dark" href="/contacto.html">Solicitar presupuesto</a>
+            <a class="btn" href="/contacto.html">Solicitar presupuesto</a>
             ${extra || `<a class="text-link on-dark" href="mailto:${EMAIL}">${EMAIL}</a>`}
           </div>
         </div>
@@ -119,6 +126,24 @@ const appFrame = (title, inner) => `<div class="app">
           </div>`;
 
 const samples = {
+  'aptos-examenes': {
+    label: 'Certificado de aptitud laboral de ejemplo, con resultado apto, sello de MEDGRUP y firma del profesional.',
+    html: `<div class="sheet sheet-front sheet-sample">
+            <div class="sheet-head"><img src="/logo.webp" alt="" width="600" height="190"><span>Ejemplo</span></div>
+            <p class="sheet-title">Certificado de aptitud laboral</p>
+            <dl class="sheet-fields">
+              <div><dt>Examen</dt><dd>Periódico</dd></div>
+              <div><dt>Puesto</dt><dd>Chofer de reparto</dd></div>
+              <div><dt>Empresa</dt><dd>Empresa de ejemplo S.A.</dd></div>
+              <div><dt>Trabajador</dt><dd>Nombre de ejemplo</dd></div>
+            </dl>
+            <div class="sheet-result">
+              <div><p class="sheet-label">Resultado</p><p class="sheet-verdict">Apto para el puesto</p></div>
+              <svg class="stamp" viewBox="0 0 120 120" aria-hidden="true"><defs><path id="stamp-ring-s" d="M60 60m-43 0a43 43 0 1 1 86 0a43 43 0 1 1-86 0"/></defs><circle cx="60" cy="60" r="56"/><circle cx="60" cy="60" r="31"/><text class="stamp-ring"><textPath href="#stamp-ring-s" textLength="268">MEDGRUP · SERVICIO MÉDICO ·</textPath></text><text class="stamp-word" x="60" y="67" text-anchor="middle">APTO</text></svg>
+            </div>
+            <div class="sheet-sign"><svg viewBox="0 0 160 44" aria-hidden="true"><path d="M4 32c8-20 16-24 19-8s8 14 13-4 10-20 14 2 7 16 12-2 9-14 13 0c2 8 6 9 10 2s8-9 12-1 10 6 18-6c4-6 10-10 22-6"/></svg><p>Firma y sello del profesional</p></div>
+          </div>`
+  },
   teleconsultas: {
     label: 'Turno de teleconsulta de ejemplo, con profesional, modalidad, documentación previa y enlace de acceso.',
     html: appFrame('Portal de empresas · Turnos', `
@@ -176,6 +201,20 @@ const samples = {
 };
 
 const services = [
+  {
+    slug: 'aptos-examenes', name: 'Aptos y exámenes laborales', option: 'Aptos médicos',
+    task: 'Incorporar o controlar a un trabajador',
+    headline: 'La aptitud de cada trabajador, evaluada y documentada.',
+    intro: 'Aptos médicos y exámenes preocupacionales y periódicos, definidos según las tareas del puesto y los riesgos de cada actividad.',
+    copy: 'Acordamos con tu empresa los estudios de cada examen según el puesto. El profesional evalúa al trabajador y el resultado queda documentado en la constancia de aptitud correspondiente.',
+    items: ['Aptos médicos según las tareas del puesto', 'Exámenes preocupacionales previos al ingreso', 'Exámenes periódicos durante la actividad laboral'],
+    stepsTitle: 'Cómo coordinamos el servicio',
+    steps: [['La solicitud', 'La empresa informa el puesto, sus tareas y los trabajadores a evaluar.'], ['La evaluación', 'Se realizan el examen y los estudios definidos para el puesto.'], ['El resultado', 'El profesional emite la constancia de aptitud correspondiente.']],
+    note: 'Los estudios de cada examen y la modalidad de atención se acuerdan con tu empresa, según las tareas del puesto y los riesgos de la actividad.',
+    question: '¿Qué estudios incluye un examen preocupacional?',
+    answer: 'Depende de las tareas del puesto y de los riesgos a los que estará expuesto el trabajador. Los definimos junto con tu empresa al armar la propuesta.',
+    closing: 'Hablemos de los exámenes que necesita tu empresa.'
+  },
   {
     slug: 'teleconsultas', name: 'Evaluaciones y teleconsultas', option: 'Evaluaciones y teleconsultas',
     task: 'Evaluar a un trabajador',
@@ -283,7 +322,7 @@ ${services.map((s) => `        <li>
       </div>
       <div class="split-body">
         <dl class="offer-rows">
-${offerings.map(([n, d]) => `          <div><dt>${n}</dt><dd>${d}</dd></div>`).join('\n')}
+${offerings.filter(([n]) => n === 'Auditorías psiquiátricas').map(([n, d]) => `          <div><dt>${n}</dt><dd>${d}</dd></div>`).join('\n')}
         </dl>
         <a class="text-link" href="/propuesta.html">Ver la propuesta completa ${icon('arrow')}</a>
       </div>
@@ -440,7 +479,6 @@ write('contacto.html', page({
   title: 'Presupuesto de medicina laboral en Argentina | MEDGRUP',
   description: 'Solicitá un presupuesto de medicina laboral para tu empresa en Argentina. Contanos qué servicios necesitás y recibí una propuesta de MEDGRUP.',
   current: 'contacto',
-  script: true,
   body: `${crumbs([['/medicina-laboral.html', 'Inicio'], [null, 'Contacto']])}
 
     <section class="contact shell" aria-labelledby="page-title">
@@ -488,7 +526,8 @@ let home = fs.readFileSync(homeFile, 'utf8');
 home = home
   .replace(/<svg width="0" height="0" class="sprite"[\s\S]*?<\/svg>/, sprite)
   .replace(/<header class="site-header">[\s\S]*?<\/header>/, header('inicio'))
-  .replace(/<footer class="site-footer">[\s\S]*?<\/footer>/, footer);
+  .replace(/<footer class="site-footer">[\s\S]*?<\/footer>(\s*<a class="btn mobile-cta"[^>]*>[^<]*<\/a>)?/, footer);
+if (!home.includes('/public-site.js')) home = home.replace('</body>', '  <script src="/public-site.js" defer></script>\n</body>');
 fs.writeFileSync(homeFile, home);
 
-console.log('Sitio público generado: servicios, 4 páginas de servicio, propuesta, contacto e inicio sincronizado.');
+console.log('Sitio público generado: servicios, 5 páginas de servicio, propuesta, contacto e inicio sincronizado.');

@@ -1,3 +1,14 @@
+// Botón fijo de presupuesto en celular: aparece cuando no hay otro a la vista.
+const mobileCta=document.querySelector('.mobile-cta');
+if(mobileCta&&'IntersectionObserver' in window){
+  const anchors=[...document.querySelectorAll('.site-header,.hero-actions,.closing,.site-footer')];
+  const visible=new Set();
+  const observer=new IntersectionObserver((entries)=>{
+    entries.forEach((entry)=>entry.isIntersecting?visible.add(entry.target):visible.delete(entry.target));
+    document.body.classList.toggle('cta-visible',visible.size===0);
+  });
+  anchors.forEach((el)=>observer.observe(el));
+}
 const quoteForm=document.querySelector('#quote-form');
 if(quoteForm){
   // Las páginas de servicio enlazan con ?servicio=<opción> para dejarla elegida.
