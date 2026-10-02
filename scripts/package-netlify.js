@@ -22,15 +22,15 @@ fs.writeFileSync(path.join(dest,'sitemap.xml'),'<?xml version="1.0" encoding="UT
 fs.writeFileSync(path.join(dest,'robots.txt'),`User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`);
 fs.writeFileSync(path.join(dest,'sitemap-index.xml'),'<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>'+origin+'/sitemap.xml</loc></sitemap></sitemapindex>\n');
 fs.writeFileSync(path.join(dest,'.htaccess'),`Options -Indexes\nDirectoryIndex index.html\nErrorDocument 404 /404.html\nRewriteEngine On\nRewriteCond %{HTTPS} !=on\nRewriteRule ^ https://laboral.medgrup.com.ar%{REQUEST_URI} [R=301,L]\nRewriteRule ^medicina-laboral\\.html$ / [R=301,L]\nRewriteCond %{THE_REQUEST} \\s/+index\\.html[\\s?] [NC]\nRewriteRule ^index\\.html$ / [R=301,L]\n`);
-for(const name of ['medicina-laboral.css','sitio.css','public-site.js','logo.png','logo.webp','favicon.ico'])fs.copyFileSync(path.join(source,name),path.join(dest,name));
+for(const name of ['sitio.css','public-site.js','logo.png','logo.webp','favicon.ico'])fs.copyFileSync(path.join(source,name),path.join(dest,name));
 for(const name of fs.readdirSync(source).filter(name=>/^google[a-f0-9]+\.html$/.test(name)))fs.copyFileSync(path.join(source,name),path.join(dest,name));
 fs.cpSync(path.join(source,'images'),path.join(dest,'images'),{recursive:true});
 fs.cpSync(path.join(source,'icons'),path.join(dest,'icons'),{recursive:true});
 fs.writeFileSync(path.join(dest,'_headers'),'/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n');
-fs.writeFileSync(path.join(dest,'404.html'),'<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Página no encontrada — MEDGRUP</title><link rel="stylesheet" href="/medicina-laboral.css"><main class="wrap section"><h1>Página no encontrada</h1><p>Volvé al inicio para consultar nuestros servicios.</p><a class="button dark" href="/">Ir al inicio</a></main></html>');
+fs.writeFileSync(path.join(dest,'404.html'),'<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Página no encontrada | MEDGRUP</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/sitio.css"></head><body><main class="page-head shell" id="contenido"><h1>Página no encontrada.</h1><p class="lead">Volvé al inicio para consultar nuestros servicios.</p><div class="hero-actions"><a class="btn" href="/">Ir al inicio</a></div></main></body></html>');
 // A content version prevents old CSS/JS from mixing with updated HTML.
 const crypto=require('node:crypto');
-for(const asset of ['medicina-laboral.css','sitio.css','public-site.js']){
+for(const asset of ['sitio.css','public-site.js']){
   const version=crypto.createHash('sha256').update(fs.readFileSync(path.join(source,asset))).digest('hex').slice(0,12);
   for(const name of [...pages,'index.html','404.html']){
     const file=path.join(dest,name);

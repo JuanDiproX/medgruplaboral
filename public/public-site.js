@@ -1,15 +1,12 @@
-const toggle=document.querySelector('.motion-toggle');
-if(toggle){
-  const windowEl=document.querySelector('.logo-window');
-  toggle.addEventListener('click',()=>{
-    const paused=toggle.getAttribute('aria-pressed')!=='true';
-    toggle.setAttribute('aria-pressed',String(paused));
-    windowEl.classList.toggle('is-paused',paused);
-    toggle.textContent=paused?'Reanudar movimiento':'Pausar movimiento';
-  });
-}
 const quoteForm=document.querySelector('#quote-form');
 if(quoteForm){
+  // Las páginas de servicio enlazan con ?servicio=<opción> para dejarla elegida.
+  const requested=new URLSearchParams(location.search).get('servicio');
+  const serviceSelect=quoteForm.querySelector('select[name="servicio"]');
+  if(requested&&serviceSelect){
+    const match=[...serviceSelect.options].find((option)=>option.text===requested);
+    if(match)serviceSelect.value=match.value;
+  }
   quoteForm.querySelectorAll('input,select,textarea').forEach((field)=>{
     field.addEventListener('input',()=>field.setCustomValidity(''));
     field.addEventListener('change',()=>field.setCustomValidity(''));

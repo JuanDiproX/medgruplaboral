@@ -94,3 +94,14 @@ A partir de la crítica de impeccable (20/32; snapshot en `.impeccable/critique/
 - Fotos del equipo en WebP con respaldo PNG. Los encuadres se hacen por CSS: rostro y hombros a escala similar, y en la foto de Raúl el encuadre deja fuera los diplomas del fondo. Agustín aparece con iniciales hasta tener foto.
 - Peso del inicio: de unos 11 MB de PNG a unos 250 KB de imágenes.
 - `scripts/package-netlify.js` copia y versiona `sitio.css` y `logo.webp`.
+
+## Todo el sitio con el sistema editorial — 02/10/2026
+- **Inicio:** a la derecha del título hay un certificado de aptitud ilustrativo hecho en HTML/CSS, con sello SVG de MEDGRUP y firma dibujada. Está rotulado como documento ilustrativo y no usa imágenes generadas.
+- **Generador nuevo:** `node scripts/build-public-site.js` genera `servicios.html`, las 4 páginas de servicio, `propuesta.html` y `contacto.html`, y además sincroniza el encabezado, el pie y los íconos del inicio. El resto del contenido del inicio se edita a mano en `medicina-laboral.html`.
+- **Páginas de servicio:** cada una muestra una vista ilustrativa de lo que la empresa ve o recibe: turno de teleconsulta, dictamen con firmas, caso de ausentismo y lista de informes. Ya no usan las fotos de IA.
+- **Contacto:**
+  - El selector de servicios queda agrupado en tres bloques.
+  - Las páginas de servicio enlazan con `?servicio=` y el formulario abre con ese servicio ya elegido; lo hace `public-site.js`.
+  - Se quitó el código de la marquesina.
+- **Hojas de estilo:** todas las páginas públicas usan `sitio.css`, y `medicina-laboral.css` ya no se publica.
+- **Scripts viejos:** `build-public-services.js`, `compact-public-site.js`, `expand-public-proposal.js`, `restore-editorial-site.js`, `refine-editorial-type.js`, `update-team-clients.js`, `add-service-photos.js` y `add-zapata-photo.js` quedaron obsoletos. No hay que correrlos porque reescriben las páginas con el diseño anterior.
