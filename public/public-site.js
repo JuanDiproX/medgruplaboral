@@ -1,13 +1,20 @@
-// Botón fijo de presupuesto en celular: aparece cuando no hay otro a la vista.
+// Botón fijo de presupuesto en celular: desde el índice de servicios hasta el cierre.
 const mobileCta=document.querySelector('.mobile-cta');
-if(mobileCta&&'IntersectionObserver' in window){
-  const anchors=[...document.querySelectorAll('.site-header,.hero-actions,.closing,.site-footer')];
-  const visible=new Set();
-  const observer=new IntersectionObserver((entries)=>{
-    entries.forEach((entry)=>entry.isIntersecting?visible.add(entry.target):visible.delete(entry.target));
-    document.body.classList.toggle('cta-visible',visible.size===0);
-  });
-  anchors.forEach((el)=>observer.observe(el));
+const ctaStart=document.querySelector('#necesidades,.split');
+const ctaEnd=document.querySelector('.closing,.site-footer');
+if(mobileCta&&ctaStart&&ctaEnd){
+  let shown=null;
+  const update=()=>{
+    const vh=window.innerHeight;
+    const show=ctaStart.getBoundingClientRect().top<vh*0.75&&ctaEnd.getBoundingClientRect().top>vh;
+    if(show===shown)return;
+    shown=show;
+    document.body.classList.toggle('cta-visible',show);
+    mobileCta.inert=!show;
+  };
+  window.addEventListener('scroll',update,{passive:true});
+  window.addEventListener('resize',update);
+  update();
 }
 const quoteForm=document.querySelector('#quote-form');
 if(quoteForm){

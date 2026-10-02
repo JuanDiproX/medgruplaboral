@@ -129,7 +129,7 @@ const samples = {
   'aptos-examenes': {
     label: 'Certificado de aptitud laboral de ejemplo, con resultado apto, sello de MEDGRUP y firma del profesional.',
     html: `<div class="sheet sheet-front sheet-sample">
-            <div class="sheet-head"><img src="/logo.webp" alt="" width="600" height="190"><span>Ejemplo</span></div>
+            <div class="sheet-head"><img src="/logo.webp" alt="" width="600" height="190"></div>
             <p class="sheet-title">Certificado de aptitud laboral</p>
             <dl class="sheet-fields">
               <div><dt>Examen</dt><dd>Periódico</dd></div>
@@ -162,7 +162,7 @@ const samples = {
   'juntas-medicas': {
     label: 'Dictamen de junta médica de ejemplo, con dos firmas completas y una pendiente.',
     html: `<div class="sheet sheet-front sheet-sample">
-            <div class="sheet-head"><img src="/logo.webp" alt="" width="600" height="190"><span>Ejemplo</span></div>
+            <div class="sheet-head"><img src="/logo.webp" alt="" width="600" height="190"></div>
             <p class="sheet-title">Dictamen de junta médica</p>
             <p class="sheet-label sheet-gap">Conclusiones</p>
             <span class="sheet-line"></span><span class="sheet-line"></span><span class="sheet-line short"></span>
@@ -176,7 +176,7 @@ const samples = {
   ausentismo: {
     label: 'Caso de control de ausentismo de ejemplo, con su línea de tiempo y documentos.',
     html: appFrame('Portal de empresas · Casos', `
-              <div class="case-head"><div><p class="case-kind">Control de ausentismo</p><p class="case-name">Caso de ejemplo</p></div><span class="status">En seguimiento</span></div>
+              <div class="case-head"><div><p class="case-kind">Control de ausentismo</p><p class="case-name">Caso de ejemplo</p></div><span class="status is-pending">En seguimiento</span></div>
               <ol class="timeline">
                 <li class="done"><span class="dot">${icon('check')}</span><span class="t-date">14 sep</span><span class="t-text">Certificado recibido</span></li>
                 <li class="done"><span class="dot">${icon('check')}</span><span class="t-date">16 sep</span><span class="t-text">Control domiciliario coordinado</span></li>
@@ -203,21 +203,22 @@ const samples = {
 const services = [
   {
     slug: 'aptos-examenes', name: 'Aptos y exámenes laborales', option: 'Aptos médicos',
-    task: 'Incorporar o controlar a un trabajador',
+    task: 'Evaluar la aptitud para un puesto',
     headline: 'La aptitud de cada trabajador, evaluada y documentada.',
-    intro: 'Aptos médicos y exámenes preocupacionales y periódicos, definidos según las tareas del puesto y los riesgos de cada actividad.',
+    intro: 'Aptos médicos y exámenes preocupacionales y periódicos, definidos según las tareas del puesto y coordinados con prestadores en todo el país.',
     copy: 'Acordamos con tu empresa los estudios de cada examen según el puesto. El profesional evalúa al trabajador y el resultado queda documentado en la constancia de aptitud correspondiente.',
     items: ['Aptos médicos según las tareas del puesto', 'Exámenes preocupacionales previos al ingreso', 'Exámenes periódicos durante la actividad laboral'],
     stepsTitle: 'Cómo coordinamos el servicio',
     steps: [['La solicitud', 'La empresa informa el puesto, sus tareas y los trabajadores a evaluar.'], ['La evaluación', 'Se realizan el examen y los estudios definidos para el puesto.'], ['El resultado', 'El profesional emite la constancia de aptitud correspondiente.']],
     note: 'Los estudios de cada examen y la modalidad de atención se acuerdan con tu empresa, según las tareas del puesto y los riesgos de la actividad.',
-    question: '¿Qué estudios incluye un examen preocupacional?',
-    answer: 'Depende de las tareas del puesto y de los riesgos a los que estará expuesto el trabajador. Los definimos junto con tu empresa al armar la propuesta.',
+    question: '¿Dónde se realizan los exámenes?',
+    answer: 'Coordinamos los exámenes presenciales con una red de prestadores en cada provincia, según la ubicación de tus trabajadores.',
+    more: [['¿Qué estudios incluye un examen preocupacional?', 'Depende de las tareas del puesto y de los riesgos a los que estará expuesto el trabajador. Los definimos junto con tu empresa al armar la propuesta.']],
     closing: 'Hablemos de los exámenes que necesita tu empresa.'
   },
   {
     slug: 'teleconsultas', name: 'Evaluaciones y teleconsultas', option: 'Evaluaciones y teleconsultas',
-    task: 'Evaluar a un trabajador',
+    task: 'Consultar por la salud de un trabajador',
     headline: 'La atención médica, más cerca.',
     intro: 'Consultas con un profesional para evaluar la salud del trabajador y acompañar su evolución, teniendo en cuenta su actividad laboral.',
     copy: 'Coordinamos la consulta y reunimos la documentación necesaria para evaluar el caso. Durante la videollamada, el profesional realiza la evaluación y registra sus conclusiones.',
@@ -393,7 +394,11 @@ ${s.steps.map(([t, d], i) => `        <li><span class="step-n" aria-hidden="true
         <details open>
           <summary>${s.question}</summary>
           <p>${s.answer}</p>
-        </details>
+        </details>${(s.more || []).map(([q, a]) => `
+        <details>
+          <summary>${q}</summary>
+          <p>${a}</p>
+        </details>`).join('')}
       </div>
     </section>
 
