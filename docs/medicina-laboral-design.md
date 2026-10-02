@@ -81,3 +81,16 @@ A pedido del usuario: portada centrada con Libre Caslon Text en regular y cursiv
 ## Foto María Isabel Zapata — 01/10/2026
 Foto proporcionada por el usuario, encuadrada mediante CSS para mostrar rostro y hombros. Misma altura de ficha y radios que las fotos de Raúl y Paula; acercamiento adaptado a móvil. Original guardado íntegro en public/images/maria-isabel-zapata.png.
 
+
+## Rediseño editorial del inicio — 02/10/2026
+A partir de la crítica de impeccable (20/32; snapshot en `.impeccable/critique/`). Dirección elegida por el usuario: editorial con carácter. Se mantienen las fotos del equipo.
+
+- Hoja nueva `public/sitio.css`, usada solo por el inicio. Las demás páginas siguen con `medicina-laboral.css` hasta migrarlas.
+- Tipografías: Libre Caslon Display para títulos y Schibsted Grotesk para la interfaz (antes Libre Caslon Text y Geist).
+- Paleta con función: el magenta indica acción y lo pendiente, el azul enlaces y lo completo, y el celeste la superficie del portal. Fondo papel `#fbfaf6` y tinta `#13233a`.
+- Composición alineada a la izquierda sobre una grilla de 12 columnas. Se quitaron la etiqueta sobre el título, los remates en cursiva magenta, las tarjetas pastel, las píldoras con ↗ y la marquesina de logos.
+- Se reemplazaron el selector por necesidad y la grilla de 4 fotos IA por un único índice de necesidades. Aptos, exámenes y auditorías psiquiátricas enlazan a la propuesta.
+- Portal mostrado con una vista ilustrativa en HTML/CSS, rotulada como ejemplo. No contiene datos reales.
+- Fotos del equipo en WebP con respaldo PNG. Los encuadres se hacen por CSS: rostro y hombros a escala similar, y en la foto de Raúl el encuadre deja fuera los diplomas del fondo. Agustín aparece con iniciales hasta tener foto.
+- Peso del inicio: de unos 11 MB de PNG a unos 250 KB de imágenes.
+- `scripts/package-netlify.js` copia y versiona `sitio.css` y `logo.webp`.
