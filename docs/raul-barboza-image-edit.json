@@ -1,0 +1,6 @@
+{
+  "tool": "Built-in image_gen",
+  "input": "public/images/raul-barboza.png",
+  "output": "public/images/raul-barboza-traje.png",
+  "prompt": "Edit target: supplied photograph of Dr. Raúl Barboza. Make one precise wardrobe edit only: replace his blue short-sleeve polo shirt with a realistic tailored dark navy suit jacket, white dress shirt and understated navy tie. Preserve exactly the same man, facial identity, glasses, hair, expression, apparent age, skin texture, seated pose, body proportions, background wall, framed certificates, lighting, camera perspective and crop. Do not retouch or beautify face. Suit should fit naturally over the original torso with believable fabric, lapels, cuffs, shadows and lighting matching the photograph. Photorealistic clothing edit for a professional medical team webpage. No logos or new text. Keep original landscape 4:3 composition."
+}

@@ -1,0 +1,18 @@
+const fs=require('fs'),path=require('path');
+const p=path.join(__dirname,'../public/medicina-laboral.html');
+let h=fs.readFileSync(p,'utf8');
+const arrow='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14"/></svg>';
+const paths=[['teleconsultas','Evaluar a un trabajador','Consultas y seguimiento','<rect x="3" y="5" width="18" height="13" rx="2"/><path d="m9 9 5 3-5 3zM8 22h8"/>'],['juntas-medicas','Coordinar una junta','Evaluación y dictamen','<circle cx="12" cy="7" r="3"/><path d="M5 22v-5a7 7 0 0 1 14 0v5M2 12h3M19 12h3"/>'],['ausentismo','Seguir una ausencia','Certificados y controles','<path d="m2 11 10-9 10 9M5 9v13h14V9M9 16h6M12 13v6"/>'],['informes','Consultar informes','Documentación del caso','<path d="M14 2H5v20h14V7zM14 2v5h5M8 12h8M8 16h5"/>']];
+h=h.replace(/<aside class="care-index">[\s\S]*?<\/aside>/,`<aside class="care-index care-selector"><h2>¿Qué necesitás resolver?</h2><div class="care-options">${paths.map((x,i)=>`<a class="care-option care-option-${i}" href="/servicios/${x[0]}.html"><svg class="care-symbol" viewBox="0 0 24 24" aria-hidden="true">${x[3]}</svg><span>${x[1]}</span><small>${x[2]}</small><span class="care-direction">${arrow}</span></a>`).join('')}</div></aside>`);
+h=h.replace('<p>Dr. Raúl Barboza y Dra. Paula Barboza.</p>','<p>Conocé a los profesionales de MEDGRUP.</p>');
+const additions=`<article><div class="portrait-placeholder pending-portrait"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 23v-3a8 8 0 0 1 16 0v3"/></svg><small>Fotografía próximamente</small></div><div class="doctor-info"><h3>Dra. María Isabel Zapata</h3><span>Equipo médico MEDGRUP</span></div></article><article><div class="portrait-placeholder pending-portrait"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 23v-3a8 8 0 0 1 16 0v3"/></svg><small>Fotografía próximamente</small></div><div class="doctor-info"><h3>Dr. Agustín Barboza</h3><span>Equipo médico MEDGRUP</span></div></article>`;
+if(!h.includes('Dra. María Isabel Zapata'))h=h.replace(/(<section class="section wrap" id="equipo">[\s\S]*?)(<\/div><\/section>)/,'$1'+additions+'$2');
+const logos=[['cemep','Clínica C.E.Me.P.'],['huinoil','Huinoil'],['grupo-l','Grupo L'],['logant','Logant, Logística Antártica']];
+const logoGroup=(duplicate)=>`<div class="logo-group"${duplicate?' aria-hidden="true"':''}>${logos.map(([file,alt])=>`<div class="client-logo ${file}"><img src="/images/empresas/${file}.png" alt="${duplicate?'':alt}" width="220" height="100" loading="lazy"></div>`).join('')}</div>`;
+h=h.replace(/<section class="contact section wrap" id="contacto">[\s\S]*?<\/section>/,`<section class="clients-section wrap" id="empresas"><div class="clients-heading"><h2>Empresas que confiaron<br>en nosotros</h2><button class="button outline motion-toggle" type="button" aria-pressed="false" aria-controls="client-logos">Pausar movimiento</button></div><div class="logo-window" id="client-logos"><div class="logo-track">${logoGroup(false)}${logoGroup(true)}</div></div></section>`);
+h=h.replace('href="#contacto">Consultar al equipo','href="mailto:administracion@medgrup.com.ar?subject=Consulta%20de%20medicina%20laboral">Consultar al equipo');
+h=h.replace('<span>Medicina laboral · Tierra del Fuego</span>','<a class="footer-contact" href="mailto:administracion@medgrup.com.ar">administracion@medgrup.com.ar</a>');
+if(!h.includes('motion-toggle'))throw Error('Missing clients');
+if(!h.includes('public-site.js'))h=h.replace('</body>','<script src="/public-site.js" defer></script>\n</body>');
+fs.writeFileSync(p,h);
+console.log('Updated service selector, four-person team and client logos.');

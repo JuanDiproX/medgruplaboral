@@ -1,0 +1,22 @@
+{
+  "teleconsultas": {
+    "prompt": "Use case: photorealistic-natural. Asset: horizontal 3:2 website service photograph for Argentine occupational medicine brand MEDGRUP. Occupational physician at a desk listening attentively to an adult worker on a laptop video call, viewed over the physician shoulder. Laptop screen shows a generic video conversation, no legible interface text. Authentic contemporary Argentina, ordinary adult people, documentary photography, soft morning window light, white and pale gray interior, muted blue and small burgundy accents coherent with MEDGRUP. Natural skin, realistic hands and objects, no glamorous stock-photo poses, no futuristic technology, no branding, no logos, no watermarks, no readable text, no invented certifications. Compose subject within central 70 percent so it survives horizontal card cropping. This is illustrative generated photography, not portraits of the real MEDGRUP doctors.",
+    "tool": "image_gen",
+    "file": "public/images/teleconsultas.png"
+  },
+  "juntas-medicas": {
+    "prompt": "Use case: photorealistic-natural. Asset: horizontal 3:2 website service photograph for Argentine occupational medicine brand MEDGRUP. Two occupational medical professionals reviewing a case together across a table in a modest bright consultation room, with a closed laptop and blank documents; candid gestures, careful professional discussion. Authentic contemporary Argentina, ordinary adult people, documentary photography, soft morning window light, white and pale gray interior, muted blue and small burgundy accents coherent with MEDGRUP. Natural skin, realistic hands and objects, no glamorous stock-photo poses, no futuristic technology, no branding, no logos, no watermarks, no readable text, no invented certifications. Compose subject within central 70 percent so it survives horizontal card cropping. This is illustrative generated photography, not portraits of the real MEDGRUP doctors.",
+    "tool": "image_gen",
+    "file": "public/images/juntas-medicas.png"
+  },
+  "ausentismo": {
+    "prompt": "Use case: photorealistic-natural. Asset: horizontal 3:2 website service photograph for Argentine occupational medicine brand MEDGRUP. Occupational medical professional seated opposite an adult worker in a calm modest consultation room, talking and reviewing a blank certificate folder, human respectful consultation, no exam procedures. Authentic contemporary Argentina, ordinary adult people, documentary photography, soft morning window light, white and pale gray interior, muted blue and small burgundy accents coherent with MEDGRUP. Natural skin, realistic hands and objects, no glamorous stock-photo poses, no futuristic technology, no branding, no logos, no watermarks, no readable text, no invented certifications. Compose subject within central 70 percent so it survives horizontal card cropping. This is illustrative generated photography, not portraits of the real MEDGRUP doctors.",
+    "tool": "image_gen",
+    "file": "public/images/ausentismo.png"
+  },
+  "informes": {
+    "prompt": "Use case: photorealistic-natural. Asset: horizontal 3:2 website service photograph for Argentine occupational medicine brand MEDGRUP. Close natural detail of a physician's hands organizing a medical report folder alongside a laptop and stethoscope on a tidy desk, all document pages blank or illegible with no patient data. Authentic contemporary Argentina, ordinary adult people, documentary photography, soft morning window light, white and pale gray interior, muted blue and small burgundy accents coherent with MEDGRUP. Natural skin, realistic hands and objects, no glamorous stock-photo poses, no futuristic technology, no branding, no logos, no watermarks, no readable text, no invented certifications. Compose subject within central 70 percent so it survives horizontal card cropping. This is illustrative generated photography, not portraits of the real MEDGRUP doctors.",
+    "tool": "image_gen",
+    "file": "public/images/informes.png"
+  }
+}

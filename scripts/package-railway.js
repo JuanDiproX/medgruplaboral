@@ -1,0 +1,13 @@
+const fs = require('node:fs');
+const path = require('node:path');
+require('./package-netlify.js');
+const root = path.resolve(__dirname, '..');
+const target = path.join(root, 'output/railway-site');
+fs.mkdirSync(target, { recursive: true });
+fs.cpSync(path.join(root, 'output/netlify-site'), path.join(target, 'public'), { recursive: true });
+fs.copyFileSync(path.join(__dirname, 'public-site-server.cjs'), path.join(target, 'server.cjs'));
+fs.copyFileSync(path.join(__dirname, 'public-contact.cjs'), path.join(target, 'public-contact.cjs'));
+fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({name:'medgrup-web-publica',version:'1.0.0',private:true,scripts:{start:'node server.cjs'},dependencies:{nodemailer:'10.0.13'},engines:{node:'>=22'}},null,2));
+fs.writeFileSync(path.join(target, 'Dockerfile'), 'FROM node:22-alpine\nWORKDIR /app\nCOPY package.json ./\nRUN npm install --omit=dev\nCOPY server.cjs public-contact.cjs ./\nCOPY public ./public\nUSER node\nCMD ["node", "server.cjs"]\n');
+fs.writeFileSync(path.join(target, '.dockerignore'), '.git\nnode_modules\n');
+console.log('Railway public-only package: ' + target);
