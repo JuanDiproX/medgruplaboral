@@ -192,15 +192,39 @@ button,input,select,textarea{font-family:inherit;}
    desborda sobre la otra en vez de recortarse. */
 .two-col > *{min-width:0;}
 
-/* Resumen del día: una línea de texto, no un tablero de cifras. JS le pone display:grid o
-   none en línea; se respeta el none y se fuerza flex en el resto. */
-.resumen-dia{flex-wrap:wrap;align-items:baseline;gap:6px 0;margin:-.25rem 0 1.25rem;}
-.resumen-dia:not([style*="none"]){display:flex!important;}
-.metric-card{display:inline-flex;align-items:baseline;gap:7px;min-width:0;}
-.metric-card + .metric-card{margin-left:22px;padding-left:22px;border-left:1px solid var(--rule-2);}
-.metric-lbl{font-size:14px;color:var(--ink-2);}
-.metric-val{font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--ink);font-variant-numeric:tabular-nums;}
-.metric-hint{font-size:14px;color:var(--ink-2);}
+/* ── PRÓXIMO TURNO ──
+   Un solo bloque arriba con lo que el médico tiene que hacer ahora: hora grande, paciente,
+   cuánto falta y una acción. El color del bloque acompaña la urgencia (ámbar / magenta). */
+.foco-wrap{margin-bottom:1.25rem;}
+.foco-proximo{background:#fff;border:1px solid var(--rule);border-radius:var(--r);padding:16px 22px 20px;}
+.foco-proximo:empty{display:none;}
+.foco-proximo.proximo{background:#fffaf0;border-color:#ecd7ab;}
+.foco-proximo.inminente{background:var(--rosa-light);border-color:var(--rosa-mid);}
+.foco-proximo.en-curso{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+.fp-cab{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.fp-titulo{margin:0;font-size:14px;font-weight:600;color:var(--ink-2);}
+.fp-cuando{font-size:14px;font-weight:600;color:var(--ink-2);}
+.proximo .fp-cuando{color:var(--amber);}
+.inminente .fp-cuando,.en-curso .fp-cuando{color:var(--magenta);}
+.fp-cuerpo{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;}
+.fp-hora{font-family:var(--display);font-size:3.25rem;line-height:.95;color:var(--ink);padding-right:24px;border-right:1px solid var(--rule);}
+.inminente .fp-hora,.en-curso .fp-hora{color:var(--magenta);border-right-color:var(--rosa-mid);}
+.fp-fecha{display:block;margin-top:8px;font-family:var(--sans);font-size:13px;color:var(--ink-2);}
+.fp-paciente{font-size:1.375rem;font-weight:600;line-height:1.2;color:var(--ink);}
+.fp-meta{margin-top:4px;font-size:14px;color:var(--ink-2);}
+.fp-accion{min-height:48px;padding:0 22px;font-size:15px;}
+.foco-proximo.vacio{padding:22px 22px 8px;}
+.fp-vacio{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:20px;padding-bottom:14px;}
+.fp-vacio .fp-titulo{font-family:var(--display);font-size:1.75rem;font-weight:400;color:var(--ink);}
+.fp-vacio .fp-ayuda{grid-column:1;margin:4px 0 0;font-size:14px;color:var(--ink-2);}
+.fp-vacio .btn{grid-column:2;grid-row:1 / span 2;}
+.fp-ultimos{border-top:1px solid var(--rule);}
+.fp-ult-tit{padding:12px 0 2px;font-size:13px;font-weight:600;color:var(--ink-2);}
+.fp-ult{display:grid;grid-template-columns:130px minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:14px;min-height:46px;border-bottom:1px solid var(--rule);}
+.fp-ult:last-child{border-bottom:0;}
+.fp-ult-cuando{font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;}
+.fp-ult-pac{font-weight:600;}
+.fp-ult-tipo{font-size:13.5px;color:var(--ink-2);}
 
 /* ── ETIQUETAS ── */
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;line-height:1.5;}
@@ -350,17 +374,18 @@ textarea{resize:vertical;min-height:56px;line-height:1.55;}
 .np-cuadrado{padding:0 10px;}
 #notas-preview-hint{margin-top:14px;}
 .ia-ok{background:var(--verde)!important;color:#fff!important;}
-.participante-link{background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;}
-.participante-link:last-child{margin-bottom:0;}
-.participante-nombre{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+/* Links del turno: una fila por persona (nombre · link · enviar), separadas por filetes */
+.participante-link{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:12px 0;border-top:1px solid var(--rule);}
+.participante-link:first-child{border-top:0;padding-top:2px;}
+.participante-nombre{font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
 .participante-rol{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;}
 .rol-medico{background:var(--wash);color:var(--blue-ink);}.rol-paciente{background:var(--verde-light);color:var(--verde);}
-.link-row{display:flex;align-items:center;gap:6px;}
-.link-url{font-size:12.5px;color:var(--blue-ink);background:#fff;border:1px solid var(--rule-2);border-radius:var(--r-xs);padding:7px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.share-btns{display:flex;gap:7px;margin-top:8px;}
-.btn-wa,.btn-gmail{color:#fff;border:none;border-radius:var(--r-sm);min-height:34px;padding:0 12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .12s;}
-.btn-wa{background:#1f8f4c;}.btn-wa:hover{background:#17733c;}
-.btn-gmail{background:#c5372c;}.btn-gmail:hover{background:#a52b22;}
+.link-row{display:flex;align-items:center;gap:6px;min-width:0;}
+.link-url{font-size:13px;color:var(--blue-ink);background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-xs);padding:7px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.share-btns{display:flex;gap:6px;}
+.btn-wa,.btn-gmail{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;background:#fff;color:var(--ink);border:1px solid var(--rule-2);border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;transition:background .12s;}
+.btn-wa:hover,.btn-gmail:hover{background:var(--paper-2);}
+.btn-wa svg{color:#1f8f4c;}.btn-gmail svg{color:#c5372c;}
 
 /* ── REGISTRO ── */
 .timeline{display:flex;flex-direction:column;}
@@ -414,11 +439,11 @@ tr:hover td{background:var(--surface2);}
 /* ── PESTAÑAS DE TURNOS ──
    La lista va directo sobre el papel: pestañas y filtros comparten una línea y cada turno es
    una fila con filete. #turnos-card recibe display:block|none en línea desde el JS. */
-#turnos-card{background:none;border:0;border-radius:0;overflow:visible;margin-bottom:1.5rem;}
+#turnos-card{background:#fff;border:1px solid var(--rule);border-radius:var(--r);overflow:visible;margin-bottom:1.5rem;}
 #turnos-card:not([style*="none"]){display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:end;}
 #turnos-card > .card-hdr{display:none;}
 #turnos-card > #agenda-lista{grid-column:1/-1;}
-.tabs-turnos{display:flex;gap:4px;padding:0;background:none;border-bottom:1px solid var(--rule-2);}
+.tabs-turnos{display:flex;gap:4px;padding:0 0 0 12px;background:none;border-bottom:1px solid var(--rule);}
 .tab-turno{
   display:inline-flex;align-items:center;gap:7px;
   height:46px;padding:0 12px;border:none;background:transparent;
@@ -437,7 +462,21 @@ tr:hover td{background:var(--surface2);}
   font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
 }
 .tab-turno.active .tab-count{background:var(--ink);color:#fff;}
-.agenda-filtros{display:flex;justify-content:flex-end;gap:8px;padding:0 0 8px 16px;background:none;border-bottom:1px solid var(--rule-2);}
+.agenda-filtros{display:flex;justify-content:flex-end;gap:8px;padding:9px 12px 9px 16px;background:none;border-bottom:1px solid var(--rule);}
+/* Separadores por día: "Hoy · sábado 3 de octubre · 2 turnos" */
+.dia-sep{display:flex;align-items:baseline;gap:10px;padding:12px 1.25rem 8px;background:var(--surface2);border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2);}
+.dia-sep strong{font-size:14px;font-weight:600;color:var(--ink);}
+.dia-sep .dia-n{margin-left:auto;font-variant-numeric:tabular-nums;}
+.agenda-agrupada .turno-fecha{display:none;}
+#agenda-lista > .turno-item:last-child{border-radius:0 0 var(--r) var(--r);}
+/* Columna lateral del admin: angosta, misma hoja */
+#agenda-cols:not(.sin-log-lateral){grid-template-columns:minmax(0,1fr) minmax(300px,340px);}
+/* ── EN LLAMADA: solo el video y los links para invitar ── */
+#sec-agenda:has(#video-container.active) #turnos-card,
+#sec-agenda:has(#video-container.active) #card-log-actividad,
+#sec-agenda:has(#video-container.active) #dictamenes-existentes{display:none!important;}
+#sec-agenda:has(#video-container.active) #agenda-cols{grid-template-columns:minmax(0,1fr);gap:0;}
+#links-box .card{margin-bottom:0;}
 .agenda-buscar-wrap{position:relative;flex:0 1 300px;min-width:0;}
 .agenda-buscar-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--ink-3);pointer-events:none;}
 .agenda-buscar-wrap input{padding-left:34px;}
@@ -503,12 +542,21 @@ tr:hover td{background:var(--surface2);}
 .date-chip{display:none;}
 .btn{padding:0 12px;font-size:13px;}
 .two-col{grid-template-columns:1fr;gap:1rem;}
-/* Resumen en una línea; "Programados" es dato de escritorio */
-.resumen-dia{margin:0 0 .75rem;}
-.metric-card + .metric-card{margin-left:14px;padding-left:14px;}
-.metric-card:last-child{display:none;}
-.metric-lbl,.metric-hint{font-size:13.5px;}
-.metric-val{font-size:17px;}
+/* Próximo turno en mobile: hora y paciente arriba, el botón a lo ancho abajo (zona del pulgar) */
+.foco-proximo{padding:14px 16px 16px;}
+.fp-cuerpo{grid-template-columns:auto minmax(0,1fr);gap:14px 16px;}
+.fp-hora{font-size:2.5rem;padding-right:16px;}
+.fp-paciente{font-size:1.15rem;}
+.fp-accion{grid-column:1 / -1;width:100%;}
+.fp-vacio{grid-template-columns:minmax(0,1fr);}
+.fp-vacio .btn{grid-column:1;grid-row:auto;margin-top:12px;justify-self:start;}
+.fp-ult{grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:8px 0;}
+.fp-ult-cuando{grid-column:1;}
+.fp-ult-tipo{display:none;}
+.fp-ult .btn{grid-column:2;grid-row:1 / span 2;}
+.participante-link{grid-template-columns:minmax(0,1fr);}
+#agenda-cols:not(.sin-log-lateral){grid-template-columns:minmax(0,1fr);}
+.dia-sep{padding:10px 1rem 6px;}
 .card-hdr{padding:.65rem 1rem;min-height:48px;}
 .card-body{padding:1rem;}
 #turnos-card:not([style*="none"]){grid-template-columns:minmax(0,1fr);}
@@ -780,11 +828,11 @@ td.no-label::before{display:none;}
       </div>
     </div>
 
-    <div class="three-col resumen-dia" id="metrics-row">
-      <div class="metric-card"><span class="metric-lbl">Hoy</span><span class="metric-val" id="cnt-hoy">0</span><span class="metric-hint">turnos</span></div>
-      <div class="metric-card metric-proximo"><span class="metric-lbl">Próximo</span><span class="metric-val" id="cnt-proximo">—</span><span class="metric-hint" id="cnt-proximo-sub">sin turnos</span></div>
-      <div class="metric-card"><span class="metric-lbl">Programados</span><span class="metric-val" id="cnt-total">0</span></div>
-    </div>
+    <section class="foco-wrap" id="metrics-row" aria-label="Próximo turno">
+      <div id="foco-proximo" class="foco-proximo"></div>
+      <!-- Cifras que el JS sigue actualizando; la cuenta de hoy se muestra en el separador del día -->
+      <div hidden><span id="cnt-hoy">0</span><span id="cnt-proximo">—</span><span id="cnt-proximo-sub"></span><span id="cnt-total">0</span></div>
+    </section>
 
     <div class="two-col sin-log-lateral" id="agenda-cols">
       <div>
@@ -3304,6 +3352,85 @@ function cambiarTabTurnos(tab){
 function botonChatTurno(id){
   return window.chatTurnoDisponible ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="abrirChatTurno(decodeURIComponent('${encodeURIComponent(id).replace(/'/g,'%27')}'))">Chat y estudios</button>` : '';
 }
+// ── Bloque "Próximo turno" ──
+// Lo primero que lee el médico: si hay una consulta en curso manda esa; si no, el próximo
+// pendiente. Sin pendientes, un estado vacío con los últimos completados a mano.
+function fechaLocalISO(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function etiquetaDia(fechaISO){
+  const hoy = new Date();
+  const man = new Date(hoy); man.setDate(hoy.getDate()+1);
+  const ayer = new Date(hoy); ayer.setDate(hoy.getDate()-1);
+  const largo = new Date(fechaISO+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  if(fechaISO === fechaLocalISO(hoy)) return ['Hoy', largo];
+  if(fechaISO === fechaLocalISO(man)) return ['Mañana', largo];
+  if(fechaISO === fechaLocalISO(ayer)) return ['Ayer', largo];
+  return [largo.charAt(0).toUpperCase()+largo.slice(1), ''];
+}
+function renderFocoProximo(fut, ord){
+  const el = document.getElementById('foco-proximo');
+  if(!el) return;
+  const esAdmin = usuarioActual?.rol === 'admin';
+  const t = fut.find(x=>x.estado==='en-curso') || fut.find(x=>x.estado==='pendiente');
+  if(t){
+    const enCurso = t.estado==='en-curso';
+    const prox = estadoProximidad(t);
+    const mins = minutosHastaTurno(t);
+    const cuando = enCurso ? 'En curso' : (mins===null ? '' : (mins<0 ? 'debería haber empezado' : textoTiempoRestante(mins)));
+    const fISO = t.fecha.split('T')[0];
+    const [dia, largo] = etiquetaDia(fISO);
+    const presencial = t.modalidad==='presencial';
+    const accion = enCurso
+      ? `<button class="btn btn-rosa fp-accion" onclick="unirseTurno('${t.id}')">Volver a la consulta</button>`
+      : presencial
+        ? `<button class="btn btn-rosa fp-accion" onclick="iniciarInformePresencial('${t.id}')">Cargar informe</button>`
+        : `<button class="btn btn-rosa fp-accion" onclick="iniciarTurno('${t.id}')">Iniciar consulta</button>`;
+    el.className = 'foco-proximo' + (enCurso ? ' en-curso' : prox ? ' '+prox : '');
+    el.innerHTML = `<div class="fp-cab"><h2 class="fp-titulo">${enCurso?'Consulta en curso':'Próximo turno'}</h2><span class="fp-cuando">${cuando}</span></div>
+      <div class="fp-cuerpo">
+        <div class="fp-hora">${t.hora}<span class="fp-fecha">${dia==='Hoy'?'hoy':(dia==='Mañana'?'mañana':largo||dia)}</span></div>
+        <div class="fp-datos">
+          <div class="fp-paciente">${escaparHtml(t.paciente)}</div>
+          <div class="fp-meta">${[t.tipo, t.empresa, presencial?'Presencial':'Videoconsulta'].filter(Boolean).map(escaparHtml).join(' · ')}</div>
+        </div>
+        ${accion}
+      </div>`;
+    return;
+  }
+  const ultimos = ord.filter(x=>x.estado==='completado').slice(-3).reverse();
+  el.className = 'foco-proximo vacio';
+  el.innerHTML = `<div class="fp-vacio">
+      <h2 class="fp-titulo">${esAdmin?'No hay turnos pendientes':'No tenés turnos pendientes'}</h2>
+      <p class="fp-ayuda">Cuando haya uno, aparece acá con su botón para iniciar la consulta.</p>
+      <button class="btn btn-primary" onclick="abrirModalTurno()">Programar turno</button>
+    </div>${ultimos.length ? `<div class="fp-ultimos"><div class="fp-ult-tit">Últimos completados</div>${ultimos.map(x=>{
+      const fx = new Date(x.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+      return `<div class="fp-ult"><span class="fp-ult-cuando">${fx} · ${x.hora}</span><span class="fp-ult-pac">${escaparHtml(x.paciente)}</span><span class="fp-ult-tipo">${escaparHtml(x.tipo||'')}</span><button class="btn btn-ghost" onclick="${esAdmin?'abrirDictamenCompletado':'editarDictamen'}('${x.id}')">Dictamen</button></div>`;
+    }).join('')}</div>` : ''}`;
+}
+// Separadores por día dentro de la hoja: "Hoy · sábado 3 de octubre · 2 turnos".
+function agruparAgendaPorDia(lista){
+  const cont = document.getElementById('agenda-lista');
+  if(!cont) return;
+  const filas = [...cont.children].filter(n=>n.classList.contains('turno-item'));
+  if(filas.length !== lista.length) return; // ante la duda, sin separadores antes que mal puestos
+  const cuenta = {};
+  lista.forEach(t=>{ const k=t.fecha.split('T')[0]; cuenta[k]=(cuenta[k]||0)+1; });
+  let anterior = null;
+  lista.forEach((t,i)=>{
+    const k = t.fecha.split('T')[0];
+    if(k === anterior) return;
+    anterior = k;
+    const [dia, largo] = etiquetaDia(k);
+    const sep = document.createElement('div');
+    sep.className = 'dia-sep';
+    sep.innerHTML = `<strong>${dia}</strong>${largo?`<span>${largo}</span>`:''}<span class="dia-n">${cuenta[k]} ${cuenta[k]===1?'turno':'turnos'}</span>`;
+    cont.insertBefore(sep, filas[i]);
+  });
+  cont.classList.add('agenda-agrupada');
+}
+
 function renderAgenda(){
  try{
   // Limpiar menús "⋮" que hayan quedado teletransportados a <body> en el render anterior
@@ -3338,6 +3465,7 @@ function renderAgenda(){
   const fut=ord.filter(t=>t.fecha.split('T')[0]>=hoy&&t.estado!=='completado');
   if(fut.length){document.getElementById('cnt-proximo').textContent=fut[0].hora;document.getElementById('cnt-proximo-sub').textContent=fut[0].paciente+' · '+new Date(fut[0].fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});}
   else{document.getElementById('cnt-proximo').textContent='—';document.getElementById('cnt-proximo-sub').textContent='sin turnos próximos';}
+  renderFocoProximo(fut, ord);
 
   // Lista según la pestaña activa
   const lista = tabTurnosActiva==='completados' ? completados : proximos;
@@ -3418,6 +3546,7 @@ function renderAgenda(){
 
     return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
+  agruparAgendaPorDia(lista);
  }catch(err){
   console.error('Error en renderAgenda:', err);
   const el = document.getElementById('agenda-lista');
