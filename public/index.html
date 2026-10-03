@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png"/>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="manifest" href="/site.webmanifest"/>
-<meta name="theme-color" content="#3a6ea8"/>
+<meta name="theme-color" content="#13233a"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="MEDGRUP Telemedicina"/>
 <meta property="og:title" content="MEDGRUP Telemedicina — Medicina Laboral en Tierra del Fuego"/>
@@ -43,101 +43,146 @@
   }
 }
 </script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
+/* MEDGRUP · portal de trabajo
+   Mismo mundo que el sitio público (sitio.css): papel, tinta marino, colores del logo con función.
+   Magenta = urgente / acción inmediata. Azul = enlaces y completo. Ámbar = próximo. Celeste = selección.
+   Los nombres viejos (--azul, --rosa…) se conservan porque cientos de estilos inline y el HTML
+   que arma el JS los usan: acá solo cambia lo que valen. */
 :root{
-  --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
-  --rosa:#c0365a;--rosa-dark:#9a2847;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
-  --celeste:#7aaed4;--celeste-light:#edf5fb;
-  --verde:#1e6640;--verde-light:#e6f4ec;
-  --amber:#8f5000;--amber-light:#fdf0d8;
-  --bg:#eef3f9;--surface:#ffffff;--surface2:#f4f7fb;--surface3:#e6edf5;
-  --border:rgba(58,110,168,0.1);--border2:rgba(58,110,168,0.18);
-  --text:#1a2433;--text2:#5a6575;--text3:#97a3b4;
-  --r:16px;--r-sm:11px;--r-xs:7px;
-  --shadow-sm:0 1px 3px rgba(42,80,128,0.06),0 2px 10px rgba(42,80,128,0.05);
-  --shadow:0 2px 6px rgba(42,80,128,0.08),0 8px 28px rgba(42,80,128,0.08);
-  --shadow-lg:0 4px 10px rgba(42,80,128,0.1),0 20px 50px rgba(42,80,128,0.15);
-  --grad-azul:linear-gradient(135deg,#3a6ea8,#5b8db8);
-  --grad-rosa:linear-gradient(135deg,#c0365a,#d44870);
-  --grad-celeste:linear-gradient(135deg,#7aaed4,#a5cce6);
+  --ink:#13233a;--ink-2:#4a586b;--ink-3:#5f6b7b;
+  --paper:#fbfaf6;--paper-2:#f3f2ec;
+  --rule:#e4e3da;--rule-2:#d2d1c7;
+  --blue-ink:#2c5d92;--wash:#e6f1f5;
+  --magenta:#b5185b;--magenta-ink:#95124a;
+  --sans:"Schibsted Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Libre Caslon Display","Libre Caslon Text",Georgia,"Times New Roman",serif;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+
+  --azul:#2c5d92;--azul-dark:#13233a;--azul-light:#e6f1f5;--azul-mid:#bcd6e2;
+  --rosa:#b5185b;--rosa-dark:#95124a;--rosa-light:#f9ebf1;--rosa-mid:#ebbdd0;
+  --celeste:#acdcec;--celeste-light:#eef6f9;
+  --verde:#1e6640;--verde-light:#e5f1e9;
+  --amber:#8a5300;--amber-light:#f8eedb;
+  --bg:#fbfaf6;--surface:#ffffff;--surface2:#f6f5f0;--surface3:#ecebe3;
+  --border:#e4e3da;--border2:#d2d1c7;
+  --text:#13233a;--text2:#4a586b;--text3:#5f6b7b;
+  --r:6px;--r-sm:4px;--r-xs:3px;
+  --shadow-sm:0 1px 0 rgba(19,35,58,.03);
+  --shadow:0 1px 2px rgba(19,35,58,.06),0 14px 30px -20px rgba(19,35,58,.3);
+  --shadow-lg:0 2px 6px rgba(19,35,58,.07),0 32px 64px -28px rgba(19,35,58,.42);
+  --grad-azul:linear-gradient(#13233a,#13233a);
+  --grad-rosa:linear-gradient(#b5185b,#b5185b);
+  --grad-celeste:linear-gradient(#acdcec,#acdcec);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%,rgba(122,174,212,0.12),transparent 35%),radial-gradient(circle at 100% 100%,rgba(192,54,90,0.06),transparent 35%),var(--bg);background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+html{-webkit-text-size-adjust:100%;scrollbar-color:#c9c8be var(--paper);}
+body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--paper);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;caret-color:var(--magenta);}
+::selection{background:var(--celeste);color:var(--ink);}
+:focus-visible{outline:2px solid var(--blue-ink);outline-offset:2px;}
+a{color:var(--blue-ink);text-underline-offset:3px;}
+button,input,select,textarea{font-family:inherit;}
+
+/* ── LOGIN ── */
 .login-page{display:flex;min-height:100vh;}
-.login-left{flex:1;background:linear-gradient(160deg,#1e3d6e 0%,#2a5080 40%,#3a6ea8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;position:relative;overflow:hidden;}
-.login-left::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
-.login-left::after{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:rgba(255,255,255,0.03);bottom:-150px;right:-150px;}
-.login-logo-wrap{position:relative;text-align:center;margin-bottom:2.5rem;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:24px;padding:2rem 3rem;width:100%;max-width:420px;}
-.login-logo-img{width:280px;max-width:100%;filter:drop-shadow(0 4px 20px rgba(0,0,0,0.3));}
-.login-logo-wrap{text-align:center;margin-bottom:3rem;position:relative;}
-.login-logo-img{width:200px;filter:brightness(0) invert(1);opacity:0.95;}
-.login-tagline{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.75;max-width:340px;text-align:center;position:relative;}
-.login-features{display:flex;flex-direction:column;gap:12px;margin-top:2.5rem;max-width:300px;position:relative;}
-.login-feat{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,0.8);}
-.login-feat-icon{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.login-feat-icon svg{width:14px;height:14px;stroke:white;fill:none;stroke-width:1.8;}
-.login-right{width:440px;flex-shrink:0;background:var(--surface);display:flex;align-items:center;justify-content:center;padding:3rem 2.5rem;box-shadow:-4px 0 20px rgba(0,0,0,0.08);}
+.login-left{flex:1;background:var(--ink);color:#fff;display:flex;flex-direction:column;justify-content:space-between;gap:3rem;padding:clamp(2rem,4.5vw,4.5rem) clamp(2rem,6vw,6rem);position:relative;}
+.login-left::before,.login-left::after{content:none;}
+.login-logo-wrap{margin:0;}
+.login-logo-img{width:168px;max-width:100%;filter:brightness(0) invert(1);}
+.login-hero{max-width:40rem;}
+/* El alcance nacional es el mensaje: "todo el país" se marca con el celeste del logo */
+.login-tagline{font-family:var(--display);font-weight:400;font-size:clamp(2.4rem,4.4vw,4.25rem);line-height:1.02;letter-spacing:-.015em;color:#fff;max-width:12em;text-wrap:balance;margin:0;}
+.login-tagline em{font-style:normal;color:var(--celeste);white-space:nowrap;}
+.login-lead{font-size:clamp(1rem,1.15vw,1.125rem);line-height:1.55;color:rgba(255,255,255,.78);max-width:34em;margin-top:1.25rem;text-wrap:pretty;}
+.login-features{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 2rem;margin-top:clamp(2rem,5vh,3rem);border-top:1px solid rgba(255,255,255,.16);}
+.login-feat{display:flex;align-items:center;gap:12px;font-size:14.5px;color:rgba(255,255,255,.86);padding:14px 0;border-bottom:1px solid rgba(255,255,255,.16);}
+.login-feat-icon{width:34px;height:34px;border-radius:50%;border:1px solid rgba(172,220,236,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.login-feat-icon svg{width:17px;height:17px;stroke:var(--celeste);fill:none;stroke-width:1.6;}
+.login-foot{font-size:13px;color:rgba(255,255,255,.6);margin:0;}
+/* Un solo trazo para todos los íconos: el de la familia que usa el sitio público */
+.nav-item svg,.login-feat-icon svg,.card-title svg,.btn svg{stroke-linecap:round;stroke-linejoin:round;}
+.login-right{width:min(480px,42vw);flex-shrink:0;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:3rem clamp(2rem,4vw,4rem);}
 .login-form-wrap{width:100%;max-width:360px;}
-.login-form-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-0.5px;}
-.login-form-sub{font-size:13px;color:var(--text3);margin-bottom:2rem;}
-.login-form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
-.login-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text2);font-weight:500;}
-.login-input{font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 13px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:var(--bg);color:var(--text);outline:none;width:100%;transition:all 0.15s;}
-.login-input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(58,110,168,0.1);background:white;}
-.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--azul),var(--celeste));color:white;border:none;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;transition:all 0.15s;letter-spacing:-0.1px;box-shadow:0 4px 14px rgba(58,110,168,0.3);}
-.login-btn:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,110,168,0.4);}
-.login-btn:disabled{background:var(--text3);cursor:not-allowed;box-shadow:none;transform:none;}
-.login-error{background:var(--rosa-light);border:1.5px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);margin-top:12px;display:none;}
+.login-form-wrap > div:first-child{background:var(--paper-2)!important;border:1px solid var(--rule)!important;border-radius:var(--r)!important;padding:3px!important;gap:3px!important;}
+#toggle-medgrup,#toggle-empresa{background:transparent!important;color:var(--ink-2)!important;box-shadow:none!important;border-radius:var(--r-sm)!important;font-family:var(--sans)!important;font-size:13.5px!important;letter-spacing:0!important;}
+#toggle-medgrup[style*="gradient"],#toggle-empresa[style*="gradient"]{background:#fff!important;color:var(--ink)!important;box-shadow:0 1px 2px rgba(19,35,58,.12),inset 0 0 0 1px var(--rule)!important;}
+.login-form-title{font-family:var(--display);font-size:2.25rem;font-weight:400;line-height:1.1;color:var(--ink);margin-bottom:6px;letter-spacing:-.01em;}
+.login-form-sub{font-size:14px;color:var(--ink-2);margin-bottom:.5rem;}
+.login-form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.login-label{font-size:13px;font-weight:600;color:var(--ink);}
+.login-input{font-size:15px;padding:0 13px;height:46px;border:1px solid var(--rule-2);border-radius:var(--r-sm);background:#fff;color:var(--ink);outline:none;width:100%;transition:border-color .15s,box-shadow .15s;}
+.login-input::placeholder{color:#6b7380;}
+.login-input:focus{border-color:var(--blue-ink);box-shadow:0 0 0 3px rgba(44,93,146,.16);}
+.login-btn{width:100%;height:48px;background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;transition:background .15s;}
+.login-btn:hover{background:#0b1626;}
+.login-btn[style*="--rosa"]{background:var(--magenta)!important;}
+.login-btn[style*="--rosa"]:hover{background:var(--magenta-ink)!important;}
+.login-btn:active{transform:translateY(1px);}
+.login-btn:disabled{background:#9aa2ad;cursor:not-allowed;transform:none;}
+.login-error{background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13.5px;color:var(--magenta-ink);margin-top:12px;display:none;}
+.login-form-wrap a[onclick*="Olvido"]{color:var(--blue-ink)!important;font-size:13.5px!important;}
+.login-form-wrap a[onclick*="Olvido"]:hover{text-decoration:underline!important;}
+
+/* ── SHELL ── */
 .app-page{display:none;}
 .layout{display:flex;min-height:100vh;}
-.sidebar{width:235px;background:linear-gradient(180deg,#ffffff,#f8fbff);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;box-shadow:2px 0 16px rgba(42,80,128,0.05);}
-.sidebar-top{padding:1.25rem 1rem 0.75rem;}
-.logo{display:flex;align-items:center;gap:10px;padding-bottom:1rem;margin-bottom:0.75rem;border-bottom:1px solid var(--border);}
-.logo-img{height:36px;width:auto;object-fit:contain;}
-.nav-section{padding:0 0.5rem;margin-bottom:0.25rem;}
-.nav-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);font-family:'DM Mono',monospace;padding:0.6rem 0.5rem 0.3rem;font-weight:500;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 11px;cursor:pointer;color:var(--text2);font-size:13px;border-radius:var(--r-sm);transition:all 0.14s;margin-bottom:2px;border:1px solid transparent;position:relative;font-weight:500;}
-.nav-item svg{width:16px;height:16px;flex-shrink:0;pointer-events:none;}
-.nav-item:hover{background:var(--azul-light);color:var(--azul);transform:translateX(2px);}
-.nav-item.active{background:var(--grad-azul);color:white;font-weight:600;border-color:transparent;box-shadow:0 4px 12px rgba(58,110,168,0.3);}
-.nav-item.active svg{stroke:white;}
-.nav-item.dim{opacity:0.35;pointer-events:none;}
-.sidebar-footer{margin-top:auto;padding:1rem;border-top:1px solid var(--border);}
-.user-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;}
-.user-top{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
-.user-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--azul),var(--celeste));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:white;}
-.user-nombre{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.user-email{font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
-.btn-logout{width:100%;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:var(--r-xs);font-size:11.5px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.12s;}
-.btn-logout:hover{background:var(--rosa-light);color:var(--rosa-dark);border-color:var(--rosa-mid);}
+.sidebar{width:236px;background:var(--ink);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;scrollbar-color:rgba(255,255,255,.2) transparent;}
+.sidebar-top{padding:1.25rem .75rem .75rem;}
+.logo{display:flex;align-items:center;padding:0 .5rem 1.25rem;margin-bottom:.5rem;border-bottom:1px solid rgba(255,255,255,.12);}
+.logo img,.logo-img{filter:brightness(0) invert(1);height:34px!important;width:auto;}
+.nav-section{margin-bottom:.5rem;}
+.nav-lbl{font-size:12px;color:rgba(255,255,255,.58);padding:.9rem .65rem .4rem;font-weight:500;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:0 .65rem;height:38px;cursor:pointer;color:rgba(255,255,255,.8);font-size:14px;border-radius:var(--r-sm);transition:background .15s,color .15s;margin-bottom:1px;position:relative;font-weight:500;}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;pointer-events:none;stroke-width:1.7;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nav-item.active{background:var(--celeste);color:var(--ink);font-weight:600;}
+.nav-item.active svg{stroke:var(--ink);}
+.nav-item.dim{opacity:.4;pointer-events:none;}
+.nav-item span[id$="-badge"]{background:var(--magenta)!important;border-radius:999px!important;font-variant-numeric:tabular-nums;}
+.sidebar-footer{margin-top:auto;padding:.75rem;border-top:1px solid rgba(255,255,255,.12);}
+.user-card{padding:6px 4px;}
+.user-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.user-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:var(--celeste);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink);}
+.user-nombre{font-size:13.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-email{font-size:12px;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.btn-logout{width:100%;height:34px;background:transparent;border:1px solid rgba(255,255,255,.22);border-radius:var(--r-sm);font-size:13px;color:rgba(255,255,255,.85);cursor:pointer;transition:background .15s,border-color .15s;}
+.btn-logout:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.4);color:#fff;}
 /* min-width:0 es lo que permite que la columna se achique. Sin esto un contenido largo sin
    espacios (los links de Daily traen un token de ~450 caracteres) estira toda la página y
    arrastra al video, que va al 100% del ancho. */
-.main{margin-left:235px;flex:1;min-width:0;padding:2rem 2.5rem;}
-.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;}
-.page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.4px;color:var(--text);display:flex;align-items:center;gap:10px;}
-.page-title::before{content:'';width:4px;height:22px;border-radius:3px;background:var(--grad-azul);}
-.page-sub{font-size:12px;color:var(--text3);margin-top:4px;margin-left:14px;}
-.hdr-right{display:flex;align-items:center;gap:10px;}
-.date-chip{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 13px;box-shadow:var(--shadow-sm);}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 17px;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.16s;border:1px solid transparent;white-space:nowrap;letter-spacing:-0.1px;}
-.btn svg{width:14px;height:14px;pointer-events:none;flex-shrink:0;}
-.btn-primary{background:var(--grad-azul);color:white;box-shadow:0 3px 12px rgba(58,110,168,0.3);}
-.btn-primary:hover{background:linear-gradient(135deg,var(--azul-dark),var(--azul));box-shadow:0 5px 18px rgba(58,110,168,0.4);transform:translateY(-2px);}
-.btn-rosa{background:var(--grad-rosa);color:white;box-shadow:0 3px 12px rgba(192,54,90,0.3);}
-.btn-rosa:hover{background:linear-gradient(135deg,var(--rosa-dark),var(--rosa));box-shadow:0 5px 18px rgba(192,54,90,0.4);transform:translateY(-2px);}
-.btn-ghost{background:var(--surface);border-color:var(--border2);color:var(--text2);}
-.btn-ghost:hover{background:var(--azul-light);color:var(--azul);border-color:var(--azul-mid);}
-.btn-danger{background:var(--rosa-light);color:var(--rosa-dark);border-color:var(--rosa-mid);}
-.btn-danger:hover{background:var(--grad-rosa);color:white;border-color:transparent;}
-.btn-full{width:100%;margin-top:14px;padding:12px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:1.25rem;transition:box-shadow 0.18s;}
-.card:hover{box-shadow:var(--shadow);}
-.card-hdr{padding:1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--surface2),var(--surface));}
-.card-title{font-size:13.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:-0.1px;}
-.card-title svg{width:15px;height:15px;color:var(--azul);pointer-events:none;stroke:var(--azul);opacity:0.85;}
-.card-body{padding:1.4rem;}
+.main{margin-left:236px;flex:1;min-width:0;padding:2.25rem clamp(1.5rem,3vw,3rem) 3rem;}
+.page-hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:1.5rem;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid var(--rule);}
+.page-title{font-family:var(--display);font-size:2.375rem;font-weight:400;line-height:1.05;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:10px;}
+.page-title::before{content:none;}
+.page-sub{font-size:14px;color:var(--ink-2);margin-top:6px;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.date-chip{font-size:13.5px;color:var(--ink-2);padding:0 6px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.date-chip::first-letter{text-transform:uppercase;}
+
+/* ── BOTONES ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border-radius:var(--r-sm);font-size:13.5px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s;border:1px solid transparent;white-space:nowrap;line-height:1.2;}
+.btn svg{width:15px;height:15px;pointer-events:none;flex-shrink:0;}
+.btn:active{transform:translateY(1px);}
+.btn-primary{background:var(--ink);color:#fff;}
+.btn-primary:hover{background:#0b1626;}
+.btn-rosa{background:var(--magenta);color:#fff;}
+.btn-rosa:hover{background:var(--magenta-ink);}
+.btn-ghost{background:#fff;border-color:var(--rule-2);color:var(--ink);}
+.btn-ghost:hover{background:var(--paper-2);border-color:#bdbcb1;}
+.btn-danger{background:#fff;color:var(--magenta-ink);border-color:var(--rosa-mid);}
+.btn-danger:hover{background:var(--rosa-light);border-color:var(--magenta);}
+.btn:disabled,.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-full{width:100%;margin-top:14px;min-height:44px;}
+
+/* ── TARJETAS ── */
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;}
+.card-hdr{min-height:52px;padding:.7rem 1.25rem;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;}
+.card-title{font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:9px;}
+.card-title svg{width:16px;height:16px;pointer-events:none;stroke:var(--ink-2);}
+.card-body{padding:1.25rem;}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
 /* El log de actividad y la columna lateral de la agenda solo le sirven al admin (para el
    acta ya queda el registro server-side); al médico se le da todo el ancho en vez de dejarle
@@ -146,342 +191,389 @@ body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 0% 0%
 /* Las celdas de un grid tampoco se achican solas: sin esto una columna con texto largo
    desborda sobre la otra en vez de recortarse. */
 .two-col > *{min-width:0;}
-.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:1.5rem;}
-.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.4rem;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:15px;transition:transform 0.18s,box-shadow 0.18s;position:relative;overflow:hidden;}
-.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:0 0 4px 4px;}
-.metric-card::after{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;opacity:0.06;}
-.metric-card.mc-blue::before{background:var(--grad-azul);}.metric-card.mc-blue::after{background:var(--azul);}
-.metric-card.mc-rosa::before{background:var(--grad-rosa);}.metric-card.mc-rosa::after{background:var(--rosa);}
-.metric-card.mc-green::before{background:linear-gradient(90deg,#1e6640,#3a9460);}.metric-card.mc-green::after{background:#1e6640;}
-.metric-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
-.metric-icon{width:44px;height:44px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;box-shadow:0 3px 10px rgba(42,80,128,0.15);}
-.mc-blue .metric-icon{background:var(--grad-azul);}.mc-rosa .metric-icon{background:var(--grad-rosa);}.mc-green .metric-icon{background:linear-gradient(135deg,#1e6640,#3a9460);}
-.metric-icon svg{width:19px;height:19px;fill:none;stroke-width:2;stroke:white;}
-.metric-body{flex:1;min-width:0;position:relative;z-index:1;}
-.metric-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;font-weight:600;}
-.metric-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;line-height:1.1;}
-.mc-blue .metric-val{color:var(--azul);}.mc-rosa .metric-val{color:var(--rosa);}.mc-green .metric-val{color:#1e6640;}
-.metric-hint{font-size:11px;color:var(--text3);margin-top:4px;}
-.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'DM Mono',monospace;white-space:nowrap;}
-.b-blue{background:var(--azul-light);color:var(--azul);}.b-rosa{background:var(--grad-rosa);color:white;}.b-green{background:#e0f2e9;color:#1e6640;}.b-gray{background:var(--surface3);color:var(--text2);}.b-amber{background:#fdf0d8;color:#8f5000;}
-.empresa-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;font-family:'DM Mono',monospace;letter-spacing:0.2px;}
-.emp-logant{background:var(--azul-light);color:var(--azul);}.emp-huinoil{background:#e5f4f4;color:#0d6e6e;}.emp-cemep{background:var(--rosa-light);color:var(--rosa-dark);}.emp-grupol{background:#fdf5e8;color:#8f5000;}.emp-otra{background:var(--surface3);color:var(--text2);}
+
+/* Resumen del día: una línea de texto, no un tablero de cifras. JS le pone display:grid o
+   none en línea; se respeta el none y se fuerza flex en el resto. */
+.resumen-dia{flex-wrap:wrap;align-items:baseline;gap:6px 0;margin:-.25rem 0 1.25rem;}
+.resumen-dia:not([style*="none"]){display:flex!important;}
+.metric-card{display:inline-flex;align-items:baseline;gap:7px;min-width:0;}
+.metric-card + .metric-card{margin-left:22px;padding-left:22px;border-left:1px solid var(--rule-2);}
+.metric-lbl{font-size:14px;color:var(--ink-2);}
+.metric-val{font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--ink);font-variant-numeric:tabular-nums;}
+.metric-hint{font-size:14px;color:var(--ink-2);}
+
+/* ── ETIQUETAS ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;line-height:1.5;}
+.b-blue{background:var(--wash);color:var(--blue-ink);}.b-rosa{background:var(--rosa-light);color:var(--magenta-ink);}.b-green{background:var(--verde-light);color:var(--verde);}.b-gray{background:var(--paper-2);color:var(--ink-2);}.b-amber{background:var(--amber-light);color:var(--amber);}
+.empresa-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:1px 7px;border-radius:var(--r-xs);}
+.emp-logant{background:var(--wash);color:var(--blue-ink);}.emp-huinoil{background:#e3f1f0;color:#0b5f5f;}.emp-cemep{background:var(--rosa-light);color:var(--magenta-ink);}.emp-grupol{background:var(--amber-light);color:var(--amber);}.emp-otra{background:var(--paper-2);color:var(--ink-2);}
+
+/* ── AGENDA: se lee como un horario. Columna de horas, filete, y el estado en la fila. ── */
 .turno-item{
   display:grid;
-  grid-template-columns:72px minmax(0,1fr);
+  grid-template-columns:76px minmax(0,1fr);
   grid-template-areas:"time info" "actions actions";
-  gap:6px 14px;
-  padding:1rem 1.4rem;
-  border-bottom:1px solid var(--border);
-  transition:all 0.14s;
-  border-left:3px solid transparent;
+  gap:8px 18px;
+  padding:1rem 1.25rem;
+  border-bottom:1px solid var(--rule);
+  transition:background .15s;
   align-items:start;
 }
 .turno-item:last-child{border-bottom:none;}
-.turno-item:hover{background:var(--azul-light);border-left-color:var(--azul);}
-.turno-item.proximo{background:linear-gradient(90deg,#fff9e6,transparent 60%);border-left-color:#d97706;}
-.turno-item.proximo:hover{background:linear-gradient(90deg,#fef3c7,transparent 60%);}
-.turno-item.proximo .turno-hora{color:#d97706;}
-.turno-item.inminente{background:linear-gradient(90deg,#fee2e2,#fff5f5 60%);border-left:3px solid var(--rosa);animation:pulse-border 2s ease-in-out infinite;}
-.turno-item.inminente .turno-hora{color:var(--rosa);}
-@keyframes pulse-border{0%,100%{border-left-color:var(--rosa);}50%{border-left-color:#ff6b8b;}}
-.badge-urgente{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:0.5px;text-transform:uppercase;margin-left:6px;}
-.badge-proximo{background:#fef3c7;color:#92400e;border:1px solid #fbbf24;}
-.badge-inminente{background:var(--rosa);color:white;box-shadow:0 2px 8px rgba(192,54,90,0.3);animation:pulse 1.5s ease-in-out infinite;}
-.badge-dot-pulse{width:5px;height:5px;background:currentColor;border-radius:50%;animation:blink 1s ease-in-out infinite;}
-.aviso-inminente{background:linear-gradient(135deg,var(--rosa),#e04670);color:white;padding:14px 18px;border-radius:var(--r);margin-bottom:14px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(192,54,90,0.25);animation:pulse-shadow 2s ease-in-out infinite;}
-.aviso-inminente-icon{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.aviso-inminente-icon svg{width:20px;height:20px;stroke:white;stroke-width:2;fill:none;}
-.aviso-inminente-body{flex:1;min-width:0;}
-.aviso-inminente-title{font-size:13.5px;font-weight:700;letter-spacing:-0.1px;}
-.aviso-inminente-sub{font-size:12px;opacity:0.9;margin-top:2px;}
-.aviso-proximo{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;padding:14px 18px;border-radius:var(--r);margin-bottom:14px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(217,119,6,0.2);}
-.aviso-proximo-icon{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.aviso-proximo-icon svg{width:20px;height:20px;stroke:#78350f;stroke-width:2;fill:none;}
-.aviso-proximo-body{flex:1;min-width:0;}
-.aviso-proximo-title{font-size:13.5px;font-weight:700;letter-spacing:-0.1px;}
-.aviso-proximo-sub{font-size:12px;opacity:0.85;margin-top:2px;}
-@keyframes pulse-shadow{0%,100%{box-shadow:0 4px 20px rgba(192,54,90,0.25);}50%{box-shadow:0 4px 30px rgba(192,54,90,0.5);}}
-@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
-.turno-time{grid-area:time;width:72px;}
-.turno-hora{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--azul);line-height:1;}
-.turno-fecha{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;}
+.turno-item:hover{background:var(--surface2);}
+.turno-item.proximo{background:#fcf6ea;}
+.turno-item.proximo:hover{background:#f9f0dd;}
+.turno-item.proximo .turno-hora{color:var(--amber);}
+.turno-item.inminente{background:var(--rosa-light);}
+.turno-item.inminente .turno-hora{color:var(--magenta);}
+.turno-item.inminente .turno-time{border-right-color:var(--rosa-mid);}
+.badge-urgente{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:700;margin-left:6px;line-height:1.6;}
+.badge-proximo{background:var(--amber-light);color:var(--amber);}
+.badge-inminente{background:var(--magenta);color:#fff;}
+.badge-dot-pulse{width:6px;height:6px;background:currentColor;border-radius:50%;}
+
+.turno-time{grid-area:time;width:76px;align-self:stretch;padding-right:14px;border-right:1px solid var(--rule);}
+.turno-hora{font-size:19px;font-weight:600;color:var(--ink);line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+.turno-fecha{font-size:12px;color:var(--ink-3);margin-top:4px;font-variant-numeric:tabular-nums;}
 .turno-info{grid-area:info;min-width:0;}
-.turno-paciente{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-0.2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
-.turno-meta{font-size:11.5px;color:var(--text3);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.turno-paciente{font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.turno-meta{font-size:13px;color:var(--ink-2);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .turno-actions{
   grid-area:actions;
   display:flex;gap:6px;align-items:center;flex-wrap:wrap;
-  padding-left:86px; /* alinea con la columna de info (72px + 14px de gap) */
+  padding-left:94px; /* alinea con la columna de info (76px + 18px de gap) */
 }
 /* Si el turno no tiene acciones, no dejar hueco */
 .turno-actions:empty{display:none;}
+.turno-actions .btn{min-height:34px;padding:0 12px;font-size:13px;}
 .actions-menu{position:relative;display:inline-flex;}
-.actions-menu-btn{padding:6px 9px !important;}
-.actions-menu-list{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);padding:6px;z-index:50;}
+.actions-menu-btn{padding:0 9px !important;}
+.actions-menu-list{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:#fff;border:1px solid var(--rule-2);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:5px;z-index:50;}
 .actions-menu-list.open{display:block;}
-.actions-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:none;background:none;border-radius:var(--r-xs);font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--text2);cursor:pointer;text-align:left;transition:all 0.1s;white-space:nowrap;}
-.actions-menu-item:hover{background:var(--azul-light);color:var(--azul);}
-.actions-menu-item.danger:hover{background:var(--rosa-light);color:var(--rosa-dark);}
-.actions-menu-item svg{width:13px;height:13px;flex-shrink:0;pointer-events:none;}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.form-group{display:flex;flex-direction:column;gap:5px;}
+.actions-menu-item{display:flex;align-items:center;gap:9px;width:100%;height:36px;padding:0 10px;border:none;background:none;border-radius:var(--r-xs);font-size:13.5px;font-weight:500;color:var(--ink);cursor:pointer;text-align:left;transition:background .1s;white-space:nowrap;}
+.actions-menu-item:hover{background:var(--paper-2);}
+.actions-menu-item.danger{color:var(--magenta-ink);}
+.actions-menu-item.danger:hover{background:var(--rosa-light);}
+.actions-menu-item svg{width:15px;height:15px;flex-shrink:0;pointer-events:none;}
+
+/* ── FORMULARIOS ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
 .form-group.full{grid-column:1/-1;}
-.form-lbl{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text2);font-weight:500;}
-select,input[type=text],input[type=date],input[type=password],textarea{font-family:'DM Sans',sans-serif;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:var(--r-sm);background:var(--bg);color:var(--text);outline:none;width:100%;transition:all 0.12s;}
-select:focus,input:focus,textarea:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(58,110,168,0.1);background:white;}
-textarea{resize:vertical;min-height:52px;}
+.form-lbl{font-size:13px;font-weight:600;color:var(--ink);}
+select,input[type=text],input[type=date],input[type=time],input[type=email],input[type=number],input[type=tel],input[type=password],textarea{font-size:14px;min-height:40px;padding:8px 11px;border:1px solid var(--rule-2);border-radius:var(--r-sm);background:#fff;color:var(--ink);outline:none;width:100%;transition:border-color .12s,box-shadow .12s;}
+select{padding-right:30px;}
+input::placeholder,textarea::placeholder{color:#6b7380;}
+select:focus,input:focus,textarea:focus{border-color:var(--blue-ink);box-shadow:0 0 0 3px rgba(44,93,146,.16);}
+input[type=checkbox],input[type=radio]{accent-color:var(--ink);}
+textarea{resize:vertical;min-height:56px;line-height:1.55;}
 /* Los bloques del informe son textos largos: se editan mucho mejor con aire y altura */
-.ed-texto-largo{min-height:210px;font-size:14px;line-height:1.75;padding:12px 14px;}
-.ed-texto-largo:focus{border-color:var(--azul);background:white;}
-.divider{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-family:'DM Mono',monospace;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);font-weight:500;}
+.ed-texto-largo{min-height:210px;font-size:15px;line-height:1.7;padding:12px 14px;}
+.ed-texto-largo:focus{border-color:var(--blue-ink);}
+.divider{font-size:13px;font-weight:600;color:var(--ink);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule);}
 .medicos-check-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
-.medico-check{display:flex;align-items:center;gap:9px;padding:9px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);cursor:pointer;transition:all 0.12s;background:var(--bg);}
-.medico-check:hover,.medico-check.selected{border-color:var(--azul);background:var(--azul-light);}
-.medico-check input[type=checkbox]{accent-color:var(--azul);width:14px;height:14px;pointer-events:none;}
-.medico-check-nombre{font-size:13px;color:var(--text);font-weight:500;}
-.medico-check-mat{font-size:10px;color:var(--text3);margin-left:auto;font-family:'DM Mono',monospace;}
-.video-container{display:none;background:#080f1a;border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;border:1px solid rgba(255,255,255,0.06);}
-.video-container.active{display:block;animation:fadeUp 0.3s ease both;}
-.video-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:linear-gradient(90deg,rgba(42,80,128,0.9),rgba(10,15,26,0.9));}
-.rec-pill{background:rgba(192,54,90,0.9);color:white;font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;}
-.rec-dot{width:6px;height:6px;background:white;border-radius:50%;animation:blink 1s ease-in-out infinite;}
-#daily-frame{width:100%;height:480px;border:none;}
-.video-bottombar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(0,0,0,0.7);}
-.video-timer{font-family:'DM Mono',monospace;font-size:13px;color:rgba(255,255,255,0.6);}
-.participante-link{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;margin-bottom:8px;}
-.participante-link:last-child{margin-bottom:0;}
-.participante-nombre{font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
-.participante-rol{font-size:10px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:10px;}
-.rol-medico{background:var(--azul-light);color:var(--azul);}.rol-paciente{background:#eaf5f0;color:#1e6640;}
-.link-row{display:flex;align-items:center;gap:6px;}
-.link-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--azul);background:white;border:1px solid var(--azul-mid);border-radius:var(--r-xs);padding:6px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.share-btns{display:flex;gap:7px;margin-top:8px;}
-.btn-wa{background:#25D366;color:white;border:none;border-radius:var(--r-xs);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;transition:all 0.12s;}
-.btn-wa:hover{background:#1daa53;transform:translateY(-1px);}
-.btn-gmail{background:#EA4335;color:white;border:none;border-radius:var(--r-xs);padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;transition:all 0.12s;}
-.btn-gmail:hover{background:#c0392b;transform:translateY(-1px);}
-.timeline{display:flex;flex-direction:column;}
-.tl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
-.tl-item:last-child{border-bottom:none;}
-.tl-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0;}
-.tl-dot.blue{background:var(--azul);}.tl-dot.rosa{background:var(--rosa);}.tl-dot.amber{background:#8f5000;}.tl-dot.green{background:#1e6640;}
-.tl-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);width:50px;flex-shrink:0;margin-top:2px;}
-.tl-desc{font-size:13px;color:var(--text);font-weight:500;}
-.tl-sub{font-size:11px;color:var(--text3);margin-top:1px;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-family:'DM Mono',monospace;color:var(--text3);padding:0 1.25rem 9px;font-weight:500;}
-td{padding:11px 1.25rem;border-top:1px solid var(--border);color:var(--text);vertical-align:middle;}
-tr:hover td{background:var(--azul-light);}
-.row-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:white;}
-.form-section{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 15px;margin:14px 0;}
-.form-section-hdr{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--azul);font-family:'DM Mono',monospace;}
-.form-section-hdr svg{width:14px;height:14px;stroke:var(--azul);flex-shrink:0;}
-.form-section-hint{font-size:11.5px;color:var(--text3);margin:5px 0 10px;line-height:1.5;}
+.medico-check{display:flex;align-items:center;gap:10px;min-height:42px;padding:0 12px;border:1px solid var(--rule-2);border-radius:var(--r-sm);cursor:pointer;transition:background .12s,border-color .12s;background:#fff;}
+.medico-check:hover{background:var(--paper-2);}
+.medico-check.selected{border-color:var(--ink);background:var(--wash);}
+.medico-check input[type=checkbox]{accent-color:var(--ink);width:15px;height:15px;pointer-events:none;}
+.medico-check-nombre{font-size:14px;color:var(--ink);font-weight:500;}
+.medico-check-mat{font-size:12.5px;color:var(--ink-3);margin-left:auto;font-variant-numeric:tabular-nums;}
+.form-section{background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r);padding:16px;margin:16px 0;}
+.form-section-hdr{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--ink);}
+.form-section-hdr svg{width:16px;height:16px;stroke:var(--ink-2);flex-shrink:0;}
+.form-section-hint{font-size:13px;color:var(--ink-2);margin:4px 0 12px;line-height:1.5;}
 .form-section .form-grid,.form-section .medicos-check-list{margin-top:0;}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+
+/* ── VIDEOCONSULTA ── */
+/* La llamada es un espacio propio: arriba quién y en qué estado, al medio el video (con el
+   informe acoplado al costado cuando se abre), abajo las acciones con una sola principal. */
+.video-container{display:none;background:#0a1320;color:#fff;border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;}
+.video-container.active{display:flex;flex-direction:column;animation:fadeUp .3s var(--ease-out) both;}
+.video-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:54px;padding:8px 10px 8px 18px;background:var(--ink);border-bottom:1px solid rgba(255,255,255,.1);}
+.vc-quien{min-width:0;}
+.vc-paciente{font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vc-estado{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.vc-status{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:rgba(255,255,255,.85);white-space:nowrap;}
+.vc-status::before{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.45);flex-shrink:0;}
+.vc-status[data-estado="esperando"]::before{background:#e8b04b;}
+.vc-status[data-estado="en-consulta"]::before{background:var(--celeste);}
+.vc-status[data-estado="afuera"]{color:#f6c3d6;}
+.vc-status[data-estado="afuera"]::before{background:#f08bb2;}
+.rec-pill{display:inline-flex;align-items:center;gap:7px;background:var(--magenta);color:#fff;font-size:12.5px;font-weight:700;padding:3px 10px 3px 9px;border-radius:999px;}
+.rec-pill[hidden]{display:none;}
+.rec-dot{width:7px;height:7px;background:#fff;border-radius:50%;}
+.video-timer{font-size:14px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;}
+.vc-icono{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.22);border-radius:var(--r-sm);cursor:pointer;transition:background .15s;}
+.vc-icono:hover{background:rgba(255,255,255,.08);color:#fff;}
+.vc-icono svg{width:17px;height:17px;stroke-linecap:round;stroke-linejoin:round;}
+.vc-escenario{display:grid;grid-template-columns:minmax(0,1fr);height:clamp(420px,calc(100vh - 250px),780px);background:#0a1320;}
+.vc-escenario:has(#notas-panel[style*="flex"]){grid-template-columns:minmax(0,1fr) minmax(340px,400px);}
+#daily-frame{display:block;width:100%;height:100%;min-height:0;border:0;}
+.video-bottombar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px 12px 10px 8px;background:var(--ink);border-top:1px solid rgba(255,255,255,.1);}
+.vc-secundarias{display:flex;flex-wrap:wrap;gap:2px;min-width:0;}
+.vc-texto{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;background:transparent;border:0;border-radius:var(--r-sm);color:rgba(255,255,255,.86);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;}
+.vc-texto:hover{background:rgba(255,255,255,.08);color:#fff;}
+.vc-texto svg{width:17px;height:17px;flex-shrink:0;stroke-linecap:round;stroke-linejoin:round;}
+.video-actions{display:flex;gap:8px;flex-shrink:0;}
+.vc-notas{min-height:42px;background:transparent;color:#fff;border-color:rgba(255,255,255,.32);}
+.vc-notas:hover{background:rgba(255,255,255,.08);}
+.vc-notas[aria-pressed="true"]{background:var(--celeste);color:var(--ink);border-color:var(--celeste);}
+.vc-finalizar{min-height:42px;background:var(--magenta);color:#fff;}
+.vc-finalizar:hover{background:var(--magenta-ink);}
+/* Mientras dura la llamada no compiten los botones de la agenda */
+.main:has(#video-container.active) .hdr-right{display:none;}
+#sec-agenda:has(#video-container.active) #metrics-row{display:none!important;}
+
+/* Informe acoplado al video */
+.notas-panel{flex-direction:column;min-height:0;background:#fff;color:var(--ink);border-left:1px solid var(--rule);}
+.np-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 12px 12px 18px;border-bottom:1px solid var(--rule);}
+.np-titulo{font-size:15px;font-weight:600;}
+.np-sub{font-size:12.5px;color:var(--ink-3);margin-top:1px;}
+.np-cerrar{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:var(--r-sm);color:var(--ink-2);cursor:pointer;flex-shrink:0;}
+.np-cerrar:hover{background:var(--paper-2);color:var(--ink);}
+.np-cerrar svg{width:18px;height:18px;stroke-linecap:round;}
+.np-cuerpo{flex:1;min-height:0;overflow-y:auto;padding:16px 18px 20px;}
+.np-paso-tit{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;margin-bottom:6px;}
+.np-num{width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.np-ayuda{font-size:13px;line-height:1.5;color:var(--ink-2);margin-bottom:10px;}
+#notas-libre{min-height:160px;line-height:1.55;}
+.np-ancho{width:100%;margin-top:10px;min-height:42px;}
+.np-trabajando{align-items:center;justify-content:center;gap:8px;margin-top:10px;font-size:13px;color:var(--ink-2);}
+.np-volver{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--rule);padding:0 0 12px;margin-bottom:16px;color:var(--blue-ink);font-size:13.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+.np-alerta{font-size:13px;line-height:1.5;color:#5c3800;background:var(--amber-light);border-radius:var(--r-sm);padding:9px 12px;margin-bottom:10px;}
+.np-informe{min-height:280px;font-size:14px;line-height:1.6;white-space:pre-wrap;}
+.np-ajustes{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);}
+.np-ajustes-tit{font-size:13.5px;font-weight:600;margin-bottom:6px;}
+.np-historial{max-height:150px;overflow-y:auto;margin-bottom:8px;}
+.np-ajuste-fila{display:flex;gap:6px;}
+.np-ajuste-fila input{flex:1;min-width:0;}
+.np-cuadrado{padding:0 10px;}
+#notas-preview-hint{margin-top:14px;}
+.ia-ok{background:var(--verde)!important;color:#fff!important;}
+.participante-link{background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;}
+.participante-link:last-child{margin-bottom:0;}
+.participante-nombre{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.participante-rol{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;}
+.rol-medico{background:var(--wash);color:var(--blue-ink);}.rol-paciente{background:var(--verde-light);color:var(--verde);}
+.link-row{display:flex;align-items:center;gap:6px;}
+.link-url{font-size:12.5px;color:var(--blue-ink);background:#fff;border:1px solid var(--rule-2);border-radius:var(--r-xs);padding:7px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.share-btns{display:flex;gap:7px;margin-top:8px;}
+.btn-wa,.btn-gmail{color:#fff;border:none;border-radius:var(--r-sm);min-height:34px;padding:0 12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .12s;}
+.btn-wa{background:#1f8f4c;}.btn-wa:hover{background:#17733c;}
+.btn-gmail{background:#c5372c;}.btn-gmail:hover{background:#a52b22;}
+
+/* ── REGISTRO ── */
+.timeline{display:flex;flex-direction:column;}
+.tl-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--rule);}
+.tl-item:last-child{border-bottom:none;}
+.tl-dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex-shrink:0;}
+.tl-dot.blue{background:var(--blue-ink);}.tl-dot.rosa{background:var(--magenta);}.tl-dot.amber{background:var(--amber);}.tl-dot.green{background:var(--verde);}
+.tl-time{font-size:12.5px;color:var(--ink-3);width:48px;flex-shrink:0;margin-top:1px;font-variant-numeric:tabular-nums;}
+.tl-desc{font-size:13.5px;color:var(--ink);font-weight:500;}
+.tl-sub{font-size:12.5px;color:var(--ink-3);margin-top:1px;}
+
+/* ── TABLAS ── */
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}
+th{text-align:left;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:10px 1.25rem;border-bottom:1px solid var(--rule-2);background:var(--surface2);}
+td{padding:12px 1.25rem;border-top:1px solid var(--rule);color:var(--ink);vertical-align:middle;}
+tr:hover td{background:var(--surface2);}
+.row-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+
+/* ── MODALES ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(19,35,58,.48);z-index:300;align-items:center;justify-content:center;padding:16px;}
 /* Confirmación y prompt se abren DESDE otros modales: si comparten z-index, el que va
    después en el HTML los tapa y quedan visibles pero sin poder clickearse. */
 #modal-confirm,#modal-prompt{z-index:900;}
 .modal-bg.open{display:flex;}
-.modal{background:var(--surface);border-radius:var(--r);padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:fadeUp 0.2s ease both;}
-.modal-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:1.5rem;letter-spacing:-0.3px;}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);}
-.adjunto-row:hover{box-shadow:var(--shadow-sm);border-color:var(--azul-mid);}
-.loading{display:none;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:0.5rem 0;}
-.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--azul);border-radius:50%;animation:spin 0.7s linear infinite;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.modal{background:#fff;border-radius:8px;padding:1.75rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:modalIn .22s var(--ease-out) both;}
+.modal-title{font-family:var(--display);font-size:1.75rem;font-weight:400;line-height:1.15;margin-bottom:1.25rem;letter-spacing:-.005em;color:var(--ink);}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--rule);}
+.adjunto-row:hover{border-color:var(--rule-2);background:var(--surface2);}
+.loading{display:none;align-items:center;gap:8px;color:var(--ink-2);font-size:13.5px;padding:.5rem 0;}
+.spinner{width:16px;height:16px;border:2px solid var(--rule-2);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.99);}to{opacity:1;transform:none;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
 @keyframes spin{to{transform:rotate(360deg);}}
+/* Se conservan por si algún HTML generado los nombra */
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.85;}}
+@keyframes fadeInSection{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+@keyframes slideInRow{from{opacity:0;}to{opacity:1;}}
+@keyframes popIn{from{opacity:0;}to{opacity:1;}}
 /* Llama la atención al botón de guardar después de un "Corregir": el ajuste ya quedó en el
    borrador, pero si no se guarda el informe emitido sigue siendo el de antes. */
-@keyframes pulsoGuardar{0%,100%{box-shadow:0 0 0 0 rgba(58,110,168,0.55);}50%{box-shadow:0 0 0 8px rgba(58,110,168,0);}}
+@keyframes pulsoGuardar{0%,100%{box-shadow:0 0 0 0 rgba(181,24,91,.5);}50%{box-shadow:0 0 0 7px rgba(181,24,91,0);}}
 .btn-pulso{animation:pulsoGuardar 1s ease-out 3;}
-::-webkit-scrollbar{width:5px;}
-::-webkit-scrollbar-thumb{background:var(--azul-mid);border-radius:3px;}
+/* Un único movimiento: la sección entra cuando se cambia de pestaña. */
+.sec-anim{animation:fadeInSection .32s var(--ease-out) both;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:#cfcec4;border-radius:10px;border:3px solid var(--paper);}
+::-webkit-scrollbar-track{background:transparent;}
 
-/* ── TABS DE TURNOS ── */
-.tabs-turnos{display:flex;gap:6px;padding:10px 1.4rem 0;background:linear-gradient(180deg,var(--surface2),var(--surface));border-bottom:1px solid var(--border);}
+/* ── PESTAÑAS DE TURNOS ──
+   La lista va directo sobre el papel: pestañas y filtros comparten una línea y cada turno es
+   una fila con filete. #turnos-card recibe display:block|none en línea desde el JS. */
+#turnos-card{background:none;border:0;border-radius:0;overflow:visible;margin-bottom:1.5rem;}
+#turnos-card:not([style*="none"]){display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:end;}
+#turnos-card > .card-hdr{display:none;}
+#turnos-card > #agenda-lista{grid-column:1/-1;}
+.tabs-turnos{display:flex;gap:4px;padding:0;background:none;border-bottom:1px solid var(--rule-2);}
 .tab-turno{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:9px 16px;border:none;background:transparent;
-  font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;
-  color:var(--text3);cursor:pointer;border-radius:10px 10px 0 0;
-  position:relative;transition:all 0.18s cubic-bezier(0.22,1,0.36,1);
-  border-bottom:2.5px solid transparent;margin-bottom:-1px;
+  display:inline-flex;align-items:center;gap:7px;
+  height:46px;padding:0 12px;border:none;background:transparent;
+  font-size:14px;font-weight:500;
+  color:var(--ink-2);cursor:pointer;
+  position:relative;transition:color .15s,box-shadow .15s;
+  margin-bottom:-1px;
 }
-.tab-turno:hover{color:var(--azul);background:var(--azul-light);}
-.tab-turno.active{color:var(--azul);border-bottom-color:var(--azul);background:linear-gradient(180deg,transparent,rgba(58,110,168,0.06));}
-.tab-turno.active svg{stroke:var(--azul);}
+.tab-turno:hover{color:var(--ink);}
+.tab-turno.active{color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--ink);}
+.tab-turno.active svg{stroke:var(--ink);}
 .tab-count{
   display:inline-flex;align-items:center;justify-content:center;
-  min-width:20px;height:18px;padding:0 6px;border-radius:10px;
-  background:var(--surface3);color:var(--text2);
-  font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600;
-  transition:all 0.18s;
+  min-width:22px;height:20px;padding:0 7px;border-radius:999px;
+  background:var(--paper-2);color:var(--ink-2);
+  font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
 }
-.tab-turno.active .tab-count{background:var(--grad-azul);color:white;box-shadow:0 2px 6px rgba(58,110,168,0.3);}
-.agenda-filtros{display:flex;gap:8px;padding:10px 1.4rem;border-bottom:1px solid var(--border);background:var(--surface);}
-.agenda-buscar-wrap{position:relative;flex:1;min-width:0;}
-.agenda-buscar-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text3);pointer-events:none;}
-.agenda-buscar-wrap input{padding-left:32px;}
-#agenda-filtro-empresa{max-width:200px;flex-shrink:0;}
-@media (max-width:900px){
-  .tabs-turnos{padding:8px 1rem 0;}
-  .agenda-filtros{padding:8px 1rem;flex-wrap:wrap;}
-  #agenda-filtro-empresa{max-width:none;flex:1 1 100%;}
-  .tab-turno{padding:8px 12px;font-size:11.5px;flex:1;justify-content:center;}
+.tab-turno.active .tab-count{background:var(--ink);color:#fff;}
+.agenda-filtros{display:flex;justify-content:flex-end;gap:8px;padding:0 0 8px 16px;background:none;border-bottom:1px solid var(--rule-2);}
+.agenda-buscar-wrap{position:relative;flex:0 1 300px;min-width:0;}
+.agenda-buscar-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--ink-3);pointer-events:none;}
+.agenda-buscar-wrap input{padding-left:34px;}
+#agenda-filtro-empresa{max-width:220px;flex-shrink:0;}
+/* En cada fila manda una sola acción (Iniciar / Unirse, en magenta); el resto queda como texto */
+.turno-actions .btn-ghost{background:transparent;border-color:transparent;color:var(--ink-2);padding:0 10px;}
+.turno-actions .btn-ghost:hover{background:rgba(19,35,58,.06);color:var(--ink);}
+
+/* ── ESTILOS INLINE HEREDADOS ──
+   Cientos de elementos (y el HTML que arma el JS) traen fuentes y degradés escritos a mano.
+   En vez de reescribir ese HTML con turnos en curso, se los alinea acá. */
+[style*="font-family:'Syne'"],[style*="font-family:'DM Sans'"]{font-family:var(--sans)!important;}
+[style*="font-family:'DM Mono'"]{font-family:var(--sans)!important;font-variant-numeric:tabular-nums;letter-spacing:0!important;}
+[style*="135deg,#6366f1,#8b5cf6"]{background:var(--ink)!important;border-color:transparent!important;box-shadow:none!important;}
+[style*="color:#6366f1"]{color:var(--blue-ink)!important;}
+[style*="#f0f0ff,#faf0ff"]{background:var(--wash)!important;}
+[style*="#c4b5fd"]{border-color:var(--rule-2)!important;}
+[style*="135deg,var(--azul),"]{background:var(--ink)!important;box-shadow:none!important;}
+[style*="135deg,var(--azul-light)"]{background:var(--wash)!important;}
+[style*="135deg,var(--rosa)"]{background:var(--magenta)!important;box-shadow:none!important;}
+[style*="#1e6640,#3a9460"]{background:var(--verde)!important;}
+[style*="#eaf5f0,#d4eddc"]{background:var(--verde-light)!important;}
+[style*="#fff9e6,#fef3c7"]{background:var(--amber-light)!important;}
+[style*="#f59e0b,#d97706"]{background:var(--amber)!important;color:#fff!important;}
+[style*="color:#c8c4be"]{color:var(--ink-3)!important;}
+[style*="color:#1e9d5a"]{color:var(--verde)!important;}
+[style*="color:#c8a800"]{color:var(--amber)!important;}
+[style*="text-transform:uppercase"]{text-transform:none!important;letter-spacing:0!important;}
+/* Piso de legibilidad para los textos chicos escritos a mano (9–11px) */
+[style*="font-size:9px"],[style*="font-size:9.5px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size:11px"]{font-size:12px!important;}
+[style*="font-size:11.5px"]{font-size:12.5px!important;}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
 }
 
-/* ── ANIMACIONES DE ENTRADA ── */
-@keyframes slideInRow{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:translateX(0);}}
-@keyframes fadeInSection{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
-@keyframes popIn{0%{opacity:0;transform:scale(0.92);}70%{transform:scale(1.02);}100%{opacity:1;transform:scale(1);}}
-.sec-anim{animation:fadeInSection 0.4s cubic-bezier(0.22,1,0.36,1) both;}
-.metric-card{animation:popIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both;}
-.metric-card:nth-child(1){animation-delay:0.02s;}
-.metric-card:nth-child(2){animation-delay:0.09s;}
-.metric-card:nth-child(3){animation-delay:0.16s;}
-.card{animation:fadeInSection 0.4s cubic-bezier(0.22,1,0.36,1) both;}
-.nav-item{transition:all 0.18s cubic-bezier(0.22,1,0.36,1);}
-.nav-item:active{transform:scale(0.97);}
-.btn:active{transform:scale(0.96) !important;}
-.turno-actions .btn{transition:all 0.15s cubic-bezier(0.22,1,0.36,1);}
-.turno-actions .btn:hover{transform:translateY(-2px);}
-.modal{animation:popIn 0.28s cubic-bezier(0.34,1.56,0.64,1) both;}
-.badge{transition:transform 0.15s;}
-tr{transition:background 0.15s;}
-@media (prefers-reduced-motion: reduce){
-  *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;}
+@media (max-width:1100px){
+.login-features{grid-template-columns:1fr;}
 }
 @media (max-width:900px){
 .login-page{flex-direction:column;}
-.login-left{padding:2rem 1.5rem;min-height:auto;}
-.login-logo-wrap{padding:1.25rem 1.5rem;max-width:100%;margin-bottom:1rem;}
-.login-logo-img{width:180px;}
-.login-tagline{font-size:13px;max-width:100%;}
-.login-features{max-width:100%;gap:8px;margin-top:1.25rem;}
-.login-feat{font-size:12px;}
-.login-right{width:100%;padding:2rem 1.5rem;box-shadow:none;}
+.login-left{padding:1.5rem 1.25rem 1.75rem;min-height:auto;flex:none;gap:1.75rem;}
+.login-logo-img{width:128px;}
+.login-tagline{font-size:2.1rem;}
+.login-lead{font-size:15px;margin-top:.75rem;}
+.login-features,.login-foot{display:none;}
+.login-right{width:100%;padding:2rem 1.25rem 2.5rem;flex:1;align-items:flex-start;}
 .login-form-wrap{max-width:100%;}
-.sidebar{transform:translateX(-100%);width:250px;transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);box-shadow:4px 0 24px rgba(0,0,0,0.15);}
+.login-form-title{font-size:1.9rem;}
+.sidebar{transform:translateX(-100%);width:264px;transition:transform .28s var(--ease-out);box-shadow:8px 0 32px rgba(19,35,58,.25);}
 .sidebar.open{transform:translateX(0);}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:99;backdrop-filter:blur(2px);}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(19,35,58,.45);z-index:99;}
 .sidebar-overlay.open{display:block;}
-.btn-hamburguesa{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:white;border:1px solid var(--border);cursor:pointer;flex-shrink:0;box-shadow:var(--shadow-sm);}
-.btn-hamburguesa svg{width:20px;height:20px;stroke:var(--text);stroke-width:2;fill:none;}
+.btn-hamburguesa{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:var(--r-sm);background:#fff;border:1px solid var(--rule-2);cursor:pointer;flex-shrink:0;}
+.btn-hamburguesa svg{width:20px;height:20px;stroke:var(--ink);stroke-width:2;fill:none;}
 .main{margin-left:0;padding:1rem 1rem 2rem;}
-.page-hdr{flex-direction:column;align-items:stretch;gap:12px;margin-bottom:1rem;}
-.page-hdr-top{display:flex;align-items:center;gap:10px;}
-.page-title{font-size:19px;}
-.page-title::before{height:19px;}
-.page-sub{font-size:11.5px;margin-left:11px;}
+.page-hdr{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:1rem;padding-bottom:1rem;}
+.page-hdr-top{display:flex;align-items:center;gap:12px;}
+.page-title{font-size:1.75rem;}
+.page-sub{font-size:13px;margin-top:3px;}
 .hdr-right{flex-wrap:wrap;gap:8px;justify-content:stretch;}
-.hdr-right .btn{flex:1;min-width:0;padding:9px 12px;font-size:12px;}
+.hdr-right .btn{flex:1;min-width:0;min-height:44px;}
 .date-chip{display:none;}
-.btn{padding:8px 12px;font-size:12px;}
-.btn svg{width:12px;height:12px;}
+.btn{padding:0 12px;font-size:13px;}
 .two-col{grid-template-columns:1fr;gap:1rem;}
-.three-col{grid-template-columns:1fr;gap:10px;margin-bottom:1rem;}
-.metric-card{padding:0.9rem 1rem;gap:11px;}
-.metric-icon{width:38px;height:38px;border-radius:10px;}
-.metric-icon svg{width:17px;height:17px;}
-.metric-lbl{font-size:9px;}
-.metric-val{font-size:18px;}
-.metric-hint{font-size:10px;}
-.card-hdr{padding:0.8rem 1rem;}
-.card-title{font-size:13px;}
+/* Resumen en una línea; "Programados" es dato de escritorio */
+.resumen-dia{margin:0 0 .75rem;}
+.metric-card + .metric-card{margin-left:14px;padding-left:14px;}
+.metric-card:last-child{display:none;}
+.metric-lbl,.metric-hint{font-size:13.5px;}
+.metric-val{font-size:17px;}
+.card-hdr{padding:.65rem 1rem;min-height:48px;}
 .card-body{padding:1rem;}
+#turnos-card:not([style*="none"]){grid-template-columns:minmax(0,1fr);}
+.tab-turno{padding:0 8px;font-size:13.5px;flex:1;justify-content:center;}
+.agenda-filtros{justify-content:stretch;padding:10px 0;border-bottom:0;}
+.agenda-buscar-wrap{flex:1 1 auto;}
+#agenda-filtro-empresa{max-width:42%;flex:0 0 auto;}
 /* Turnos en mobile: hora+fecha en una fila arriba, info debajo, botones al final a lo ancho */
 .turno-item{
   grid-template-columns:1fr;
   grid-template-areas:"time" "info" "actions";
-  gap:5px;
-  padding:0.85rem 1rem;
+  gap:6px;
+  padding:.9rem 1rem;
 }
-.turno-time{width:auto;display:flex;align-items:baseline;gap:8px;}
-.turno-hora{font-size:14px;}
-.turno-fecha{font-size:10px;margin-top:0;}
-.turno-paciente{font-size:13.5px;}
-.turno-meta{font-size:11px;gap:4px;flex-wrap:wrap;}
-.turno-actions{padding-left:0;gap:5px;margin-top:3px;}
-.turno-actions .btn,.turno-actions .badge{font-size:11px;padding:5px 9px;}
+.turno-time{width:auto;display:flex;align-items:baseline;gap:10px;border-right:none;padding-right:0;}
+.turno-hora{font-size:18px;}
+.turno-fecha{margin-top:0;}
+.turno-paciente{font-size:15px;}
+.turno-actions{padding-left:0;gap:6px;margin-top:4px;}
 /* En pantallas chicas los botones crecen para ser fáciles de tocar */
-.turno-actions .btn{flex:1 1 auto;min-width:90px;justify-content:center;}
+.turno-actions .btn{flex:1 1 auto;min-width:96px;min-height:42px;justify-content:center;}
 .turno-actions .badge{flex:0 0 auto;}
-.aviso-inminente,.aviso-proximo{padding:11px 13px;gap:10px;}
-.aviso-inminente-icon,.aviso-proximo-icon{width:34px;height:34px;}
-.aviso-inminente-icon svg,.aviso-proximo-icon svg{width:16px;height:16px;}
-.aviso-inminente-title,.aviso-proximo-title{font-size:12.5px;}
-.aviso-inminente-sub,.aviso-proximo-sub{font-size:11px;}
-.badge-urgente{font-size:9px;padding:1px 6px;}
-/* VIDEO — en mobile la llamada pasa a PANTALLA COMPLETA como una app */
-.video-container.active{
-  position:fixed;inset:0;z-index:600;
-  margin:0;border-radius:0;border:none;
-  display:flex;flex-direction:column;
-  background:#080f1a;
-}
-.video-container.active #daily-frame{flex:1;height:auto !important;min-height:0 !important;}
-.video-container.active .video-topbar,
-.video-container.active .video-bottombar{flex-shrink:0;}
-#daily-frame{height:60vh;min-height:340px;}
-.video-topbar{padding:9px 12px;flex-wrap:wrap;gap:6px;}
-.video-bottombar{padding:9px 12px;flex-wrap:wrap;gap:8px;}
-.rec-pill{font-size:10px;padding:3px 8px;}
-#video-label{font-size:11px !important;}
-#video-sala{display:none;}
-.video-timer{font-size:11px;}
-.video-bottombar .btn{flex:1;justify-content:center;}
-/* Con "Certificado"/"Adjuntos"/"Redactar informe"/"Finalizar" puede haber 4 botones a la vez:
-   sin esto, en un celular angosto quedan todos apretados en una sola fila sin lugar para el texto. */
-.video-actions{flex-wrap:wrap;width:100%;}
-.video-actions .btn{flex:1 1 calc(50% - 4px);min-width:0;padding:8px 6px;font-size:11px;}
-/* El panel de notas queda por encima del video fullscreen */
-#notas-panel{z-index:700 !important;}
-#notas-panel{width:calc(100vw - 24px) !important;max-height:70vh !important;right:12px !important;bottom:12px !important;left:12px !important;}
-.link-url{font-size:10px;padding:6px 8px;}
-.participante-nombre{font-size:11.5px;flex-wrap:wrap;}
+/* VIDEO: en mobile la llamada pasa a PANTALLA COMPLETA como una app. El informe se abre
+   debajo del video, nunca encima de la barra de acciones. */
+.video-container.active{position:fixed;inset:0;z-index:600;margin:0;border-radius:0;}
+.video-topbar{min-height:52px;padding:6px 6px 6px 14px;flex-wrap:wrap;gap:4px 10px;}
+.vc-quien{flex:1 1 auto;}
+.vc-paciente{font-size:14px;}
+.vc-estado{gap:10px;}
+.vc-status{font-size:12.5px;max-width:52vw;overflow:hidden;text-overflow:ellipsis;}
+.vc-escenario{flex:1;height:auto;min-height:0;grid-template-rows:minmax(0,1fr);}
+.vc-escenario:has(#notas-panel[style*="flex"]){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,36%) minmax(0,1fr);}
+.notas-panel{border-left:0;border-top:1px solid var(--rule);}
+.video-bottombar{min-height:64px;padding:8px 8px calc(8px + env(safe-area-inset-bottom)) 4px;gap:6px;}
+.vc-texto{font-size:0;gap:0;width:44px;height:44px;padding:0;justify-content:center;}
+.vc-texto svg{width:20px;height:20px;}
+.vc-notas,.vc-finalizar{min-height:44px;padding:0 14px;}
+#reunion-video-container.active iframe{flex:1;height:auto!important;min-height:0!important;}
+.participante-nombre{flex-wrap:wrap;}
 .share-btns{flex-wrap:wrap;}
-.btn-wa,.btn-gmail{font-size:11px;padding:6px 10px;}
-.form-grid{grid-template-columns:1fr;gap:9px;}
-input[type=text],input[type=date],input[type=password],select,textarea{font-size:14px;}
-.modal{padding:1.25rem;max-height:calc(100vh - 30px);border-radius:12px;}
-.modal-title{font-size:16px;}
+.form-grid{grid-template-columns:1fr;gap:12px;}
+/* 16px evita que iOS haga zoom al enfocar un campo */
+input[type=text],input[type=date],input[type=time],input[type=email],input[type=number],input[type=tel],input[type=password],select,textarea,.login-input{font-size:16px;min-height:44px;}
+.modal-bg{padding:12px;align-items:flex-end;}
+.modal{padding:1.25rem;max-height:calc(100vh - 24px);border-radius:10px;}
+.modal-title{font-size:1.5rem;}
 .modal-footer{flex-direction:column-reverse;gap:8px;}
-.modal-footer .btn{width:100%;justify-content:center;}
+.modal-footer .btn{width:100%;min-height:44px;justify-content:center;}
 /* Tablas → tarjetas apiladas (médicos, empresas, pacientes por empresa): con 4-5 columnas
    angostas + botones sin wrap, un <table> tradicional desborda el ancho en mobile. */
 table,thead,tbody,tr{display:block;width:100%;}
 thead{display:none;}
-tbody tr{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;padding:12px;background:var(--surface);}
+tbody tr{border:1px solid var(--rule);border-radius:var(--r);margin-bottom:10px;padding:12px;background:#fff;}
 tbody tr:hover td{background:none;}
-td{display:block;border:none;padding:5px 0;font-size:13px;}
-td::before{content:attr(data-label);display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;color:var(--text3);font-weight:600;margin-right:8px;min-width:76px;}
+td{display:block;border:none;padding:5px 0;font-size:14px;}
+td::before{content:attr(data-label);display:inline-block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-right:8px;min-width:84px;}
 td.no-label{padding-top:2px;}
 td.no-label::before{display:none;}
-.sidebar-footer{padding:0.75rem;}
-.user-card{padding:9px 11px;}
-.user-nombre{font-size:12px;}
-.user-email{font-size:10px;}
-.tl-item{padding:7px 0;gap:8px;}
-.tl-time{font-size:9.5px;width:44px;}
-.tl-desc{font-size:12px;}
-.tl-sub{font-size:10.5px;}
 #log-timeline{max-height:220px;overflow-y:auto;}
 }
 @media (max-width:400px){
-.main{padding:0.75rem 0.75rem 1.5rem;}
-.card-hdr{padding:0.7rem 0.85rem;}
-.card-body{padding:0.85rem;}
-.card-title{font-size:12.5px;}
-.metric-card{padding:0.75rem 0.9rem;}
-.metric-val{font-size:17px;}
-.turno-item{padding:0.75rem 0.85rem;}
-.hdr-right .btn{font-size:11.5px;padding:8px 10px;}
-.btn{font-size:11px;padding:7px 10px;}
-#daily-frame{height:55vh;min-height:300px;}
+.main{padding:.75rem .75rem 1.5rem;}
+.card-hdr{padding:.6rem .85rem;}
+.card-body{padding:.85rem;}
+.turno-item{padding:.8rem .85rem;}
 }
 </style>
 </head>
@@ -493,13 +585,17 @@ td.no-label::before{display:none;}
     <div class="login-logo-wrap">
       <img src="/logo.png" alt="MEDGRUP Servicio Médico" class="login-logo-img"/>
     </div>
-    <h1 class="login-tagline" style="font-weight:400;margin:0;">Telemedicina laboral MEDGRUP: evaluaciones médicas, juntas médicas e informes médico-legales para empresas de Tierra del Fuego y todo el país.</h1>
-    <div class="login-features">
-      <div class="login-feat"><div class="login-feat-icon"><svg viewBox="0 0 24 24"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>Videoconsultas con grabación automática</div>
-      <div class="login-feat"><div class="login-feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>Agenda de turnos persistente</div>
-      <div class="login-feat"><div class="login-feat-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><path d="M9 13h6M9 17h4"/></svg></div>Dictamen y certificado digital</div>
-      <div class="login-feat"><div class="login-feat-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div>Múltiples empresas y médicos</div>
+    <div class="login-hero">
+      <h1 class="login-tagline">Medicina laboral para empresas de <em>todo el país</em>.</h1>
+      <p class="login-lead">Evaluaciones médicas, juntas médicas e informes médico-legales por videoconsulta, con dictamen y certificado digital.</p>
+      <ul class="login-features">
+        <li class="login-feat"><span class="login-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>Videoconsultas grabadas</li>
+        <li class="login-feat"><span class="login-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg></span>Agenda de turnos</li>
+        <li class="login-feat"><span class="login-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg></span>Dictamen y certificado digital</li>
+        <li class="login-feat"><span class="login-feat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>Empresas y médicos en un solo lugar</li>
+      </ul>
     </div>
+    <p class="login-foot">MEDGRUP Servicio Médico · Desde Tierra del Fuego, para todo el país</p>
   </div>
   <div class="login-right">
     <div class="login-form-wrap">
@@ -575,22 +671,22 @@ td.no-label::before{display:none;}
     <div class="logo"><img src="/logo.png" alt="MEDGRUP" style="height:38px;width:auto;object-fit:contain;"/></div>
     <div class="nav-section">
       <div class="nav-lbl">Principal</div>
-      <div class="nav-item active" id="nav-agenda" onclick="showSection('agenda',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Agenda</div>
-      <div class="nav-item" id="nav-reuniones" onclick="showSection('reuniones',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Reuniones</div>
-      <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Médicos</div>
-      <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Empresas</div>
-      <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>Presupuestos</div>
-      <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
+      <div class="nav-item active" id="nav-agenda" onclick="showSection('agenda',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>Agenda</div>
+      <div class="nav-item" id="nav-reuniones" onclick="showSection('reuniones',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Reuniones</div>
+      <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></svg>Médicos</div>
+      <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>Empresas</div>
+      <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>Presupuestos</div>
+      <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Firmas
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8l-4 1 1-4z"/></svg>Firmas
         <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
       </div>
-      <div class="nav-item" id="nav-perfil" onclick="showSection('perfil',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Mi perfil</div>
+      <div class="nav-item" id="nav-perfil" onclick="showSection('perfil',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>Mi perfil</div>
     </div>
     <div class="nav-section">
       <div class="nav-lbl">Próximamente</div>
-      <div class="nav-item dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>Exámenes</div>
-      <div class="nav-item dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Auditoría IA</div>
+      <div class="nav-item dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>Exámenes</div>
+      <div class="nav-item dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Auditoría IA</div>
     </div>
   </div>
   <div class="sidebar-footer">
@@ -621,85 +717,73 @@ td.no-label::before{display:none;}
   <div id="sec-agenda">
     <div class="video-container" id="video-container">
       <div class="video-topbar">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="rec-pill"><div class="rec-dot"></div>GRABANDO</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);font-weight:500;" id="video-label">—</div>
+        <div class="vc-quien">
+          <div class="vc-paciente" id="video-label">—</div>
+          <div class="vc-sala" id="video-sala" hidden>—</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button class="btn" onclick="abrirLlamadaAparte()" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);padding:6px 12px;font-size:11.5px;" title="Abrir la videollamada en una pestaña aparte (pantalla completa nativa)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Abrir aparte
-          </button>
-          <div style="font-size:11px;color:rgba(255,255,255,0.35);font-family:'DM Mono',monospace;" id="video-sala">—</div>
+        <div class="vc-estado">
+          <span class="vc-status" id="vc-status" data-estado="conectando" role="status" aria-live="polite">Conectando…</span>
+          <span class="rec-pill" id="rec-pill" hidden><span class="rec-dot" aria-hidden="true"></span>Grabando</span>
+          <span class="video-timer" id="video-timer" aria-label="Duración de la consulta">00:00:00</span>
+          <button class="vc-icono" onclick="abrirLlamadaAparte()" title="Abrir la videollamada en otra pestaña" aria-label="Abrir la videollamada en otra pestaña"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
         </div>
       </div>
-      <iframe id="daily-frame" allow="camera; microphone; fullscreen; display-capture" style="width:100%;height:480px;border:none;"></iframe>
+      <div class="vc-escenario">
+        <iframe id="daily-frame" title="Videollamada" allow="camera; microphone; fullscreen; display-capture"></iframe>
+        <aside id="notas-panel" class="notas-panel" aria-label="Informe de la consulta" style="display:none;">
+          <div class="np-head">
+            <div>
+              <div class="np-titulo">Informe de la consulta</div>
+              <div class="np-sub">El borrador se guarda mientras escribís</div>
+            </div>
+            <button class="np-cerrar" onclick="toggleNotasPanel()" aria-label="Cerrar el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div class="np-cuerpo">
+            <div id="notas-paso1" class="np-paso">
+              <div class="np-paso-tit"><span class="np-num">1</span>Dictá el caso</div>
+              <p class="np-ayuda">Datos del paciente, hallazgos, análisis y aptitud. Con eso se arma el borrador del informe.</p>
+              <textarea id="notas-libre" placeholder="Ej: Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años..." oninput="guardarNotaBorrador()"></textarea>
+              <button onclick="generarInformeIA()" id="btn-generar-ia" class="btn btn-primary np-ancho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg><span id="btn-ia-text">Generar informe con IA</span></button>
+              <div id="ia-status" class="np-trabajando" style="display:none;"><span class="spinner" aria-hidden="true"></span>Analizando y redactando...</div>
+            </div>
+            <button onclick="mostrarPaso1('notas')" id="notas-paso1-colapsado" class="np-volver" style="display:none;">Volver a dictar desde cero (reinicia el informe)</button>
+            <div id="notas-preview-wrap" class="np-paso" style="display:none;">
+              <div class="np-paso-tit"><span class="np-num">2</span>Revisá y editá el informe</div>
+              <div id="notas-alerta-diag" class="np-alerta" style="display:none;"></div>
+              <textarea id="notas-preview-text" class="np-informe" oninput="guardarNotaBorrador()"></textarea>
+              <div class="np-ajustes">
+                <div class="np-ajustes-tit">Pedir un ajuste</div>
+                <div id="notas-chat-historial" class="np-historial"></div>
+                <div class="np-ajuste-fila">
+                  <input type="text" id="notas-correccion-texto" placeholder="Ej: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+                  <button class="btn btn-ghost np-cuadrado" onclick="abrirVistaPreviaInforme('notas')" title="Ver cómo queda el informe" aria-label="Ver cómo queda el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                  <button class="btn btn-primary" onclick="corregirInformeIA()" id="btn-corregir-ia">Corregir</button>
+                  <button class="btn btn-ghost" onclick="deshacerCorreccionIA()" id="btn-deshacer-ia" style="display:none;" title="Volver al informe de antes de la última corrección">Deshacer</button>
+                </div>
+              </div>
+            </div>
+            <p id="notas-preview-hint" class="np-ayuda" style="display:none;">Cuando termines, tocá <strong>Finalizar consulta</strong>: el informe pasa solo al dictamen.</p>
+            <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-aptitud" value="apto"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
+          </div>
+        </aside>
+      </div>
       <div class="video-bottombar">
-        <div class="video-timer" id="video-timer">00:00:00</div>
-        <div class="video-actions" style="display:flex;gap:8px;">
-          <button class="btn" id="btn-cert-llamada" onclick="abrirCertificadosDeLlamada()" style="display:none;background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-cert-llamada-txt">Certificado</span></button>
-          <button class="btn" id="btn-chat-llamada" hidden onclick="abrirChatTurno(consultaActual.id)" style="display:none;background:white;color:#254c76">Chat y estudios</button>
-          <button class="btn" id="btn-adjuntos-llamada" onclick="abrirInformesTurno(consultaActual.id)" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.2);" title="Informes adicionales subidos para este turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg><span id="btn-adjuntos-llamada-txt">Adjuntos</span></button>
-          <button class="btn" id="btn-notas-ninja" onclick="toggleNotasPanel()" title="Redactar el informe de esta consulta con ayuda de IA" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:1px solid rgba(255,255,255,0.25);box-shadow:0 2px 10px rgba(99,102,241,0.45);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Redactar informe</button>
-          <button class="btn btn-danger" onclick="finalizarConsulta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Finalizar consulta</button>
+        <div class="vc-secundarias">
+          <button class="vc-texto" id="btn-cert-llamada" onclick="abrirCertificadosDeLlamada()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg><span id="btn-cert-llamada-txt">Certificado</span></button>
+          <button class="vc-texto" id="btn-chat-llamada" hidden onclick="abrirChatTurno(consultaActual.id)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat y estudios</button>
+          <button class="vc-texto" id="btn-adjuntos-llamada" onclick="abrirInformesTurno(consultaActual.id)" title="Informes adicionales subidos para este turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7l-8.6 8.6a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg><span id="btn-adjuntos-llamada-txt">Adjuntos</span></button>
+        </div>
+        <div class="video-actions">
+          <button class="btn vc-notas" id="btn-notas-ninja" onclick="toggleNotasPanel()" aria-pressed="false" aria-controls="notas-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8l-4 1 1-4z"/></svg>Informe</button>
+          <button class="btn vc-finalizar" onclick="finalizarConsulta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Finalizar consulta</button>
         </div>
       </div>
     </div>
 
-    <div id="notas-panel" style="display:none;position:fixed;bottom:24px;right:24px;width:440px;max-height:90vh;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-lg);z-index:400;overflow:hidden;flex-direction:column;">
-      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-        <div style="color:white;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Redacción con IA — En vivo</div>
-        <button onclick="toggleNotasPanel()" style="background:rgba(255,255,255,0.15);border:none;color:white;cursor:pointer;font-size:16px;line-height:1;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;">×</button>
-      </div>
-      <div style="padding:16px;overflow-y:auto;flex:1;">
-        <div id="notas-paso1">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">1</div>
-            <span style="font-size:12.5px;font-weight:700;color:#6366f1;">Dictá el caso</span>
-          </div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5;">Escribí datos del paciente, hallazgos, análisis y aptitud. La IA arma el informe completo.</div>
-          <textarea id="notas-libre" placeholder="Ej: Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años..." style="width:100%;min-height:140px;font-size:12.5px;padding:10px 12px;border:1.5px solid #c4b5fd;border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.6;background:white;box-sizing:border-box;" oninput="guardarNotaBorrador()"></textarea>
-          <button onclick="generarInformeIA()" id="btn-generar-ia" style="width:100%;margin-top:10px;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;box-shadow:0 4px 14px rgba(99,102,241,0.25);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <span id="btn-ia-text">Generar informe con IA</span>
-          </button>
-          <div id="ia-status" style="display:none;margin-top:10px;font-size:11.5px;text-align:center;color:var(--text3);align-items:center;justify-content:center;gap:6px;">
-            <div style="width:12px;height:12px;border:2px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div>Analizando y redactando...
-          </div>
-        </div>
-        <button onclick="mostrarPaso1('notas')" id="notas-paso1-colapsado" style="display:none;width:100%;margin-bottom:10px;padding:8px 10px;background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:11.5px;cursor:pointer;text-align:left;">✎ Volver a dictar desde cero (reinicia el informe)</button>
-        <div id="notas-preview-wrap" style="display:none;margin-top:14px;background:white;border:2px solid #d4edda;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(90deg,#1e6640,#3a9460);padding:10px 14px;display:flex;align-items:center;gap:8px;">
-            <div style="width:22px;height:22px;border-radius:50%;background:white;color:#1e6640;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;">2</div>
-            <span style="color:white;font-size:12.5px;font-weight:700;">Revisá y editá el informe</span>
-          </div>
-          <div style="padding:12px;">
-            <div id="notas-alerta-diag" style="display:none;margin-bottom:10px;padding:9px 12px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:11.5px;color:#92400e;line-height:1.5;"></div>
-            <textarea id="notas-preview-text" oninput="guardarNotaBorrador()" style="width:100%;min-height:260px;font-size:11.5px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.65;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
-          </div>
-          <div style="border-top:1px solid var(--border);background:var(--surface2);">
-            <div style="padding:10px 12px 4px;display:flex;align-items:center;gap:6px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:#6366f1;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <span style="font-size:11.5px;font-weight:700;color:var(--text2);">Ajustes con IA</span>
-            </div>
-            <div id="notas-chat-historial" style="max-height:150px;overflow-y:auto;padding:4px 12px;"></div>
-            <div style="display:flex;gap:6px;padding:8px 12px 12px;">
-              <input type="text" id="notas-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;background:white;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
-              <button onclick="abrirVistaPreviaInforme('notas')" style="padding:9px 10px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;cursor:pointer;flex-shrink:0;" title="Ver así queda el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
-              <button onclick="corregirInformeIA()" id="btn-corregir-ia" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
-              <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia" style="display:none;padding:9px 12px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
-            </div>
-          </div>
-        </div>
-        <div id="notas-preview-hint" style="display:none;margin-top:10px;padding:10px 12px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:8px;font-size:11.5px;color:var(--azul);line-height:1.5;">💡 Cuando termines la consulta, cerrá esta ventana y hacé click en <strong>"Finalizar consulta"</strong> — el informe generado se guarda automáticamente al pasar al dictamen.</div>
-        <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-aptitud" value="apto"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
-      </div>
-    </div>
-
-    <div class="three-col" id="metrics-row">
-      <div class="metric-card mc-blue"><div class="metric-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="metric-body"><div class="metric-lbl">Turnos totales</div><div class="metric-val" id="cnt-total">0</div><div class="metric-hint">programados</div></div></div>
-      <div class="metric-card mc-rosa"><div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div><div class="metric-body"><div class="metric-lbl">Próximo turno</div><div class="metric-val" id="cnt-proximo" style="font-size:18px;margin-top:2px;">—</div><div class="metric-hint" id="cnt-proximo-sub">sin turnos</div></div></div>
-      <div class="metric-card mc-green"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg></div><div class="metric-body"><div class="metric-lbl">Hoy</div><div class="metric-val" id="cnt-hoy">0</div><div class="metric-hint">turnos para hoy</div></div></div>
+    <div class="three-col resumen-dia" id="metrics-row">
+      <div class="metric-card"><span class="metric-lbl">Hoy</span><span class="metric-val" id="cnt-hoy">0</span><span class="metric-hint">turnos</span></div>
+      <div class="metric-card metric-proximo"><span class="metric-lbl">Próximo</span><span class="metric-val" id="cnt-proximo">—</span><span class="metric-hint" id="cnt-proximo-sub">sin turnos</span></div>
+      <div class="metric-card"><span class="metric-lbl">Programados</span><span class="metric-val" id="cnt-total">0</span></div>
     </div>
 
     <div class="two-col sin-log-lateral" id="agenda-cols">
@@ -2368,10 +2452,12 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     if(esCorreccion) abrirVistaPreviaInforme(destino);
 
     if(btnText) btnText.textContent='✓ Informe generado';
-    btn.style.background='linear-gradient(135deg,#1e6640,#3a9460)';
+    // Clase y no style.background: el navegador reescribe ese estilo con espacios y rgb(), y
+    // la hoja ya no lo reconoce (volvía el violeta viejo).
+    btn.classList.add('ia-ok');
     setTimeout(()=>{
       if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
-      btn.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';
+      btn.classList.remove('ia-ok');
     },3000);
     addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
 
@@ -3266,37 +3352,12 @@ function renderAgenda(){
     return;
   }
 
-  // Avisos solo en la pestaña de próximos
-  let avisoHtml = '';
-  if(tabTurnosActiva==='proximos'){
-    const turnoInminente = fut.find(t => estadoProximidad(t) === 'inminente');
-    const turnoProximo = !turnoInminente ? fut.find(t => estadoProximidad(t) === 'proximo') : null;
-    if(turnoInminente){
-      const mins = minutosHastaTurno(turnoInminente);
-      const txt = textoTiempoRestante(mins);
-      avisoHtml = `<div class="aviso-inminente">
-        <div class="aviso-inminente-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
-        <div class="aviso-inminente-body">
-          <div class="aviso-inminente-title">⚡ Turno inminente ${mins >= 0 ? '— empieza ' + txt : '— debería haber empezado ' + txt}</div>
-          <div class="aviso-inminente-sub">${turnoInminente.paciente} · ${turnoInminente.tipo} · ${turnoInminente.hora} hs</div>
-        </div>
-      </div>`;
-    } else if(turnoProximo){
-      const mins = minutosHastaTurno(turnoProximo);
-      const txt = textoTiempoRestante(mins);
-      avisoHtml = `<div class="aviso-proximo">
-        <div class="aviso-proximo-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-        <div class="aviso-proximo-body">
-          <div class="aviso-proximo-title">Próximo turno ${txt}</div>
-          <div class="aviso-proximo-sub">${turnoProximo.paciente} · ${turnoProximo.tipo} · ${turnoProximo.hora} hs</div>
-        </div>
-      </div>`;
-    }
-  }
+  // Sin banner de aviso: el turno inminente o próximo ya se marca en su propia fila (tinte +
+  // "en 25 min") y en la línea de resumen. Repetirlo tres veces empujaba la lista hacia abajo.
 
   const esAdmin = usuarioActual?.rol === 'admin';
 
-  document.getElementById('agenda-lista').innerHTML = avisoHtml + lista.map((t,idx)=>{
+  document.getElementById('agenda-lista').innerHTML = lista.map((t,idx)=>{
     const fl=new Date(t.fecha.split('T')[0]+'T12:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
     const prox = estadoProximidad(t);
     // "Pendiente" no suma nada al lado del badge de urgencia (⏰ en 10 min ya implica que está
@@ -4032,7 +4093,7 @@ async function unirseTurno(id){
 
   linkVideoActual = link;
 
-  document.getElementById('daily-frame').src = link;
+  abrirSalaDaily(link, t);
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
 
@@ -4075,6 +4136,7 @@ function toggleNotasPanel(){
     cargarNotaBorrador();
     panel.style.display='flex';
   }
+  document.getElementById('btn-notas-ninja')?.setAttribute('aria-pressed', String(!visible));
 }
 
 function guardarNotaBorrador(){
@@ -4163,7 +4225,7 @@ async function iniciarTurno(id){
 
   linkVideoActual = linkPropio;
 
-  document.getElementById('daily-frame').src = linkPropio;
+  abrirSalaDaily(linkPropio, t);
   document.getElementById('video-label').textContent=t.paciente+' — '+t.tipo;
   document.getElementById('video-sala').textContent=t.sala;
 
@@ -4275,7 +4337,7 @@ async function finalizarTurnoDesdeAgenda(id){
   // Si el reproductor estaba abierto en esta misma pestaña, lo cerramos
   stopTimer();
   document.getElementById('video-container').classList.remove('active');
-  document.getElementById('daily-frame').src='';
+  cerrarSalaDaily();
   document.getElementById('notas-panel').style.display='none';
   document.getElementById('links-box').style.display='none';
   document.getElementById('metrics-row').style.display='none';
@@ -4308,7 +4370,7 @@ async function finalizarConsulta(){
   if(!(await confirmar('¿Finalizar la consulta?', { titulo: 'Finalizar consulta', textoConfirmar: 'Finalizar', danger: false }))) return;
   const dur=stopTimer();
   document.getElementById('video-container').classList.remove('active');
-  document.getElementById('daily-frame').src='';
+  cerrarSalaDaily();
   document.getElementById('notas-panel').style.display='none';
   if(consultaActual){
     consultaActual.estado='completado';
@@ -7268,6 +7330,8 @@ async function eliminarServicioCatalogo(id){
 checkSession();
 chequearTokenReset();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.93.0/dist/daily.js" crossorigin="anonymous"></script>
+<script src="/llamada.js"></script>
 <script src="/chat-medico.js"></script>
 </body>
 </html>
