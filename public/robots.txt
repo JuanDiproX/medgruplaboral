@@ -1,6 +1,4 @@
+# Portal de trabajo de MEDGRUP: sus páginas llevan noindex.
+# El sitio público, con su sitemap, es https://laboral.medgrup.com.ar/
 User-agent: *
-Allow: /$
-Allow: /empresa.html
 Disallow: /api/
-
-Sitemap: https://medicinalaboral.medgrup.com.ar/sitemap.xml

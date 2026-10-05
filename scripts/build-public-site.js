@@ -204,7 +204,8 @@ const services = [
   {
     slug: 'aptos-examenes', name: 'Aptos y exámenes laborales', option: 'Aptos médicos',
     task: 'Evaluar la aptitud para un puesto',
-    headline: 'La aptitud de cada trabajador, evaluada y documentada.',
+    headline: 'Aptos y exámenes laborales, evaluados y documentados.',
+    seoTitle: 'Aptos médicos y exámenes preocupacionales y periódicos',
     intro: 'Aptos médicos y exámenes preocupacionales y periódicos, definidos según las tareas del puesto y coordinados con prestadores en todo el país.',
     copy: 'Acordamos con tu empresa los estudios de cada examen según el puesto. El profesional evalúa al trabajador y el resultado queda documentado en la constancia de aptitud correspondiente.',
     items: ['Aptos médicos según las tareas del puesto', 'Exámenes preocupacionales previos al ingreso', 'Exámenes periódicos durante la actividad laboral'],
@@ -219,7 +220,8 @@ const services = [
   {
     slug: 'teleconsultas', name: 'Evaluaciones y teleconsultas', option: 'Evaluaciones y teleconsultas',
     task: 'Consultar por la salud de un trabajador',
-    headline: 'La atención médica, más cerca.',
+    headline: 'Teleconsultas y evaluaciones médicas, más cerca.',
+    seoTitle: 'Teleconsultas y evaluaciones médicas laborales',
     intro: 'Consultas con un profesional para evaluar la salud del trabajador y acompañar su evolución, teniendo en cuenta su actividad laboral.',
     copy: 'Coordinamos la consulta y reunimos la documentación necesaria para evaluar el caso. Durante la videollamada, el profesional realiza la evaluación y registra sus conclusiones.',
     items: ['Videoconsulta con el profesional', 'Documentación previa vinculada al turno', 'Informe médico y acta de asistencia'],
@@ -233,7 +235,8 @@ const services = [
   {
     slug: 'juntas-medicas', name: 'Juntas médicas', option: 'Juntas médicas',
     task: 'Coordinar una junta médica',
-    headline: 'Una mirada compartida sobre cada caso.',
+    headline: 'Juntas médicas: una mirada compartida sobre cada caso.',
+    seoTitle: 'Juntas médicas laborales para empresas',
     intro: 'Encuentros entre profesionales para evaluar cada caso, compartir criterios y documentar las conclusiones.',
     copy: 'Coordinamos la participación de los profesionales y el encuentro por videollamada. El dictamen y las firmas quedan vinculados al proceso de atención en la plataforma.',
     items: ['Coordinación de los participantes', 'Encuentro por videollamada', 'Dictamen y firmas de profesionales'],
@@ -247,7 +250,8 @@ const services = [
   {
     slug: 'ausentismo', name: 'Control de ausentismo', option: 'Control de ausentismo',
     task: 'Seguir una ausencia',
-    headline: 'Cada ausencia, con un seguimiento claro.',
+    headline: 'Control de ausentismo, con un seguimiento claro de cada caso.',
+    seoTitle: 'Control de ausentismo laboral para empresas',
     intro: 'Organizamos los casos, los certificados y los controles para que tu empresa pueda consultar el seguimiento en el portal.',
     copy: 'Reunimos la información del caso y la documentación presentada. Coordinamos el control correspondiente y registramos el seguimiento del trabajador.',
     items: ['Registro y seguimiento de casos', 'Certificados y documentación asociada', 'Coordinación de controles domiciliarios'],
@@ -261,7 +265,8 @@ const services = [
   {
     slug: 'informes', name: 'Informes y documentación', option: 'Informes y documentación',
     task: 'Contar con la documentación',
-    headline: 'La documentación de cada atención, organizada.',
+    headline: 'Informes y dictámenes de cada atención, organizados.',
+    seoTitle: 'Informes médico-laborales y dictámenes',
     intro: 'Informes, dictámenes y actas vinculados a cada atención, organizados para facilitar su consulta.',
     copy: 'La plataforma reúne los documentos generados durante el proceso de atención. Cada archivo se vincula con el caso o el turno correspondiente para facilitar su consulta posterior.',
     items: ['Informes y dictámenes en PDF', 'Firmas de profesionales', 'Actas de asistencia e historial de atenciones'],
@@ -292,13 +297,13 @@ const write = (file, html) => {
 /* Catálogo */
 
 write('servicios.html', page({
-  title: 'Servicios de medicina laboral | MEDGRUP',
+  title: 'Servicios de medicina laboral para empresas | MEDGRUP',
   description: 'Evaluaciones y teleconsultas, juntas médicas, control de ausentismo e informes para empresas de toda Argentina, con seguimiento en el portal de tu empresa.',
   current: 'servicios',
   body: `${crumbs([['/medicina-laboral.html', 'Inicio'], [null, 'Servicios']])}
 
     <section class="page-head shell" aria-labelledby="page-title">
-      <h1 id="page-title">Servicios que acompañan a tu empresa.</h1>
+      <h1 id="page-title">Servicios de medicina laboral que acompañan a tu empresa.</h1>
       <p class="lead">Evaluación médica, seguimiento y documentación, coordinados por nuestro equipo y disponibles en el portal de tu empresa.</p>
     </section>
 
@@ -338,7 +343,7 @@ for (const s of services) {
   const sample = samples[s.slug];
   const others = services.filter((x) => x !== s);
   write(`servicios/${s.slug}.html`, page({
-    title: `${s.name} | MEDGRUP`,
+    title: `${s.seoTitle || s.name} | MEDGRUP`,
     description: `${s.intro} Medicina laboral para empresas de toda Argentina.`,
     current: 'servicios',
     body: `${crumbs([['/medicina-laboral.html', 'Inicio'], ['/servicios.html', 'Servicios'], [null, s.name]])}

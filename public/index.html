@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>MEDGRUP Telemedicina — Medicina Laboral en Tierra del Fuego | Videoconsultas, Juntas Médicas e Informes</title>
+<title>Portal MEDGRUP · Acceso para médicos y empresas</title>
+<!-- El portal es una herramienta de trabajo: no se indexa. Lo que tiene que aparecer en Google es
+     laboral.medgrup.com.ar; si esta página compite, reparte la relevancia entre los dos dominios. -->
+<meta name="robots" content="noindex, follow"/>
 <meta name="description" content="Plataforma de telemedicina laboral de MEDGRUP: evaluaciones médicas por videoconsulta, juntas médicas, seguimientos, informes médico-legales con firma digital y actas de asistencia. Servicio médico laboral en Tierra del Fuego, Argentina."/>
 <meta name="keywords" content="medicina laboral, telemedicina, Tierra del Fuego, Río Grande, Ushuaia, evaluaciones médicas, juntas médicas, exámenes psicotécnicos, medicina del trabajo, MEDGRUP"/>
 <meta name="google-site-verification" content="rypLaxtXtlgNFAbCOYkaq1BbIibMuogbW0M47-FwocY"/>
@@ -159,7 +162,8 @@ button,input,select,textarea{font-family:inherit;}
 .page-title::before{content:none;}
 .page-sub{font-size:14px;color:var(--ink-2);margin-top:6px;}
 .hdr-right{display:flex;align-items:center;gap:8px;}
-.date-chip{font-size:13.5px;color:var(--ink-2);padding:0 6px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* Sin números tabulares: en Schibsted también ensanchan la coma y quedaba "Lunes ," */
+.date-chip{font-size:13.5px;color:var(--ink-2);padding:0 6px 0 0;white-space:nowrap;}
 .date-chip::first-letter{text-transform:uppercase;}
 
 /* ── BOTONES ── */
@@ -375,7 +379,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.55;}
 #notas-preview-hint{margin-top:14px;}
 .ia-ok{background:var(--verde)!important;color:#fff!important;}
 /* Links del turno: una fila por persona (nombre · link · enviar), separadas por filetes */
-.participante-link{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr) auto;align-items:center;gap:8px 16px;padding:12px 0;border-top:1px solid var(--rule);}
+/* Apilado por defecto: los links suelen verse en la columna lateral angosta. En llamada,
+   con el ancho completo, pasan a una sola fila por persona. */
+.participante-link{display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:8px 16px;padding:12px 0;border-top:1px solid var(--rule);}
+#sec-agenda:has(#video-container.active) .participante-link{grid-template-columns:minmax(150px,220px) minmax(0,1fr) auto;}
 .participante-link:first-child{border-top:0;padding-top:2px;}
 .participante-nombre{font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
 .participante-rol{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;}
@@ -393,7 +400,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.55;}
 .tl-item:last-child{border-bottom:none;}
 .tl-dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex-shrink:0;}
 .tl-dot.blue{background:var(--blue-ink);}.tl-dot.rosa{background:var(--magenta);}.tl-dot.amber{background:var(--amber);}.tl-dot.green{background:var(--verde);}
-.tl-time{font-size:12.5px;color:var(--ink-3);width:48px;flex-shrink:0;margin-top:1px;font-variant-numeric:tabular-nums;}
+.tl-time{font-size:12.5px;color:var(--ink-3);min-width:62px;white-space:nowrap;flex-shrink:0;margin-top:1px;font-variant-numeric:tabular-nums;}
 .tl-desc{font-size:13.5px;color:var(--ink);font-weight:500;}
 .tl-sub{font-size:12.5px;color:var(--ink-3);margin-top:1px;}
 
@@ -554,7 +561,7 @@ tr:hover td{background:var(--surface2);}
 .fp-ult-cuando{grid-column:1;}
 .fp-ult-tipo{display:none;}
 .fp-ult .btn{grid-column:2;grid-row:1 / span 2;}
-.participante-link{grid-template-columns:minmax(0,1fr);}
+.participante-link,#sec-agenda:has(#video-container.active) .participante-link{grid-template-columns:minmax(0,1fr);}
 #agenda-cols:not(.sin-log-lateral){grid-template-columns:minmax(0,1fr);}
 .dia-sep{padding:10px 1rem 6px;}
 .card-hdr{padding:.65rem 1rem;min-height:48px;}

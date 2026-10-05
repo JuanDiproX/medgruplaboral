@@ -18,7 +18,7 @@ for(const name of [...pages,'index.html']){
   fs.writeFileSync(target,html);
 }
 const urls=pages.map(name=>origin+(name==='medicina-laboral.html'?'/':'/'+name));
-fs.writeFileSync(path.join(dest,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+urls.map(url=>`  <url><loc>${url}</loc></url>`).join('\n')+'\n</urlset>\n');
+fs.writeFileSync(path.join(dest,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+urls.map(url=>`  <url><loc>${url}</loc><lastmod>${new Date().toISOString().slice(0,10)}</lastmod></url>`).join('\n')+'\n</urlset>\n');
 fs.writeFileSync(path.join(dest,'robots.txt'),`User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`);
 fs.writeFileSync(path.join(dest,'sitemap-index.xml'),'<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>'+origin+'/sitemap.xml</loc></sitemap></sitemapindex>\n');
 fs.writeFileSync(path.join(dest,'.htaccess'),`Options -Indexes\nDirectoryIndex index.html\nErrorDocument 404 /404.html\nRewriteEngine On\nRewriteCond %{HTTPS} !=on\nRewriteRule ^ https://laboral.medgrup.com.ar%{REQUEST_URI} [R=301,L]\nRewriteRule ^medicina-laboral\\.html$ / [R=301,L]\nRewriteCond %{THE_REQUEST} \\s/+index\\.html[\\s?] [NC]\nRewriteRule ^index\\.html$ / [R=301,L]\n`);

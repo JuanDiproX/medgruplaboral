@@ -28,6 +28,19 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Las páginas del sitio público viven en laboral.medgrup.com.ar, pero sus archivos también están
+// en public/ porque el sitio se arma desde acá. Si alguien (o Google) las pide en el dominio del
+// portal, se lo manda al sitio público: así hay una sola versión de cada página y no compiten
+// entre sí en los buscadores. En local se siguen sirviendo para poder previsualizarlas.
+const PAGINAS_SITIO_PUBLICO = /^\/(medicina-laboral\.html|servicios\.html|propuesta\.html|contacto\.html|servicios\/[a-z0-9-]+\.html)$/;
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (!PAGINAS_SITIO_PUBLICO.test(req.path)) return next();
+  if (['localhost', '127.0.0.1'].includes(req.hostname)) return next();
+  const destino = req.path === '/medicina-laboral.html' ? '/' : req.path;
+  res.redirect(301, 'https://laboral.medgrup.com.ar' + destino);
+});
+
 // Toda la app vive en un solo index.html (sin bundler ni nombres con hash): sin esto, el
 // navegador podía quedarse con una copia vieja en caché y no mostrar los cambios ni con un
 // deploy nuevo, hasta que alguien hacía un refresh forzado a mano. Con no-cache el navegador
