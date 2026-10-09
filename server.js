@@ -9,6 +9,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const {sendDocument, filename: pdfFilename} = require('./document-pdf');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2337,7 +2338,7 @@ ${casoControl?.excepcion_geo ? '' : constanciaGeo}
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.send(htmlAuditoria);
+      return await sendDocument(req, res, htmlAuditoria, 'informe-'+req.params.id+'.pdf');
     }
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
@@ -2456,7 +2457,7 @@ ${trazaFirmasHtml}
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    await sendDocument(req, res, html, 'informe-'+req.params.id+'.pdf');
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2591,7 +2592,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de inasistencia · ${t.id}</div>
 <script>window.onload=function(){window.print();}</script></body></html>`;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        return res.send(htmlInasistencia);
+        return await sendDocument(req, res, htmlInasistencia, 'acta-'+req.params.id+'.pdf');
       }
     }
 
@@ -2687,7 +2688,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <div class="wm">MEDGRUP Servicio Médico Laboral · Acta de asistencia · ${t.id}</div>
 <script>window.onload=function(){window.print();}</script></body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    await sendDocument(req, res, html, 'acta-'+req.params.id+'.pdf');
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2882,7 +2883,7 @@ app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
     if (!r.rows.length || !r.rows[0].pdf_firmado) return res.status(404).json({ error: 'No hay PDF firmado' });
     const buf = Buffer.from(r.rows[0].pdf_firmado, 'base64');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf'}"`);
+    res.setHeader('Content-Disposition', `${req.query.download === '1' ? 'attachment' : 'inline'}; filename="${pdfFilename(r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf')}"`);
     res.send(buf);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

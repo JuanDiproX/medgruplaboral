@@ -829,7 +829,7 @@ td.no-label::before{display:none;}
           <button class="vc-texto" id="btn-adjuntos-llamada" onclick="abrirInformesTurno(consultaActual.id)" title="Informes adicionales subidos para este turno"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7l-8.6 8.6a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg><span id="btn-adjuntos-llamada-txt">Adjuntos</span></button>
         </div>
         <div class="video-actions">
-          <button class="btn vc-notas" id="btn-notas-ninja" onclick="toggleNotasPanel()" aria-pressed="false" aria-controls="notas-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8l-4 1 1-4z"/></svg>Informe</button>
+          <button class="btn vc-notas" id="btn-notas-ninja" onclick="toggleNotasPanel()" aria-pressed="false" aria-controls="notas-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8l-4 1 1-4z"/></svg>Descargar informe</button>
           <button class="btn vc-finalizar" onclick="finalizarConsulta()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Finalizar consulta</button>
         </div>
       </div>
@@ -3525,8 +3525,8 @@ function renderAgenda(){
         : `<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="editarDictamen('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Dictamen</button>`
       :'';
     // Acta: el médico la ve como link directo; al admin se le ofrece en el menú de más acciones (abre el modal de edición)
-    const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta</a>`:'';
-    const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
+    const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Descargar acta</a>`:'';
+    const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
     // Informes adicionales redactados aparte: un turno puede tratarse en más de un momento
     // (junta médica que se retoma, seguimiento, etc) y cerrar con más de un informe.
     // OJO: este botón es la ÚNICA forma de subir el primer adjunto de un turno (no hay otra
@@ -4183,7 +4183,7 @@ function subirPDFFirmado(turnoId){
   _pdfInputEl.click();
 }
 
-async function verInformePDF(turnoId){
+async function verInformePDF(turnoId, button){
   try{
     const res=await fetch('/api/dictamenes/turno/'+turnoId,{headers:apiHeaders()});
     const data=await res.json();
@@ -4192,9 +4192,9 @@ async function verInformePDF(turnoId){
     const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
     const elegido=propio||dictamenes[0];
     if(elegido.pdf_firmado){
-      window.open('/api/dictamenes/'+elegido.id+'/pdf-firmado','_blank');
+      await descargarPDF('/api/dictamenes/'+elegido.id+'/pdf-firmado',button);
     } else {
-      window.open('/api/dictamenes/'+elegido.id+'/pdf','_blank');
+      await descargarPDF('/api/dictamenes/'+elegido.id+'/pdf',button);
     }
   }catch(e){mostrarError('Error al buscar el informe: '+e.message);}
 }
@@ -4643,7 +4643,7 @@ function renderDictamenesExistentes(dictamenes){
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">${d.numero} · ${aptLabel} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'sin reposo'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;text-decoration:none;">PDF</a>
+        <a href="/api/dictamenes/${d.id}/${d.pdf_firmado ? 'pdf-firmado' : 'pdf'}?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;text-decoration:none;">PDF</a>
         ${esMio?`<button class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;" onclick='cargarDictamenEnFormulario(${JSON.stringify(d).replace(/'/g,"&apos;")})'>Editar</button>`:''}
       </div>
     </div>`;
@@ -4672,13 +4672,13 @@ function cargarDictamenEnFormulario(d){
     <div>${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
   `;
   document.getElementById('cert-pdf-links').innerHTML=`
-    <a href="/api/dictamenes/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+    <a href="/api/dictamenes/${d.id}/pdf?download=1" data-descarga-pdf class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-      ${turnoDictamenActual?.tipo ? 'Informe de '+turnoDictamenActual.tipo : 'Informe médico-laboral firmado'}
+      Descargar informe PDF
     </a>
-    ${turnoDictamenActual?`<a href="/api/turnos/${turnoDictamenActual.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+    ${turnoDictamenActual?`<a href="/api/turnos/${turnoDictamenActual.id}/acta?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-      Acta de Asistencia
+      Descargar acta PDF
     </a>`:''}
   `;
   document.getElementById('btn-guardar-dict').innerHTML=`
@@ -6950,13 +6950,13 @@ async function guardarDictamen(){
       <div>${num} · ${pacienteNombre} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
     `;
     document.getElementById('cert-pdf-links').innerHTML=`
-      <a href="/api/dictamenes/${data.dictamen.id}/pdf" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <a href="/api/dictamenes/${data.dictamen.id}/pdf?download=1" data-descarga-pdf class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-        Informe médico-laboral firmado
+        Descargar informe PDF
       </a>
-      ${t?`<a href="/api/turnos/${t.id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      ${t?`<a href="/api/turnos/${t.id}/acta?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-        Acta de Asistencia
+        Descargar acta PDF
       </a>`:''}
     `;
 
@@ -7466,6 +7466,7 @@ async function eliminarServicioCatalogo(id){
 checkSession();
 chequearTokenReset();
 </script>
+<script src="/descargas.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.93.0/dist/daily.js" crossorigin="anonymous"></script>
 <script src="/llamada.js"></script>
 <script src="/chat-medico.js"></script>
