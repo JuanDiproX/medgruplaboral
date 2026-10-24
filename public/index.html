@@ -3527,6 +3527,8 @@ function renderAgenda(){
     // Acta: el médico la ve como link directo; al admin se le ofrece en el menú de más acciones (abre el modal de edición)
     const ba=(t.estado==='completado'&&!esAdmin)?`<a href="/api/turnos/${t.id}/acta?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Descargar acta</a>`:'';
     const bp=t.estado==='completado'?`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="verInformePDF('${t.id}',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Informe</button>`:'';
+    const binas=t.estado==='completado' && t.inasistencia
+      ? `<a href="/api/turnos/${t.id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Informe de inasistencia</a>` : '';
     // Informes adicionales redactados aparte: un turno puede tratarse en más de un momento
     // (junta médica que se retoma, seguimiento, etc) y cerrar con más de un informe.
     // OJO: este botón es la ÚNICA forma de subir el primer adjunto de un turno (no hay otra
@@ -3551,7 +3553,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binf}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
   agruparAgendaPorDia(lista);
  }catch(err){
@@ -5899,6 +5901,8 @@ function renderCasosAusentismo(){
     // y si no compareció sale la de inasistencia. Por eso alcanza con un solo link.
     if(c.turno_id)
       acciones.push(`<a href="/api/turnos/${c.turno_id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Ver acta</a>`);
+    if(c.turno_id && c.estado === 'resuelto')
+      acciones.push(`<a href="/api/turnos/${c.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Informe de inasistencia</a>`);
     if(c.turno_id && ['programado','en-curso'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="registrarInasistencia(${c.id})">No compareció</button>`);
     if(c.estado === 'programado')

@@ -1426,7 +1426,9 @@ app.get('/api/turnos', authMiddleware, async (req, res) => {
     const esAdmin = req.usuario.rol === 'admin';
     const r = await pool.query(`
       SELECT t.*, COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL),'{}') as medicos,
-        (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id = t.id) AS informes_extra
+        (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id = t.id) AS informes_extra,
+        EXISTS (SELECT 1 FROM casos_ausentismo ca WHERE ca.turno_id=t.id AND ca.estado='resuelto'
+          AND NOT EXISTS (SELECT 1 FROM eventos_turno et WHERE et.turno_id=t.id AND et.tipo='union_paciente')) AS inasistencia
       FROM turnos t LEFT JOIN turno_medicos tm ON t.id=tm.turno_id
       ${esAdmin ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos a WHERE a.turno_id=t.id AND a.medico_nombre=$1)'}
       GROUP BY t.id ORDER BY t.fecha ASC, t.hora ASC
@@ -3606,9 +3608,45 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
   } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
+// --- Informe de inasistencia ---
+// Se emite junto con el acta cuando el trabajador no comparece. No contiene una evaluación
+// clínica: deja constancia del turno, la tolerancia de 20 minutos y la falta de ingreso.
+app.get('/api/turnos/:id/informe-inasistencia', authMiddleware, async (req, res) => {
+  try {
+    const turno = (await pool.query('SELECT * FROM turnos WHERE id=$1', [req.params.id])).rows[0];
+    if (!turno) return res.status(404).json({ error: 'No encontrado' });
+    const caso = (await pool.query('SELECT * FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.params.id])).rows[0];
+    if (!caso || caso.estado !== 'resuelto') return res.status(400).json({ error: 'El informe se habilita al registrar la inasistencia' });
+    const entro = await pool.query(`SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado IN ('aceptado','excepcion_geo') LIMIT 1`, [caso.id]);
+    const seSumo = await pool.query(`SELECT 1 FROM eventos_turno WHERE turno_id=$1 AND tipo='union_paciente' LIMIT 1`, [turno.id]);
+    if (entro.rows.length || seSumo.rows.length) return res.status(409).json({ error: 'El trabajador sí compareció al control' });
+
+    const fechaISO = turno.fecha instanceof Date
+      ? `${turno.fecha.getFullYear()}-${String(turno.fecha.getMonth()+1).padStart(2,'0')}-${String(turno.fecha.getDate()).padStart(2,'0')}`
+      : String(turno.fecha).split('T')[0];
+    const fecha = new Date(fechaISO + 'T12:00:00Z').toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric',timeZone:'UTC'});
+    const fechaEmision = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric',timeZone:ZONA_ARG});
+    const inicio = caso.control_iniciado_en ? new Date(caso.control_iniciado_en) : null;
+    const horaPactada = turno.hora || '—';
+    const horaInicio = inicio ? inicio.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG}) : horaPactada;
+    const cierre = inicio ? new Date(inicio.getTime()+20*60*1000) : null;
+    const horaCierre = cierre ? cierre.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG}) : '—';
+    const control = turno.tipo || caso.tipo_control || 'Control de ausentismo';
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Informe de inasistencia - ${turno.paciente}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;padding:46px 52px;font-size:13px;line-height:1.7}.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px}.logo-img{height:42px}h1{font-size:17px;margin-bottom:6px}.subt{font-size:11px;color:#5a5750;margin-bottom:18px}p{text-align:justify;margin-bottom:12px}.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:14px 16px;margin:18px 0 22px;display:grid;grid-template-columns:1fr 1fr;gap:9px 20px}.label{color:#777;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px}.value{font-weight:600}h2{font-size:12.5px;color:#2a5080;margin:18px 0 10px}.conclusion{background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:13px 16px;color:#7e2944}.firmas{margin-top:46px;border-top:1px solid #e8e4de;padding-top:20px;width:270px;text-align:center}.linea{height:28px;border-bottom:1px solid #222}.wm{margin-top:30px;text-align:center;color:#aaa;font-size:9px}@media print{body{padding:26px 32px}}</style></head><body>
+<div class="header"><div style="display:flex;align-items:center;gap:11px"><img src="/logo.png" class="logo-img"/><div><div style="font-size:18px;font-weight:700;color:#3a6ea8">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1px;text-transform:uppercase">Servicio Médico Laboral</div></div></div><div style="text-align:right;font-size:10.5px;color:#5a5750">Tierra del Fuego<br>${fechaEmision}</div></div>
+<h1>INFORME DE INASISTENCIA AL CONTROL</h1><div class="subt">Constancia de no comparecencia al control médico laboral</div>
+<p>Se deja constancia de que el/la Sr./Sra. <strong>${turno.paciente}</strong>, perteneciente a <strong>${turno.empresa||'—'}</strong>, se encontraba citado/a a un <strong>${control}</strong> mediante videollamada a través de la plataforma MEDGRUP.</p>
+<div class="datos-box"><div><div class="label">Trabajador/a</div><div class="value">${turno.paciente}</div></div><div><div class="label">Empresa</div><div class="value">${turno.empresa||'—'}</div></div><div><div class="label">Fecha del control</div><div class="value">${fecha}</div></div><div><div class="label">Hora pactada</div><div class="value">${horaPactada} hs</div></div><div><div class="label">Inicio del control</div><div class="value">${horaInicio} hs</div></div><div><div class="label">Tolerancia otorgada</div><div class="value">20 minutos</div></div></div>
+<h2>Constancia</h2><p>Iniciado el control a las <strong>${horaInicio} hs</strong>, se aguardó la incorporación del/de la trabajador/a durante el plazo de tolerancia de <strong>20 minutos</strong>, hasta las <strong>${horaCierre} hs</strong>. Durante dicho período no se registró su ingreso a la videollamada ni comparecencia al control.</p>
+<div class="conclusion"><strong>Conclusión:</strong> el/la trabajador/a ${turno.paciente} no se presentó al control médico laboral en la fecha y horario indicados. En consecuencia, no fue posible realizar la evaluación médica.</div>
+<div class="firmas"><div class="linea"></div><strong>Profesional interviniente</strong><br><span style="font-size:11px;color:#666">MEDGRUP Servicio Médico Laboral</span></div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Informe de inasistencia · ${turno.id}</div><script>window.onload=function(){window.print()}</script></body></html>`;
+    return await sendDocument(req, res, html, 'informe-inasistencia-'+req.params.id+'.pdf');
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- Cierre por inasistencia ---
-// El trabajador no entró al control. No hay informe que emitir —no se lo pudo evaluar—, así
-// que el caso se cierra acá y el único documento que queda es el acta que lo deja asentado.
 app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
@@ -3634,7 +3672,7 @@ app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, r
       `UPDATE casos_ausentismo
        SET estado='resuelto', resuelto_en=NOW(), control_iniciado_en = COALESCE(control_iniciado_en, NOW())
        WHERE id=$1`, [req.params.id]);
-    res.json({ ok: true, acta: `/api/turnos/${caso.turno_id}/acta` });
+    res.json({ ok: true, acta: `/api/turnos/${caso.turno_id}/acta`, informe: `/api/turnos/${caso.turno_id}/informe-inasistencia` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
