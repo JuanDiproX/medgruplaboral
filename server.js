@@ -440,6 +440,16 @@ async function initDB() {
       `UPDATE presupuestos      SET empresa='C.E.Me.P S.R.L' WHERE empresa='CEMEP'`,
     ]) await client.query(q).catch(err => console.error('No se pudo renombrar CEMEP:', err.message));
 
+    // Prieto Romina Noemi fue creado como "Control de licencia", aunque corresponde al
+    // circuito de ausentismo. Se corrige solo ese registro por nombre y tipo para conservar
+    // el mismo turno, sus links y su caso asociado.
+    await client.query(`
+      UPDATE turnos
+         SET tipo='Control de ausentismo'
+       WHERE UPPER(TRIM(paciente))='PRIETO ROMINA NOEMI'
+         AND tipo='Control de licencia'
+    `).catch(err => console.error('No se pudo corregir el tipo de control de Prieto:', err.message));
+
     await migrarTimestampsAZonaHoraria(client);
 
     console.log('✓ Base de datos lista');
