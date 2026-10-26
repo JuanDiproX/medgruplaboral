@@ -2549,6 +2549,18 @@ app.get('/api/turnos/:id/acta', async (req, res) => {
           ? inicioActa.toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG })
           : (t.hora || '');
         const etiquetaHora = inicioActa ? 'Control iniciado a las' : 'Hora citada';
+        const eventoInicio = eventos.find(e => e.tipo === 'union_medico' || e.tipo === 'inicio_medico');
+        const eventoFin = eventos.find(e => e.tipo === 'fin_consulta');
+        const esperaDesde = inicioActa || (eventoInicio ? new Date(eventoInicio.creado_en) : null);
+        const esperaHasta = eventoFin ? new Date(eventoFin.creado_en) : null;
+        const esperaSegundos = esperaDesde && esperaHasta
+          ? Math.max(0, Math.round((esperaHasta - esperaDesde) / 1000))
+          : 20 * 60;
+        const esperaMinutos = Math.floor(esperaSegundos / 60);
+        const esperaRestantes = esperaSegundos % 60;
+        const esperaTexto = esperaRestantes
+          ? `${esperaMinutos} minutos y ${esperaRestantes} segundos`
+          : `${esperaMinutos} minutos`;
         // Cada rechazo se explica en castellano: "fuera_de_rango" no le dice nada a nadie
         const motivoIntento = i => ({
           fuera_de_rango:            `Rechazado — a ${Math.round(i.distancia_metros)} m del domicilio informado (máximo admitido: ${radioActa} m)`,
@@ -2605,7 +2617,9 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   <div><div class="dato-label">${etiquetaHora}</div><div class="dato-value">${horaActa||'—'} hs</div></div>
   <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${casoActa.domicilio||'—'}</div></div>
   <div><div class="dato-label">Radio admitido</div><div class="dato-value">${radioActa} m</div></div>
+  <div><div class="dato-label">Tiempo de espera</div><div class="dato-value">${esperaTexto}</div></div>
 </div>
+<p>La profesional interviniente permaneció en la sala de videollamada durante <strong>${esperaTexto}</strong>, dentro del plazo de tolerancia previsto de 20 minutos, sin que se registrara el ingreso del/de la trabajador/a.</p>
 <h2>Registro de intentos de ingreso</h2>
 <div class="eventos-box">${intentosHtml}</div>
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
