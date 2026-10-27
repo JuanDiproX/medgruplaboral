@@ -3826,6 +3826,119 @@ function instanteTurno(t) {
   return new Date(y, m - 1, d, Number.isFinite(hh) ? hh : 12, Number.isFinite(mm) ? mm : 0);
 }
 
+// El legajo muestra lo que dice el informe impreso, no lo que quedó guardado en el
+// formulario: el selector de aptitud siempre tiene un valor (por defecto), pero si el médico
+// marcó "sin aptitud" —o es un control de ausentismo, que sale con el formato de auditoría—
+// el PDF no dictamina aptitud ni reposo, y el legajo tampoco debe hacerlo.
+const APTITUD_TEXTO = { apto: 'Apto', restricc: 'Apto con restricciones', 'no-apto': 'No apto' };
+function dictamenComoSeImprime(d, esAuditoria) {
+  const conAptitud = !d.sin_aptitud && !esAuditoria;
+  return {
+    id: d.id, numero: d.numero, medico: d.medico, firmado: d.firmado,
+    diagnostico: d.diagnostico_cie || d.diagnostico_desc || d.diagnostico || '',
+    aptitud: conAptitud ? (APTITUD_TEXTO[d.aptitud] || d.aptitud || null) : null,
+    aptitud_detalle: conAptitud ? (d.aptitud_texto || '') : '',
+    dias_reposo: conAptitud ? (Number(d.dias_reposo) || 0) : null,
+    derivacion: conAptitud && d.derivacion && d.derivacion !== 'Sin derivación' ? d.derivacion : '',
+    conclusion: d.conclusion || '', indicaciones: d.indicaciones || ''
+  };
+}
+
+// Pacientes armados a partir de turnos y casos: el mismo nombre (escrito como sea) o el mismo
+// DNI son la misma persona. Es lo que permite abrir un seguimiento eligiendo al paciente en
+// vez de buscar y tildar sus registros uno por uno.
+async function pacientesAgrupados() {
+  const turnos = (await pool.query(`
+    SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa, t.estado,
+           (SELECT d.paciente_dni FROM dictamenes d WHERE d.turno_id=t.id AND d.paciente_dni <> '' LIMIT 1) AS dni
+    FROM turnos t`)).rows;
+  const casos = (await pool.query(
+    `SELECT id, trabajador_nombre, trabajador_dni, empresa_nombre, turno_id, creado_en FROM casos_ausentismo`)).rows;
+  const turnoDeCaso = new Set(casos.map(c => c.turno_id).filter(Boolean));
+
+  const registros = [
+    ...casos.map(c => ({ caso: c.id, nombre: c.trabajador_nombre, dni: soloDigitos(c.trabajador_dni),
+      fecha: fechaLocal(c.creado_en), empresa: c.empresa_nombre })),
+    ...turnos.map(t => ({ turno: t.id, nombre: t.paciente, dni: soloDigitos(t.dni),
+      fecha: fechaDeColumna(t.fecha), empresa: t.empresa, completado: t.estado === 'completado' })),
+  ].map(r => ({ ...r, clave: claveNombre(r.nombre) })).filter(r => r.clave || r.dni);
+
+  // Mismo nombre o mismo DNI = misma persona, y es transitivo: el caso trae el DNI, el turno
+  // con ese DNI trae el nombre completo, y el turno nuevo sin DNI entra por ese nombre.
+  const padre = new Map();
+  const raiz = x => { while (padre.get(x) !== x) { padre.set(x, padre.get(padre.get(x))); x = padre.get(x); } return x; };
+  const nodo = x => { if (!padre.has(x)) padre.set(x, x); return x; };
+  const unir = (a, b) => padre.set(raiz(a), raiz(b));
+  for (const r of registros) {
+    const n = r.clave ? nodo('n:' + r.clave) : null, d = r.dni ? nodo('d:' + r.dni) : null;
+    if (n && d) unir(n, d);
+  }
+
+  const grupos = new Map();
+  for (const r of registros) {
+    const k = raiz(r.clave ? 'n:' + r.clave : 'd:' + r.dni);
+    if (!grupos.has(k)) grupos.set(k, { claves: new Set(), nombres: [], dnis: [], empresas: [], turnos: [], casos: [], consultas: 0, pendientes: 0, ultima: '' });
+    const g = grupos.get(k);
+    if (r.clave) g.claves.add(r.clave);
+    if (r.dni) g.dnis.push([r.fecha, r.dni]);
+    g.nombres.push([r.fecha, r.nombre]);
+    if (r.empresa) g.empresas.push([r.fecha, r.empresa]);
+    if (r.caso) g.casos.push(r.caso);
+    // El turno de un caso entra con el caso (que además trae certificados e informes)
+    if (r.turno && !turnoDeCaso.has(r.turno)) g.turnos.push(r.turno);
+    if (r.completado) g.consultas++;
+    else if (r.turno) g.pendientes++;
+    if (r.fecha > g.ultima) g.ultima = r.fecha;
+  }
+  const masReciente = xs => [...xs].sort((a, b) => b[0].localeCompare(a[0]))[0]?.[1] || '';
+  return [...grupos.values()].map(g => ({
+    claves: [...g.claves], nombre: masReciente(g.nombres), dni: masReciente(g.dnis), empresa: masReciente(g.empresas),
+    turnos: g.turnos, casos: g.casos, consultas: g.consultas, pendientes: g.pendientes, ultima: g.ultima
+  }));
+}
+
+// Buscador del alta: por nombre (cualquier orden, sin tildes) o DNI. Sin texto devuelve los
+// pacientes con movimiento más reciente, para poder elegir sin escribir. Con turno_id devuelve
+// el paciente de ese turno (el "Iniciar seguimiento" de la agenda).
+app.get('/api/seguimientos/pacientes', adminMiddleware, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    let lista = await pacientesAgrupados();
+    if (req.query.turno_id) {
+      const t = await pool.query('SELECT paciente FROM turnos WHERE id=$1', [req.query.turno_id]);
+      const caso = await pool.query('SELECT id FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.query.turno_id]);
+      lista = lista.filter(p => p.turnos.includes(req.query.turno_id) || (caso.rows[0] && p.casos.includes(caso.rows[0].id)) ||
+        (t.rows[0] && p.claves.includes(claveNombre(t.rows[0].paciente))));
+    } else if (q) {
+      const palabras = palabrasDelNombre(q), doc = q.replace(/\D/g, '');
+      lista = lista.filter(p => {
+        if (doc.length >= 4 && p.dni.includes(doc)) return true;
+        return palabras.length && p.claves.some(c => { const suyas = c.split(' ');
+          return palabras.every(w => suyas.some(s => s.startsWith(w))); });
+      });
+    }
+    lista.sort((a, b) => b.ultima.localeCompare(a.ultima));
+    lista = lista.slice(0, q || req.query.turno_id ? 20 : 8);
+
+    // ¿Ya tiene legajo? Por vínculo, por nombre o por DNI
+    const segs = (await pool.query('SELECT id, paciente_nombre, paciente_dni, estado FROM seguimientos')).rows;
+    const vincs = (await pool.query('SELECT seguimiento_id, turno_id, caso_id FROM seguimiento_vinculos')).rows;
+    const vacio = s => !vincs.some(v => v.seguimiento_id === s.id);
+    // Un legajo abierto a mano con poco dato ("Zuñiga") y todavía sin registros es de este
+    // paciente si todas sus palabras están en el nombre: al elegirlo se completa ese legajo
+    // en vez de abrir otro. Con registros ya cargados, solo vale el nombre completo o el DNI.
+    const contenido = (s, p) => { const w = palabrasDelNombre(s.paciente_nombre);
+      return w.length && p.claves.some(c => w.every(x => c.split(' ').includes(x))); };
+    for (const p of lista) {
+      const s = segs.find(s => p.claves.includes(claveNombre(s.paciente_nombre)) || (p.dni && soloDigitos(s.paciente_dni) === p.dni)) ||
+        segs.find(s => vincs.some(v => v.seguimiento_id === s.id && (p.turnos.includes(v.turno_id) || p.casos.includes(v.caso_id)))) ||
+        segs.find(s => s.estado !== 'cerrado' && vacio(s) && contenido(s, p));
+      p.seguimiento = s ? { id: s.id, estado: s.estado, vacio: vacio(s) } : null;
+    }
+    res.json({ ok: true, pacientes: lista });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/seguimientos', authMiddleware, async (req, res) => {
   try {
     const esAdmin = req.usuario.rol === 'admin';
@@ -4006,9 +4119,15 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
       WHERE t.id = ANY($1) GROUP BY t.id`, [turnoIds])).rows : [];
     const dictamenes = turnoIds.length ? (await pool.query(`
       SELECT id, numero, turno_id, medico, fecha_consulta, diagnostico, diagnostico_desc, diagnostico_cie,
-             aptitud, aptitud_texto, dias_reposo, derivacion, conclusion, indicaciones,
+             aptitud, aptitud_texto, dias_reposo, derivacion, conclusion, indicaciones, sin_aptitud,
              (pdf_firmado IS NOT NULL) AS firmado, creado_en
       FROM dictamenes WHERE turno_id = ANY($1) ORDER BY creado_en ASC`, [turnoIds])).rows : [];
+    // Los controles de ausentismo salen con el formato corto de auditoría, que no dictamina
+    // aptitud: hay que saberlo aunque el caso no esté vinculado al legajo.
+    const turnosAuditoria = new Set(turnoIds.length ? (await pool.query(
+      `SELECT turno_id FROM casos_ausentismo WHERE turno_id = ANY($1) AND COALESCE(tipo_control,'ausentismo')='ausentismo'`,
+      [turnoIds])).rows.map(r => r.turno_id) : []);
+    const vistas = new Map(dictamenes.map(d => [d.id, dictamenComoSeImprime(d, turnosAuditoria.has(d.turno_id))]));
     const informes = (casoIds.length || turnoIds.length) ? (await pool.query(`
       SELECT id, caso_id, turno_id, titulo, nombre_archivo, tipo_mime, subido_por, creado_en
       FROM informes_ausentismo WHERE caso_id = ANY($1::int[]) OR turno_id = ANY($2::varchar[])`, [casoIds, turnoIds])).rows : [];
@@ -4050,10 +4169,7 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
         medicos: t.medicos, modalidad: t.modalidad, motivo: t.motivo,
         previo: { diagnostico: t.diagnostico_previo, dias_reposo: t.dias_reposo_previo, medico_tratante: t.medico_tratante },
         alerta: noVino,
-        dictamenes: dics.map(d => ({ id: d.id, numero: d.numero, medico: d.medico, diagnostico: d.diagnostico,
-          diagnostico_desc: d.diagnostico_desc, diagnostico_cie: d.diagnostico_cie, aptitud: d.aptitud,
-          aptitud_texto: d.aptitud_texto, dias_reposo: d.dias_reposo, derivacion: d.derivacion,
-          conclusion: d.conclusion, indicaciones: d.indicaciones, firmado: d.firmado })) });
+        dictamenes: dics.map(d => vistas.get(d.id)) });
     }
 
     for (const i of informes) hitos.push({ tipo: 'informe', instante: i.creado_en, informe_id: i.id,
@@ -4066,10 +4182,13 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
     // Resumen: lo que el médico quiere saber antes de leer el detalle. El reposo de una junta
     // viene en varios dictámenes del mismo turno, así que se toma uno por turno.
     const consultas = turnos.filter(t => t.estado === 'completado').sort((a, b) => instanteTurno(a) - instanteTurno(b));
-    const reposoPorTurno = consultas.map(t => Math.max(0, ...dictamenes.filter(d => d.turno_id === t.id).map(d => Number(d.dias_reposo) || 0)));
-    const dicsOrden = [...dictamenes].sort((a, b) => new Date(a.creado_en) - new Date(b.creado_en));
-    const ultimoConDx = [...dicsOrden].reverse().find(d => d.diagnostico_desc || d.diagnostico);
-    const ultimoConApt = [...dicsOrden].reverse().find(d => d.aptitud);
+    // Solo cuentan los turnos donde algún dictamen indicó reposo de verdad (no "sin aptitud")
+    const reposoPorTurno = consultas
+      .map(t => dictamenes.filter(d => d.turno_id === t.id).map(d => vistas.get(d.id).dias_reposo).filter(x => x != null))
+      .filter(xs => xs.length).map(xs => Math.max(...xs));
+    const vistasOrden = [...dictamenes].sort((a, b) => new Date(a.creado_en) - new Date(b.creado_en)).map(d => vistas.get(d.id)).reverse();
+    const ultimoConDx = vistasOrden.find(v => v.diagnostico);
+    const ultimoConApt = vistasOrden.find(v => v.aptitud);
     const hoy = fechaLocal(new Date());
     const proximo = turnos.filter(t => t.estado !== 'completado' && fechaDeColumna(t.fecha) >= hoy)
       .sort((a, b) => instanteTurno(a) - instanteTurno(b))[0];
@@ -4085,10 +4204,11 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
         consultas: consultas.length,
         primera: consultas[0] ? fechaDeColumna(consultas[0].fecha) : null,
         ultima: consultas.length ? fechaDeColumna(consultas[consultas.length - 1].fecha) : null,
-        dias_reposo_total: reposoPorTurno.reduce((a, b) => a + b, 0),
+        dias_reposo_total: reposoPorTurno.length ? reposoPorTurno.reduce((a, b) => a + b, 0) : null,
         ultimo_reposo: reposoPorTurno.length ? reposoPorTurno[reposoPorTurno.length - 1] : null,
-        ultimo_diagnostico: ultimoConDx ? [ultimoConDx.diagnostico_cie, ultimoConDx.diagnostico_desc || ultimoConDx.diagnostico].filter(Boolean).join(' · ') : null,
-        ultima_aptitud: ultimoConApt ? (ultimoConApt.aptitud_texto || ultimoConApt.aptitud) : null,
+        ultimo_diagnostico: ultimoConDx ? ultimoConDx.diagnostico : null,
+        ultima_aptitud: ultimoConApt ? ultimoConApt.aptitud : null,
+        ultima_aptitud_detalle: ultimoConApt ? ultimoConApt.aptitud_detalle : '',
         certificados: certificados.length, informes: informes.length,
         inasistencias: hitos.filter(h => h.tipo === 'inasistencia').length,
         proximo_turno: proximo ? { id: proximo.id, fecha: fechaDeColumna(proximo.fecha), hora: proximo.hora, tipo: proximo.tipo } : null

@@ -699,6 +699,14 @@ td.no-label::before{display:none;}
 
 .sg-sub-tit{font-size:14px;font-weight:600;color:var(--ink);margin-top:1.25rem;}
 .sg-ayuda{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin:3px 0 8px;}
+.sg-pac-lista{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:340px;overflow-y:auto;}
+.sg-pac{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;text-align:left;width:100%;background:#fff;border:1px solid var(--rule);border-radius:var(--r-sm);padding:10px 12px;font:inherit;cursor:pointer;transition:border-color .15s,background .15s;}
+.sg-pac:hover,.sg-pac:focus-visible{border-color:var(--ink);background:var(--surface2);outline:none;}
+.sg-pac-nombre{font-size:14.5px;font-weight:600;color:var(--ink);}
+.sg-pac-meta{grid-column:1;font-size:12.5px;color:var(--ink-3);}
+.sg-pac-accion{grid-column:2;grid-row:1 / span 2;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.sg-elegido{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;}
+.sg-elegido strong{font-size:15px;}
 .sg-sug{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--rule);border-radius:var(--r-sm);margin-bottom:6px;font-size:13px;cursor:pointer;}
 .sg-sug input{width:auto;margin-top:3px;}
 .sg-sug-txt{flex:1;min-width:0;}
@@ -1397,24 +1405,29 @@ td.no-label::before{display:none;}
 
 <!-- MODAL SEGUIMIENTO (alta y edición del legajo) -->
 <div class="modal-bg" id="modal-seguimiento">
-  <div class="modal" style="max-width:640px;">
+  <div class="modal" style="max-width:600px;">
     <div class="modal-title" id="sg-modal-titulo">Nuevo seguimiento</div>
-    <div class="form-grid">
-      <div class="form-group full"><label class="form-lbl" for="sg-f-nombre">Paciente (apellido y nombre)</label><input type="text" id="sg-f-nombre" placeholder="APELLIDO, Nombre" onchange="buscarSugerenciasModal()"/></div>
-      <div class="form-group"><label class="form-lbl" for="sg-f-dni">DNI</label><input type="text" id="sg-f-dni" placeholder="30111222" onchange="buscarSugerenciasModal()"/></div>
-      <div class="form-group"><label class="form-lbl" for="sg-f-empresa">Empresa</label><select id="sg-f-empresa"><option value="">Cargando empresas...</option></select></div>
-      <div class="form-group full"><label class="form-lbl" for="sg-f-diagnostico">Diagnóstico o motivo del seguimiento</label><textarea id="sg-f-diagnostico" style="min-height:64px;" placeholder="Lumbalgia crónica con licencias reiteradas desde junio..."></textarea></div>
-      <div class="form-group full"><label class="form-lbl" for="sg-f-notas">Notas para los médicos (opcional)</label><textarea id="sg-f-notas" style="min-height:56px;" placeholder="Evaluar junta médica si no mejora en el próximo control..."></textarea></div>
+    <div id="sg-paso-buscar">
+      <label class="form-lbl" for="sg-buscar-paciente" style="display:block;">¿A qué paciente vas a seguir?</label>
+      <input type="search" id="sg-buscar-paciente" placeholder="Apellido, nombre o DNI" oninput="buscarPacientesModal()" autocomplete="off" style="display:block;width:100%;margin-top:6px;height:42px;"/>
+      <div class="sg-ayuda" id="sg-pac-ayuda" style="margin-top:12px;">Pacientes con turnos recientes</div>
+      <div id="sg-pac-resultados" class="sg-pac-lista"></div>
+      <div class="sg-ayuda" style="margin-top:10px;">¿No aparece? <button type="button" class="sg-link" style="margin:0;" onclick="cargarPacienteManual()">Cargalo a mano</button></div>
     </div>
-    <div id="sg-f-sugerencias-wrap">
-      <div class="sg-sub-tit">Registros de este paciente</div>
-      <div class="sg-ayuda">Marcá los turnos y casos que son de esta persona. Los turnos y casos nuevos con el mismo nombre o DNI se suman solos mientras el seguimiento esté abierto.</div>
-      <div id="sg-f-sugerencias"><div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div></div>
+    <div id="sg-paso-datos" style="display:none;">
+      <div id="sg-elegido"></div>
+      <div class="form-grid">
+        <div class="form-group full sg-solo-manual"><label class="form-lbl" for="sg-f-nombre">Paciente (apellido y nombre)</label><input type="text" id="sg-f-nombre" placeholder="APELLIDO, Nombre"/></div>
+        <div class="form-group sg-solo-manual"><label class="form-lbl" for="sg-f-dni">DNI</label><input type="text" id="sg-f-dni" placeholder="30111222"/></div>
+        <div class="form-group sg-solo-manual"><label class="form-lbl" for="sg-f-empresa">Empresa</label><select id="sg-f-empresa"><option value="">Cargando empresas...</option></select></div>
+        <div class="form-group full"><label class="form-lbl" for="sg-f-diagnostico">Motivo del seguimiento <span style="font-weight:400;color:var(--ink-3);">(opcional)</span></label><textarea id="sg-f-diagnostico" style="min-height:60px;" placeholder="Lumbalgia crónica con licencias reiteradas desde junio..."></textarea></div>
+        <div class="form-group full"><label class="form-lbl" for="sg-f-notas">Notas para los médicos <span style="font-weight:400;color:var(--ink-3);">(opcional)</span></label><textarea id="sg-f-notas" style="min-height:52px;" placeholder="Evaluar junta médica si no mejora en el próximo control..."></textarea></div>
+      </div>
     </div>
     <div id="sg-f-error" class="sg-error" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalSeguimiento()">Cancelar</button>
-      <button class="btn btn-primary" id="sg-f-guardar" onclick="guardarSeguimiento()">Abrir seguimiento</button>
+      <button class="btn btn-primary" id="sg-f-guardar" onclick="guardarSeguimiento()" style="display:none;">Abrir seguimiento</button>
     </div>
   </div>
 </div>
@@ -3682,6 +3695,8 @@ function renderAgenda(){
         menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');abrirModalEditarActa('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>Acta de asistencia</button>`;
         menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');subirPDFFirmado('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir informe firmado</button>`;
       }
+      if(!marcasSeguimiento[t.id] || marcasSeguimiento[t.id].estado === 'cerrado')
+        menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');abrirModalSeguimiento(null,{turnoId:'${t.id}'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Iniciar seguimiento</button>`;
       menuItems+=`<button class="actions-menu-item" onclick="cerrarMenuAcciones('${t.id}');abrirModalEditar('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Editar turno</button>`;
       menuItems+=`<button class="actions-menu-item danger" onclick="cerrarMenuAcciones('${t.id}');eliminarTurno('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>Eliminar turno</button>`;
     }
@@ -7730,9 +7745,14 @@ async function verDetalleSeguimiento(id){
   cont.style.display = '';
   cont.innerHTML = '<div class="sg-vacio">Cargando el seguimiento...</div>';
   try{
-    const r = await fetch('/api/seguimientos/'+id, {headers:apiHeaders()});
-    const d = await r.json();
+    const esAdmin = usuarioActual?.rol === 'admin';
+    // Las sugerencias van en paralelo: si fallan, el legajo se muestra igual
+    const [d, sug] = await Promise.all([
+      fetch('/api/seguimientos/'+id, {headers:apiHeaders()}).then(r => r.json()),
+      esAdmin ? fetch('/api/seguimientos/sugerencias?seguimiento_id='+id, {headers:apiHeaders()}).then(r => r.json()).catch(() => null) : null
+    ]);
     if(!d.ok) throw new Error(d.error || 'No se pudo abrir');
+    d.sugerencias = sug?.ok ? sug : null;
     seguimientoActual = d;
     renderDetalleSeguimiento();
     window.scrollTo({top:0,behavior:'smooth'});
@@ -7766,9 +7786,11 @@ function renderDetalleSeguimiento(){
   const dato = (lbl, val, sub, texto) => `<div class="sg-dato"><div class="sg-dato-lbl">${lbl}</div><div class="sg-dato-val${texto?' texto':''}">${val}</div>${sub?`<div class="sg-dato-sub">${sub}</div>`:''}</div>`;
   const resumen = [
     dato('Consultas', r.consultas, r.primera ? `${sgFecha(r.primera,false)} → ${sgFecha(r.ultima,false)}` : 'Sin consultas todavía'),
-    dato('Reposo indicado', `${r.dias_reposo_total} días`, r.ultimo_reposo != null ? `Último control: ${r.ultimo_reposo} días` : ''),
-    dato('Último diagnóstico', escaparHtml(r.ultimo_diagnostico || '—'), '', true),
-    dato('Última aptitud', escaparHtml(r.ultima_aptitud || '—'), '', true),
+    r.dias_reposo_total != null
+      ? dato('Reposo indicado', `${r.dias_reposo_total} días`, `Último control: ${r.ultimo_reposo} días`)
+      : dato('Reposo indicado', '—', r.consultas ? 'Los informes no indican reposo' : ''),
+    dato('Último diagnóstico', escaparHtml(r.ultimo_diagnostico || '—'), r.ultimo_diagnostico || !r.consultas ? '' : 'Los informes no consignan diagnóstico', true),
+    dato('Última aptitud', escaparHtml(r.ultima_aptitud || '—'), r.ultima_aptitud ? escaparHtml(r.ultima_aptitud_detalle || '') : (r.consultas ? 'Los informes no dictaminan aptitud' : ''), true),
     dato('Documentación', `${r.certificados + r.informes}`, `${r.certificados} certificado(s) · ${r.informes} informe(s)`),
     r.proximo_turno
       ? dato('Próximo turno', `${sgFecha(r.proximo_turno.fecha,false)} · ${escaparHtml(r.proximo_turno.hora||'')}`, escaparHtml(r.proximo_turno.tipo||''))
@@ -7789,6 +7811,7 @@ function renderDetalleSeguimiento(){
     </div>
     ${(s.diagnostico || s.notas) ? `<div class="sg-motivo">${escaparHtml(s.diagnostico || '')}${s.notas?`<div class="sg-motivo-notas">${escaparHtml(s.notas)}</div>`:''}</div>` : ''}
     <div class="sg-resumen">${resumen.join('')}</div>
+    ${esAdmin ? htmlSugerenciasDetalle(d) : ''}
     <div class="card">
       <div class="card-hdr sg-hist-hdr">
         <div class="card-title">Historia del caso <span class="badge b-gray">${d.hitos.length}</span></div>
@@ -7833,10 +7856,10 @@ function htmlHito(h, i){
     }
     for(const dic of (h.dictamenes||[])){
       const filas = [
-        ['Diagnóstico', [dic.diagnostico_cie, dic.diagnostico_desc || dic.diagnostico].filter(Boolean).join(' · ')],
-        ['Aptitud', dic.aptitud_texto || dic.aptitud],
+        ['Diagnóstico', dic.diagnostico],
+        ['Aptitud', [dic.aptitud, dic.aptitud_detalle].filter(Boolean).join(' — ')],
         ['Reposo', dic.dias_reposo ? `${dic.dias_reposo} días` : ''],
-        ['Derivación', dic.derivacion && dic.derivacion !== 'Sin derivación' ? dic.derivacion : ''],
+        ['Derivación', dic.derivacion],
         ['Indicaciones', dic.indicaciones],
       ].filter(([,v]) => v);
       const largo = (dic.conclusion||'').length > 260;
@@ -7901,63 +7924,60 @@ async function verArchivoSeguimiento(segId, clase, archivoId, btn){
 // --- Registros vinculados (solo admin) ---
 function htmlVinculosSeguimiento(d){
   const id = d.seguimiento.id;
+  if(!d.vinculos.length) return '';
   return `<div class="card">
-    <div class="card-hdr"><div class="card-title">Registros vinculados <span class="badge b-gray">${d.vinculos.length}</span></div>
-      <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="buscarSugerenciasDetalle(${id})">Buscar más registros</button></div>
+    <div class="card-hdr"><div class="card-title">Registros vinculados <span class="badge b-gray">${d.vinculos.length}</span></div></div>
     <div class="card-body">
-      ${d.vinculos.length ? d.vinculos.map(v => `<div class="sg-vinc"><span>${escaparHtml(v.texto)}</span>
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;color:var(--rosa-dark);" onclick="desvincularDeSeguimiento(${id},${v.id})">Quitar</button></div>`).join('')
-        : '<div class="sg-ayuda" style="margin:0;">Este seguimiento todavía no tiene turnos ni casos. Buscá los registros del paciente para armar su historia.</div>'}
-      <div id="sg-det-sugerencias"></div>
+      ${d.vinculos.map(v => `<div class="sg-vinc"><span>${escaparHtml(v.texto)}</span>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;color:var(--rosa-dark);" onclick="desvincularDeSeguimiento(${id},${v.id})">Quitar</button></div>`).join('')}
     </div>
   </div>`;
 }
 
-function htmlSugerencias(d, modo){
+function itemsSugeridos(d){
   const items = [
-    ...d.casos.map(c => ({ clave:'caso:'+c.id, texto:`Caso de ausentismo · ${c.trabajador_nombre}`,
-      meta:`${c.empresa_nombre||''} · abierto el ${sgFecha(c.creado_en)} · ${c.estado}`, motivo:c.motivo_sugerencia })),
-    ...d.turnos.map(t => ({ clave:'turno:'+t.id, texto:`${t.tipo||'Turno'} · ${t.paciente}`,
-      meta:`${t.empresa||''} · ${sgFecha(t.fecha)} ${t.hora||''} · ${t.estado}`, motivo:t.motivo_sugerencia })),
+    ...d.casos.map(c => ({ tipo:'caso', valor:String(c.id), texto:`Caso de ausentismo · ${c.trabajador_nombre}`,
+      meta:`${c.empresa_nombre||''} · abierto el ${sgFecha(c.creado_en)}`, motivo:c.motivo_sugerencia })),
+    ...d.turnos.map(t => ({ tipo:'turno', valor:t.id, texto:`${t.tipo||'Turno'} · ${t.paciente}`,
+      meta:`${t.empresa||''} · ${sgFecha(t.fecha)} ${t.hora||''}${t.estado==='completado'?'':' · pendiente'}`, motivo:t.motivo_sugerencia })),
   ];
-  if(!items.length) return '<div class="sg-vacio" style="padding:1rem;">No se encontraron otros turnos ni casos con ese nombre o DNI.</div>';
   // Primero lo seguro (DNI o nombre completo); los que solo comparten apellido, al final
-  items.sort((a,b) => (a.motivo==='Mismo apellido') - (b.motivo==='Mismo apellido'));
-  return items.map(it => {
-    const [tipo, valor] = it.clave.split(':');
-    const motivo = `<span class="badge ${it.motivo==='Mismo apellido'?'b-amber':'b-green'}">${it.motivo}</span>`;
-    if(modo === 'check'){
-      // Lo seguro viene tildado; "mismo apellido" lo decide el admin
-      return `<label class="sg-sug"><input type="checkbox" data-sg-vinc="${it.clave}" ${it.motivo!=='Mismo apellido'?'checked':''}/>
-        <span class="sg-sug-txt">${escaparHtml(it.texto)} ${motivo}<div class="sg-sug-meta">${escaparHtml(it.meta)}</div></span></label>`;
-    }
-    return `<div class="sg-sug" style="cursor:default;"><span class="sg-sug-txt">${escaparHtml(it.texto)} ${motivo}<div class="sg-sug-meta">${escaparHtml(it.meta)}</div></span>
-      <button class="btn btn-primary" style="padding:5px 11px;font-size:12px;" onclick="vincularASeguimiento(${seguimientoActual.seguimiento.id},'${tipo}','${escaparHtml(valor)}',this)">Vincular</button></div>`;
-  }).join('');
+  return items.sort((a,b) => (a.motivo==='Mismo apellido') - (b.motivo==='Mismo apellido'));
 }
 
-async function buscarSugerenciasDetalle(id){
-  const cont = document.getElementById('sg-det-sugerencias');
-  cont.innerHTML = '<div class="sg-sub-tit">Posibles registros de este paciente</div><div class="sg-vacio" style="padding:1rem;">Buscando...</div>';
-  try{
-    const r = await fetch('/api/seguimientos/sugerencias?seguimiento_id='+id, {headers:apiHeaders()});
-    const d = await r.json();
-    if(!d.ok) throw new Error(d.error);
-    cont.innerHTML = '<div class="sg-sub-tit">Posibles registros de este paciente</div><div class="sg-ayuda">Por DNI o nombre. Revisá que sean de esta persona antes de vincular.</div>' + htmlSugerencias(d, 'boton');
-  }catch(e){ cont.innerHTML = '<div class="sg-error">No se pudo buscar. Probá de nuevo.</div>'; }
+// Arriba de la historia, a la vista: si el paciente tiene turnos o casos que todavía no están
+// en el legajo, se ofrecen ahí mismo, con un solo botón para sumar los seguros.
+function htmlSugerenciasDetalle(d){
+  if(!d.sugerencias) return '';
+  const items = itemsSugeridos(d.sugerencias);
+  if(!items.length) return '';
+  const segId = d.seguimiento.id;
+  const seguros = items.filter(it => it.motivo !== 'Mismo apellido');
+  const nombre = escaparHtml(d.seguimiento.paciente_nombre);
+  return `<div class="card sg-sug-card">
+    <div class="card-hdr"><div class="card-title">${d.vinculos.length ? `¿Estos registros también son de ${nombre}?` : `Encontramos registros de ${nombre}`}</div>
+      ${seguros.length ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:12.5px;" onclick="vincularVarios(${segId}, ${escaparHtml(JSON.stringify(seguros.map(it => [it.tipo, it.valor])))}, this)">Sumar ${seguros.length===1?'el registro':'los '+seguros.length}</button>` : ''}</div>
+    <div class="card-body">
+      ${items.map(it => `<div class="sg-sug" style="cursor:default;align-items:center;"><span class="sg-sug-txt">${escaparHtml(it.texto)}
+          ${it.motivo==='Mismo apellido' ? '<span class="badge b-amber">Solo coincide el apellido</span>' : ''}
+          <div class="sg-sug-meta">${escaparHtml(it.meta)}</div></span>
+        <button class="btn btn-ghost" style="padding:5px 11px;font-size:12px;" onclick="vincularVarios(${segId}, ${escaparHtml(JSON.stringify([[it.tipo, it.valor]]))}, this)">Sumar</button></div>`).join('')}
+    </div>
+  </div>`;
 }
 
-async function vincularASeguimiento(segId, tipo, valor, btn){
+async function vincularVarios(segId, pares, btn){
   if(btn) btn.disabled = true;
   try{
-    const body = tipo === 'caso' ? { caso_id: Number(valor) } : { turno_id: valor };
-    const r = await fetch(`/api/seguimientos/${segId}/vinculos`, {method:'POST', headers:apiHeaders(), body:JSON.stringify(body)});
-    const d = await r.json();
-    if(!d.ok) throw new Error(d.error);
+    for(const [tipo, valor] of pares){
+      const body = tipo === 'caso' ? { caso_id: Number(valor) } : { turno_id: valor };
+      const r = await fetch(`/api/seguimientos/${segId}/vinculos`, {method:'POST', headers:apiHeaders(), body:JSON.stringify(body)});
+      const d = await r.json();
+      if(!d.ok) throw new Error(d.error);
+    }
     await verDetalleSeguimiento(segId);
-    buscarSugerenciasDetalle(segId);
     cargarMarcasSeguimiento();
-  }catch(e){ mostrarError(e.message || 'No se pudo vincular'); if(btn) btn.disabled = false; }
+  }catch(e){ mostrarError(e.message || 'No se pudo sumar'); if(btn) btn.disabled = false; }
 }
 
 async function desvincularDeSeguimiento(segId, vinculoId){
@@ -7995,6 +8015,13 @@ async function eliminarSeguimiento(id){
 }
 
 // --- Alta y edición ---
+// El alta es buscar y elegir: el paciente se arma solo a partir de sus turnos y casos, así
+// que al elegirlo ya se sabe qué registros se suman. Lo único que se escribe es el motivo,
+// y es opcional. "Cargalo a mano" queda para alguien que todavía no tiene ningún registro.
+let pacienteElegido = null;   // grupo devuelto por /api/seguimientos/pacientes
+let pacientesModal = [];
+let timerBuscarPaciente = null;
+
 async function cargarEmpresasSelectSeguimiento(valor){
   const sel = document.getElementById('sg-f-empresa');
   let todas = [...EMPRESAS_HISTORICAS];
@@ -8009,8 +8036,18 @@ async function cargarEmpresasSelectSeguimiento(valor){
   sel.value = valor || '';
 }
 
-function abrirModalSeguimiento(id){
+function mostrarPasoModal(paso, manual){
+  document.getElementById('sg-paso-buscar').style.display = paso === 'buscar' ? '' : 'none';
+  document.getElementById('sg-paso-datos').style.display = paso === 'datos' ? '' : 'none';
+  document.querySelectorAll('#modal-seguimiento .sg-solo-manual').forEach(el => el.style.display = manual ? '' : 'none');
+  document.getElementById('sg-f-guardar').style.display = paso === 'datos' ? '' : 'none';
+  document.getElementById('sg-f-error').style.display = 'none';
+}
+
+// opts.turnoId: viene del "Iniciar seguimiento" de la agenda, con el paciente ya resuelto
+async function abrirModalSeguimiento(id, opts={}){
   seguimientoEditandoId = id || null;
+  pacienteElegido = null;
   const s = id ? seguimientoActual?.seguimiento : null;
   document.getElementById('sg-modal-titulo').textContent = s ? 'Editar seguimiento' : 'Nuevo seguimiento';
   document.getElementById('sg-f-guardar').textContent = s ? 'Guardar cambios' : 'Abrir seguimiento';
@@ -8018,56 +8055,123 @@ function abrirModalSeguimiento(id){
   document.getElementById('sg-f-dni').value = s?.paciente_dni || '';
   document.getElementById('sg-f-diagnostico').value = s?.diagnostico || '';
   document.getElementById('sg-f-notas').value = s?.notas || '';
-  // En la edición los registros se manejan desde el detalle, con su lista de vinculados
-  document.getElementById('sg-f-sugerencias-wrap').style.display = s ? 'none' : '';
-  document.getElementById('sg-f-sugerencias').innerHTML = '<div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div>';
-  document.getElementById('sg-f-error').style.display = 'none';
-  cargarEmpresasSelectSeguimiento(s?.empresa || '');
+  document.getElementById('sg-elegido').innerHTML = '';
   document.getElementById('modal-seguimiento').classList.add('open');
-  setTimeout(() => document.getElementById('sg-f-nombre').focus(), 50);
+
+  if(s){
+    mostrarPasoModal('datos', true);
+    cargarEmpresasSelectSeguimiento(s.empresa || '');
+    return;
+  }
+  mostrarPasoModal('buscar');
+  const input = document.getElementById('sg-buscar-paciente');
+  input.value = '';
+  if(opts.turnoId){
+    document.getElementById('sg-pac-resultados').innerHTML = '<div class="sg-vacio" style="padding:1rem;">Buscando al paciente...</div>';
+    await cargarPacientesModal('turno_id=' + encodeURIComponent(opts.turnoId));
+    // Un solo paciente: se elige directo (o se abre su legajo si ya tiene)
+    if(pacientesModal.length === 1) return elegirPacienteModal(0);
+    return;
+  }
+  setTimeout(() => input.focus(), 50);
+  cargarPacientesModal('');
 }
 function cerrarModalSeguimiento(){ document.getElementById('modal-seguimiento').classList.remove('open'); }
 
-async function buscarSugerenciasModal(){
-  if(seguimientoEditandoId) return;
-  const nombre = document.getElementById('sg-f-nombre').value.trim();
-  const dni = document.getElementById('sg-f-dni').value.trim();
-  const cont = document.getElementById('sg-f-sugerencias');
-  if(!nombre && !dni){ cont.innerHTML = '<div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div>'; return; }
-  cont.innerHTML = '<div class="sg-vacio">Buscando...</div>';
+function buscarPacientesModal(){
+  clearTimeout(timerBuscarPaciente);
+  const q = document.getElementById('sg-buscar-paciente').value.trim();
+  timerBuscarPaciente = setTimeout(() => cargarPacientesModal(q ? 'q=' + encodeURIComponent(q) : ''), 250);
+}
+
+async function cargarPacientesModal(query){
+  const cont = document.getElementById('sg-pac-resultados');
+  document.getElementById('sg-pac-ayuda').textContent = query.startsWith('q=') ? 'Resultados' : 'Pacientes con turnos recientes';
   try{
-    const r = await fetch(`/api/seguimientos/sugerencias?nombre=${encodeURIComponent(nombre)}&dni=${encodeURIComponent(dni)}`, {headers:apiHeaders()});
+    const r = await fetch('/api/seguimientos/pacientes' + (query ? '?' + query : ''), {headers:apiHeaders()});
     const d = await r.json();
     if(!d.ok) throw new Error(d.error);
-    cont.innerHTML = htmlSugerencias(d, 'check');
-    // La empresa del registro más reciente es casi siempre la del paciente (si es el mismo
-    // paciente: un homónimo de apellido no cuenta)
-    const sel = document.getElementById('sg-f-empresa');
-    const seguro = x => x.motivo_sugerencia !== 'Mismo apellido';
-    const emp = d.casos.find(seguro)?.empresa_nombre || d.turnos.find(seguro)?.empresa;
-    if(!sel.value && emp){
-      if(![...sel.options].some(o => o.value === emp)) sel.insertAdjacentHTML('beforeend', `<option value="${escaparHtml(emp)}">${escaparHtml(emp)}</option>`);
-      sel.value = emp;
+    pacientesModal = d.pacientes;
+    if(!pacientesModal.length){
+      cont.innerHTML = '<div class="sg-vacio" style="padding:1rem;">No encontramos a nadie con ese nombre o DNI.</div>';
+      return;
     }
+    cont.innerHTML = pacientesModal.map((p, i) => {
+      const meta = [p.empresa, p.dni ? 'DNI ' + p.dni : '',
+        `${p.consultas} ${p.consultas===1?'consulta':'consultas'}`,
+        p.casos.length ? `${p.casos.length} ${p.casos.length===1?'caso':'casos'} de ausentismo` : '',
+        p.ultima ? 'último ' + sgFecha(p.ultima) : ''].filter(Boolean).join(' · ');
+      const accion = !p.seguimiento ? 'Elegir →'
+        : p.seguimiento.vacio ? 'Completar su seguimiento →'
+        : `${badgeEstadoSeguimiento(p.seguimiento.estado)} Ver →`;
+      return `<button type="button" class="sg-pac" onclick="elegirPacienteModal(${i})">
+        <span class="sg-pac-nombre">${escaparHtml(p.nombre)}</span>
+        <span class="sg-pac-meta">${escaparHtml(meta)}</span>
+        <span class="sg-pac-accion">${accion}</span></button>`;
+    }).join('');
   }catch(e){ cont.innerHTML = '<div class="sg-error">No se pudo buscar. Probá de nuevo.</div>'; }
+}
+
+async function elegirPacienteModal(i){
+  const p = pacientesModal[i];
+  if(!p) return;
+  // Ya tiene un legajo vacío (abierto a mano con poco dato): se completa ese, no se abre otro
+  if(p.seguimiento?.vacio){
+    try{
+      const r = await fetch('/api/seguimientos/'+p.seguimiento.id, {method:'PATCH', headers:apiHeaders(),
+        body:JSON.stringify({ paciente_nombre:p.nombre, paciente_dni:p.dni, empresa:p.empresa })});
+      if(!(await r.json()).ok) throw new Error();
+      cerrarModalSeguimiento();
+      showSection('seguimientos', document.getElementById('nav-seguimientos'));
+      await vincularVarios(p.seguimiento.id, [...p.casos.map(c => ['caso', String(c)]), ...p.turnos.map(t => ['turno', t])]);
+      mostrarToast('✓ Seguimiento completado con sus registros', '#1e6640');
+    }catch(e){ mostrarError('No se pudo completar el seguimiento'); }
+    return;
+  }
+  // Ya tiene legajo: no se abre otro, se va al que existe
+  if(p.seguimiento){
+    cerrarModalSeguimiento();
+    abrirSeguimiento(p.seguimiento.id);
+    return;
+  }
+  pacienteElegido = p;
+  const partes = [];
+  if(p.consultas) partes.push(`${p.consultas} ${p.consultas===1?'consulta':'consultas'}`);
+  if(p.pendientes) partes.push(`${p.pendientes} ${p.pendientes===1?'turno programado':'turnos programados'}`);
+  if(p.casos.length) partes.push(`${p.casos.length} ${p.casos.length===1?'caso':'casos'} de ausentismo`);
+  document.getElementById('sg-elegido').innerHTML = `<div class="sg-elegido">
+    <div><strong>${escaparHtml(p.nombre)}</strong>
+      <div class="sg-pac-meta" style="margin-top:2px;">${escaparHtml([p.empresa, p.dni ? 'DNI ' + p.dni : ''].filter(Boolean).join(' · '))}</div>
+      <div class="sg-ayuda" style="margin:6px 0 0;">${partes.length ? `Se suman ${partes.join(', ')}, con sus dictámenes, certificados e informes.` : 'Todavía no tiene registros.'} Los turnos nuevos se agregan solos.</div>
+    </div>
+    <button type="button" class="sg-link" style="margin:0;white-space:nowrap;" onclick="mostrarPasoModal('buscar')">Cambiar</button>
+  </div>`;
+  mostrarPasoModal('datos', false);
+  setTimeout(() => document.getElementById('sg-f-diagnostico').focus(), 50);
+}
+
+function cargarPacienteManual(){
+  pacienteElegido = null;
+  document.getElementById('sg-elegido').innerHTML = '';
+  document.getElementById('sg-f-nombre').value = document.getElementById('sg-buscar-paciente').value.trim();
+  cargarEmpresasSelectSeguimiento('');
+  mostrarPasoModal('datos', true);
+  setTimeout(() => document.getElementById('sg-f-nombre').focus(), 50);
 }
 
 async function guardarSeguimiento(){
   const err = document.getElementById('sg-f-error');
   const btn = document.getElementById('sg-f-guardar');
+  const p = pacienteElegido;
   const datos = {
-    paciente_nombre: document.getElementById('sg-f-nombre').value.trim(),
-    paciente_dni: document.getElementById('sg-f-dni').value.trim(),
-    empresa: document.getElementById('sg-f-empresa').value,
+    paciente_nombre: p ? p.nombre : document.getElementById('sg-f-nombre').value.trim(),
+    paciente_dni: p ? p.dni : document.getElementById('sg-f-dni').value.trim(),
+    empresa: p ? p.empresa : document.getElementById('sg-f-empresa').value,
     diagnostico: document.getElementById('sg-f-diagnostico').value.trim(),
     notas: document.getElementById('sg-f-notas').value.trim()
   };
+  if(p){ datos.turnos = p.turnos; datos.casos = p.casos; }
   if(!datos.paciente_nombre){ err.textContent = 'Falta el nombre del paciente.'; err.style.display = 'block'; return; }
-  if(!seguimientoEditandoId){
-    const marcados = [...document.querySelectorAll('#sg-f-sugerencias [data-sg-vinc]:checked')].map(x => x.dataset.sgVinc);
-    datos.turnos = marcados.filter(m => m.startsWith('turno:')).map(m => m.slice(6));
-    datos.casos = marcados.filter(m => m.startsWith('caso:')).map(m => Number(m.slice(5)));
-  }
   btn.disabled = true;
   try{
     const r = await fetch(seguimientoEditandoId ? '/api/seguimientos/'+seguimientoEditandoId : '/api/seguimientos', {
@@ -8077,11 +8181,13 @@ async function guardarSeguimiento(){
     cerrarModalSeguimiento();
     mostrarToast(seguimientoEditandoId ? '✓ Seguimiento actualizado' : '✓ Seguimiento abierto', '#1e6640');
     await cargarMarcasSeguimiento();
-    await verDetalleSeguimiento(seguimientoEditandoId || d.id);
+    if(typeof renderAgenda === 'function' && turnos.length) renderAgenda();
+    abrirSeguimiento(seguimientoEditandoId || d.id);
   }catch(e){
     err.textContent = e.message; err.style.display = 'block';
   }finally{ btn.disabled = false; }
 }
+
 
 checkSession();
 chequearTokenReset();
