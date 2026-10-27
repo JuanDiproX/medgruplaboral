@@ -630,6 +630,94 @@ td.no-label::before{display:none;}
 .card-body{padding:.85rem;}
 .turno-item{padding:.8rem .85rem;}
 }
+
+/* ── SEGUIMIENTOS ──
+   El detalle se lee como una historia clínica: arriba la situación actual en pocas cifras,
+   abajo los hitos en orden con su fecha en una columna propia. */
+.sg-hdr{flex-wrap:wrap;}
+.sg-hdr-acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.sg-hdr-acciones input{width:240px;max-width:100%;height:38px;}
+.sg-filtros{padding:.75rem 1.25rem 0;display:flex;gap:6px;flex-wrap:wrap;}
+.sg-filtros:empty{display:none;}
+.sg-vacio{text-align:center;padding:2rem 1rem;color:var(--ink-3);font-size:13.5px;}
+.sg-fila{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;padding:1rem 1.25rem;border-bottom:1px solid var(--rule);cursor:pointer;transition:background .15s;}
+.sg-fila:last-child{border-bottom:none;}
+.sg-fila:hover{background:var(--surface2);}
+.sg-fila:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;}
+.sg-fila-nombre{font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.sg-fila-dx{font-size:13px;color:var(--ink-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sg-fila-lado{text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.6;}
+.sg-fila-lado strong{color:var(--ink);font-weight:600;}
+.sg-tag{border:none;cursor:pointer;font-family:inherit;}
+.sg-tag:hover{text-decoration:underline;}
+
+.sg-volver{background:none;border:none;padding:0;color:var(--ink-2);font:inherit;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:1rem;}
+.sg-volver:hover{color:var(--ink);text-decoration:underline;}
+.sg-cabecera{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.25rem;}
+.sg-nombre{font-family:var(--display);font-size:2rem;font-weight:400;line-height:1.1;color:var(--ink);margin:0;}
+.sg-meta{font-size:13.5px;color:var(--ink-2);margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.sg-cab-acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.sg-cab-acciones select{height:38px;width:auto;}
+.sg-motivo{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--ink);border-radius:var(--r-sm);padding:.9rem 1.1rem;margin-bottom:1.25rem;font-size:14px;line-height:1.55;color:var(--ink);white-space:pre-line;}
+.sg-motivo-notas{margin-top:6px;font-size:13px;color:var(--ink-2);}
+.sg-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;}
+.sg-dato{padding:.9rem 1.1rem;min-width:0;box-shadow:0 0 0 .5px var(--rule);}
+.sg-dato-lbl{font-size:12px;font-weight:600;color:var(--ink-3);}
+.sg-dato-val{font-size:20px;font-weight:600;color:var(--ink);margin-top:2px;font-variant-numeric:tabular-nums;line-height:1.25;}
+.sg-dato-val.texto{font-size:14px;line-height:1.4;overflow-wrap:anywhere;}
+.sg-dato-sub{font-size:12px;color:var(--ink-3);margin-top:2px;}
+
+.sg-hist-hdr{flex-wrap:wrap;}
+.sg-orden{display:inline-flex;border:1px solid var(--rule-2);border-radius:var(--r-sm);overflow:hidden;}
+.sg-orden button{background:#fff;border:none;padding:5px 11px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;}
+.sg-orden button[aria-pressed="true"]{background:var(--ink);color:#fff;}
+.sg-hito{display:grid;grid-template-columns:108px 14px minmax(0,1fr);gap:0 14px;padding:0 1.25rem;}
+.sg-hito-fecha{padding:1rem 0;text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.45;}
+.sg-hito-fecha strong{display:block;color:var(--ink);font-size:13.5px;font-weight:600;}
+.sg-hito-eje{position:relative;}
+.sg-hito-eje::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:1px;background:var(--rule-2);}
+.sg-hito:first-child .sg-hito-eje::before{top:1.3rem;}
+.sg-hito:last-child .sg-hito-eje::before{bottom:auto;height:1.3rem;}
+.sg-punto{position:absolute;left:1px;top:1.15rem;width:11px;height:11px;border-radius:50%;background:var(--ink-3);border:2px solid #fff;box-shadow:0 0 0 1px var(--rule-2);}
+.sg-punto.turno{background:var(--blue-ink);}.sg-punto.certificado{background:var(--amber);}.sg-punto.informe,.sg-punto.control{background:var(--verde);}
+.sg-punto.inasistencia,.sg-punto.alerta{background:var(--magenta);}.sg-punto.pendiente{background:#fff;box-shadow:0 0 0 2px var(--blue-ink);}
+.sg-hito-cuerpo{padding:1rem 0;border-bottom:1px solid var(--rule);min-width:0;}
+.sg-hito:last-child .sg-hito-cuerpo{border-bottom:none;}
+.sg-hito-tipo{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+.sg-hito-tit{font-size:14.5px;font-weight:600;color:var(--ink);margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere;}
+.sg-hito-det{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-line;}
+.sg-dic{margin-top:10px;background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:.75rem .9rem;}
+.sg-dic + .sg-dic{margin-top:8px;}
+.sg-dic-filas{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;font-size:13px;margin:0;}
+.sg-dic-filas dt{color:var(--ink-3);font-weight:600;}
+.sg-dic-filas dd{margin:0;color:var(--ink);overflow-wrap:anywhere;}
+.sg-conclusion{margin-top:8px;font-size:13px;line-height:1.55;color:var(--ink-2);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.sg-conclusion.abierta{display:block;}
+.sg-link{background:none;border:none;padding:0;font:inherit;font-size:12.5px;color:var(--blue-ink);cursor:pointer;text-decoration:underline;margin-top:4px;}
+.sg-hito-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.sg-hito-acc .btn{padding:5px 11px;font-size:12px;text-decoration:none;}
+
+.sg-sub-tit{font-size:14px;font-weight:600;color:var(--ink);margin-top:1.25rem;}
+.sg-ayuda{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin:3px 0 8px;}
+.sg-sug{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--rule);border-radius:var(--r-sm);margin-bottom:6px;font-size:13px;cursor:pointer;}
+.sg-sug input{width:auto;margin-top:3px;}
+.sg-sug-txt{flex:1;min-width:0;}
+.sg-sug-meta{font-size:12px;color:var(--ink-3);}
+.sg-vinc{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule);font-size:13px;}
+.sg-vinc:last-child{border-bottom:none;}
+.sg-error{margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);}
+
+@media (max-width:640px){
+  .sg-fila{grid-template-columns:1fr;}
+  .sg-fila-lado{text-align:left;}
+  .sg-hdr-acciones,.sg-hdr-acciones input{width:100%;}
+  .sg-nombre{font-size:1.6rem;}
+  .sg-hito{grid-template-columns:14px minmax(0,1fr);gap:0 12px;padding:0 1rem;}
+  .sg-hito-fecha{grid-column:2;grid-row:1;text-align:left;padding:1rem 0 0;}
+  .sg-hito-fecha strong{display:inline;margin-right:6px;}
+  .sg-hito-eje{grid-column:1;grid-row:1 / span 2;}
+  .sg-hito-cuerpo{grid-column:2;padding-top:2px;}
+}
 </style>
 </head>
 <body>
@@ -732,6 +820,7 @@ td.no-label::before{display:none;}
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>Empresas</div>
       <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>Presupuestos</div>
       <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
+      <div class="nav-item" id="nav-seguimientos" onclick="showSection('seguimientos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Seguimientos</div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8l-4 1 1-4z"/></svg>Firmas
         <span id="nav-firmas-badge" style="margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;">0</span>
@@ -1234,6 +1323,25 @@ td.no-label::before{display:none;}
     </div>
   </div>
 
+  <div id="sec-seguimientos" style="display:none;">
+    <div id="sg-vista-lista">
+      <div class="card">
+        <div class="card-hdr sg-hdr">
+          <div class="card-title">Pacientes en seguimiento <span class="badge b-blue" id="sg-cuenta">0</span></div>
+          <div class="sg-hdr-acciones">
+            <input type="search" id="sg-buscar" placeholder="Buscar paciente o empresa..." oninput="renderSeguimientos()" aria-label="Buscar seguimiento"/>
+            <button class="btn btn-primary" id="sg-btn-nuevo" onclick="abrirModalSeguimiento()" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo seguimiento
+            </button>
+          </div>
+        </div>
+        <div class="sg-filtros" id="sg-filtros"></div>
+        <div id="sg-lista"><div class="sg-vacio">Cargando...</div></div>
+      </div>
+    </div>
+    <div id="sg-vista-detalle" style="display:none;"></div>
+  </div>
+
   <div id="sec-presupuestos" style="display:none;">
     <div class="two-col">
       <div>
@@ -1285,6 +1393,30 @@ td.no-label::before{display:none;}
   </div>
 </main>
 </div>
+</div>
+
+<!-- MODAL SEGUIMIENTO (alta y edición del legajo) -->
+<div class="modal-bg" id="modal-seguimiento">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-title" id="sg-modal-titulo">Nuevo seguimiento</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-lbl" for="sg-f-nombre">Paciente (apellido y nombre)</label><input type="text" id="sg-f-nombre" placeholder="APELLIDO, Nombre" onchange="buscarSugerenciasModal()"/></div>
+      <div class="form-group"><label class="form-lbl" for="sg-f-dni">DNI</label><input type="text" id="sg-f-dni" placeholder="30111222" onchange="buscarSugerenciasModal()"/></div>
+      <div class="form-group"><label class="form-lbl" for="sg-f-empresa">Empresa</label><select id="sg-f-empresa"><option value="">Cargando empresas...</option></select></div>
+      <div class="form-group full"><label class="form-lbl" for="sg-f-diagnostico">Diagnóstico o motivo del seguimiento</label><textarea id="sg-f-diagnostico" style="min-height:64px;" placeholder="Lumbalgia crónica con licencias reiteradas desde junio..."></textarea></div>
+      <div class="form-group full"><label class="form-lbl" for="sg-f-notas">Notas para los médicos (opcional)</label><textarea id="sg-f-notas" style="min-height:56px;" placeholder="Evaluar junta médica si no mejora en el próximo control..."></textarea></div>
+    </div>
+    <div id="sg-f-sugerencias-wrap">
+      <div class="sg-sub-tit">Registros de este paciente</div>
+      <div class="sg-ayuda">Marcá los turnos y casos que son de esta persona. Los turnos y casos nuevos con el mismo nombre o DNI se suman solos mientras el seguimiento esté abierto.</div>
+      <div id="sg-f-sugerencias"><div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div></div>
+    </div>
+    <div id="sg-f-error" class="sg-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalSeguimiento()">Cancelar</button>
+      <button class="btn btn-primary" id="sg-f-guardar" onclick="guardarSeguimiento()">Abrir seguimiento</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL CREAR TURNO -->
@@ -3047,7 +3179,7 @@ function actualizarBotonMenu(){
 window.addEventListener('resize', actualizarBotonMenu);
 
 function showSection(id,el){
-  ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
+  ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo','seguimientos'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
   secActiva.style.display='block';
@@ -3056,7 +3188,7 @@ function showSection(id,el){
   secActiva.classList.add('sec-anim');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],reuniones:['Reuniones','Videollamadas de empresa y negocios'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],reuniones:['Reuniones','Videollamadas de empresa y negocios'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral'],seguimientos:['Seguimientos','Pacientes crónicos y casos camino a junta médica']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='reuniones')cargarReuniones();
@@ -3064,6 +3196,7 @@ function showSection(id,el){
   if(id==='perfil')setupPerfil();
   if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
   if(id==='ausentismo'){cargarCasosAusentismo();cargarEmpresasSelectAusentismo();}
+  if(id==='seguimientos') mostrarListaSeguimientos();
   if(id==='presupuestos'){cargarPresupuestos();cargarServiciosCatalogo();cargarEmpresasSelectPresupuesto();if(!document.getElementById('pr-items').children.length)agregarItemPresupuesto();}
   window.scrollTo({top:0,behavior:'smooth'});
   if(esMobile()){
@@ -3296,6 +3429,7 @@ async function cargarTurnos(){
     }
     turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[],informesExtra:Number(t.informes_extra)||0}));
     poblarFiltroEmpresasAgenda();
+    await cargarMarcasSeguimiento();
     renderAgenda();
   }catch(e){
     console.error('Error en cargarTurnos:', e);
@@ -3398,7 +3532,7 @@ function renderFocoProximo(fut, ord){
       <div class="fp-cuerpo">
         <div class="fp-hora">${t.hora}<span class="fp-fecha">${dia==='Hoy'?'hoy':(dia==='Mañana'?'mañana':largo||dia)}</span></div>
         <div class="fp-datos">
-          <div class="fp-paciente">${escaparHtml(t.paciente)}</div>
+          <div class="fp-paciente">${escaparHtml(t.paciente)} ${tagSeguimientoTurno(t.id)}</div>
           <div class="fp-meta">${[t.tipo, t.empresa, presencial?'Presencial':'Videoconsulta'].filter(Boolean).map(escaparHtml).join(' · ')}</div>
         </div>
         ${accion}
@@ -3553,7 +3687,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${tagSeguimientoTurno(t.id)}${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
   agruparAgendaPorDia(lista);
  }catch(err){
@@ -7465,6 +7599,488 @@ async function eliminarServicioCatalogo(id){
     await fetch('/api/admin/servicios-catalogo/'+id, { method:'DELETE', headers:apiHeaders() });
     await cargarServiciosCatalogo();
   }catch(e){ mostrarError('Error de conexión'); }
+}
+
+
+// ===== SEGUIMIENTOS =====
+// Pacientes crónicos o de caso largo: el legajo junta sus turnos y casos de ausentismo para
+// que el médico, antes de entrar a la consulta, vea por dónde pasó el paciente. El admin abre
+// y cierra los legajos; cada médico ve los de los pacientes que atendió.
+let seguimientos = [];
+let filtroSeguimientos = 'abiertos';
+let seguimientoActual = null;      // respuesta completa del detalle abierto
+let seguimientoEditandoId = null;  // null = alta
+let marcasSeguimiento = {};        // turno_id -> { id, estado } para marcar la agenda
+let ordenHistoria = 'asc';
+try{ ordenHistoria = localStorage.getItem('sg-orden') === 'desc' ? 'desc' : 'asc'; }catch(e){}
+
+const ESTADO_SEGUIMIENTO = {
+  'en_seguimiento': { texto:'En seguimiento',   clase:'b-blue'  },
+  'derivado_junta': { texto:'Derivado a junta', clase:'b-rosa'  },
+  'cerrado':        { texto:'Cerrado',          clase:'b-gray'  }
+};
+function badgeEstadoSeguimiento(estado){
+  const e = ESTADO_SEGUIMIENTO[estado] || { texto: estado, clase:'b-gray' };
+  return `<span class="badge ${e.clase}">${e.texto}</span>`;
+}
+
+function sgFecha(ymd, conAnio=true){
+  if(!ymd) return '—';
+  // "5 ago 2026": el formato es-AR ("5 de ago de 2026") no entra en la columna de fechas
+  const x = String(ymd).includes('T') ? new Date(ymd) : new Date(ymd+'T12:00');
+  return x.toLocaleDateString('es-AR', conAnio
+    ? {day:'numeric',month:'short',year:'numeric'} : {day:'numeric',month:'short'}).replace(/ de /g,' ').replace('.','');
+}
+function sgDiasDesde(instante){
+  return Math.max(0, Math.floor((Date.now() - new Date(instante).getTime()) / 86400000));
+}
+
+// --- Marca en la agenda ---
+async function cargarMarcasSeguimiento(){
+  try{
+    const r = await fetch('/api/seguimientos/turnos', {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) return;
+    marcasSeguimiento = {};
+    for(const m of d.turnos){
+      // Si un turno quedó en más de un legajo, manda el que sigue abierto
+      const previa = marcasSeguimiento[m.turno_id];
+      if(!previa || previa.estado === 'cerrado') marcasSeguimiento[m.turno_id] = { id:m.seguimiento_id, estado:m.estado };
+    }
+  }catch(e){ /* la marca es una ayuda: si falla, la agenda se muestra igual */ }
+}
+function tagSeguimientoTurno(turnoId){
+  const m = marcasSeguimiento[turnoId];
+  if(!m || m.estado === 'cerrado') return '';
+  const e = ESTADO_SEGUIMIENTO[m.estado] || ESTADO_SEGUIMIENTO.en_seguimiento;
+  return `<button type="button" class="badge ${e.clase} sg-tag" onclick="event.stopPropagation();abrirSeguimiento(${m.id})" title="Ver el resumen del caso antes de la consulta">${e.texto}</button>`;
+}
+
+// --- Listado ---
+function mostrarListaSeguimientos(){
+  document.getElementById('sg-vista-lista').style.display = '';
+  document.getElementById('sg-vista-detalle').style.display = 'none';
+  document.getElementById('sg-btn-nuevo').style.display = usuarioActual?.rol === 'admin' ? '' : 'none';
+  seguimientoActual = null;
+  cargarSeguimientos();
+}
+
+async function cargarSeguimientos(){
+  const lista = document.getElementById('sg-lista');
+  try{
+    const r = await fetch('/api/seguimientos', {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'Error al cargar');
+    seguimientos = d.seguimientos || [];
+    renderSeguimientos();
+  }catch(e){
+    lista.innerHTML = '<div class="sg-vacio" style="color:var(--rosa-dark);">No se pudieron cargar los seguimientos. Recargá la página.</div>';
+  }
+}
+
+function filtrarSeguimientos(f){ filtroSeguimientos = f; renderSeguimientos(); }
+
+function renderSeguimientos(){
+  const lista = document.getElementById('sg-lista');
+  const filtros = document.getElementById('sg-filtros');
+  const cuenta = f => seguimientos.filter(s => f === 'abiertos' ? s.estado !== 'cerrado' : f === 'todos' || s.estado === f).length;
+  document.getElementById('sg-cuenta').textContent = cuenta('abiertos');
+  filtros.innerHTML = seguimientos.length ? [['abiertos','Abiertos'],['derivado_junta','Derivados a junta'],['cerrado','Cerrados'],['todos','Todos']]
+    .map(([v,t]) => `<button class="btn ${filtroSeguimientos===v?'btn-primary':'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="filtrarSeguimientos('${v}')">${t} (${cuenta(v)})</button>`).join('') : '';
+
+  const q = (document.getElementById('sg-buscar')?.value || '').trim().toLowerCase();
+  const visibles = seguimientos.filter(s =>
+    (filtroSeguimientos === 'todos' || (filtroSeguimientos === 'abiertos' ? s.estado !== 'cerrado' : s.estado === filtroSeguimientos)) &&
+    (!q || [s.paciente_nombre, s.empresa, s.paciente_dni].some(x => (x||'').toLowerCase().includes(q))));
+
+  if(!visibles.length){
+    const esAdmin = usuarioActual?.rol === 'admin';
+    lista.innerHTML = `<div class="sg-vacio">${seguimientos.length
+      ? 'No hay seguimientos con ese filtro.'
+      : esAdmin ? 'Todavía no hay pacientes en seguimiento. Abrí el primero con “Nuevo seguimiento”.'
+                : 'Todavía no tenés pacientes en seguimiento. Aparecen acá cuando atendés a alguien que tiene legajo abierto.'}</div>`;
+    return;
+  }
+  lista.innerHTML = visibles.map(s => {
+    const lado = [];
+    lado.push(`<strong>${s.consultas}</strong> ${s.consultas===1?'consulta':'consultas'}${s.casos?` · ${s.casos} ${s.casos===1?'caso':'casos'} de ausentismo`:''}`);
+    if(s.ultima_consulta) lado.push(`Última: ${sgFecha(s.ultima_consulta.fecha)}`);
+    if(s.proximo_turno) lado.push(`<strong>Próximo: ${sgFecha(s.proximo_turno.fecha,false)} · ${escaparHtml(s.proximo_turno.hora||'')}</strong>`);
+    return `<div class="sg-fila" role="button" tabindex="0" onclick="verDetalleSeguimiento(${s.id})" onkeydown="if(event.key==='Enter')verDetalleSeguimiento(${s.id})">
+      <div style="min-width:0;">
+        <div class="sg-fila-nombre">${escaparHtml(s.paciente_nombre)} ${badgeEstadoSeguimiento(s.estado)}</div>
+        <div class="turno-meta">${s.empresa?empresaTag(escaparHtml(s.empresa)):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>Desde ${sgFecha(s.creado_en)}</span></div>
+        ${s.diagnostico?`<div class="sg-fila-dx">${escaparHtml(s.diagnostico)}</div>`:''}
+      </div>
+      <div class="sg-fila-lado">${lado.join('<br>')}</div>
+    </div>`;
+  }).join('');
+}
+
+// --- Detalle ---
+// Desde la agenda: cambia de sección y abre directo el legajo
+function abrirSeguimiento(id){
+  showSection('seguimientos', document.getElementById('nav-seguimientos'));
+  verDetalleSeguimiento(id);
+}
+
+async function verDetalleSeguimiento(id){
+  const cont = document.getElementById('sg-vista-detalle');
+  document.getElementById('sg-vista-lista').style.display = 'none';
+  cont.style.display = '';
+  cont.innerHTML = '<div class="sg-vacio">Cargando el seguimiento...</div>';
+  try{
+    const r = await fetch('/api/seguimientos/'+id, {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'No se pudo abrir');
+    seguimientoActual = d;
+    renderDetalleSeguimiento();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){
+    cont.innerHTML = `<button class="sg-volver" onclick="mostrarListaSeguimientos()">← Volver a Seguimientos</button>
+      <div class="sg-vacio" style="color:var(--rosa-dark);">${escaparHtml(e.message)}</div>`;
+  }
+}
+
+function cambiarOrdenHistoria(orden){
+  ordenHistoria = orden;
+  try{ localStorage.setItem('sg-orden', orden); }catch(e){}
+  renderDetalleSeguimiento();
+}
+
+function renderDetalleSeguimiento(){
+  const d = seguimientoActual;
+  if(!d) return;
+  const s = d.seguimiento, r = d.resumen;
+  const esAdmin = usuarioActual?.rol === 'admin';
+  const dias = sgDiasDesde(s.creado_en);
+
+  const acciones = esAdmin ? `<div class="sg-cab-acciones">
+      <select aria-label="Estado del seguimiento" onchange="cambiarEstadoSeguimiento(this.value)">
+        ${Object.entries(ESTADO_SEGUIMIENTO).map(([v,e]) => `<option value="${v}" ${s.estado===v?'selected':''}>${e.texto}</option>`).join('')}
+      </select>
+      <button class="btn btn-ghost" onclick="abrirModalSeguimiento(${s.id})">Editar datos</button>
+      <button class="btn btn-ghost" style="color:var(--rosa-dark);" onclick="eliminarSeguimiento(${s.id})">Eliminar</button>
+    </div>` : '';
+
+  const dato = (lbl, val, sub, texto) => `<div class="sg-dato"><div class="sg-dato-lbl">${lbl}</div><div class="sg-dato-val${texto?' texto':''}">${val}</div>${sub?`<div class="sg-dato-sub">${sub}</div>`:''}</div>`;
+  const resumen = [
+    dato('Consultas', r.consultas, r.primera ? `${sgFecha(r.primera,false)} → ${sgFecha(r.ultima,false)}` : 'Sin consultas todavía'),
+    dato('Reposo indicado', `${r.dias_reposo_total} días`, r.ultimo_reposo != null ? `Último control: ${r.ultimo_reposo} días` : ''),
+    dato('Último diagnóstico', escaparHtml(r.ultimo_diagnostico || '—'), '', true),
+    dato('Última aptitud', escaparHtml(r.ultima_aptitud || '—'), '', true),
+    dato('Documentación', `${r.certificados + r.informes}`, `${r.certificados} certificado(s) · ${r.informes} informe(s)`),
+    r.proximo_turno
+      ? dato('Próximo turno', `${sgFecha(r.proximo_turno.fecha,false)} · ${escaparHtml(r.proximo_turno.hora||'')}`, escaparHtml(r.proximo_turno.tipo||''))
+      : dato('Próximo turno', '—', 'Sin turno programado'),
+  ];
+  if(r.inasistencias) resumen.push(dato('Inasistencias', `<span style="color:var(--magenta-ink);">${r.inasistencias}</span>`, 'No se presentó al control'));
+
+  const hitos = ordenHistoria === 'desc' ? [...d.hitos].reverse() : d.hitos;
+
+  document.getElementById('sg-vista-detalle').innerHTML = `
+    <button class="sg-volver" onclick="mostrarListaSeguimientos()">← Volver a Seguimientos</button>
+    <div class="sg-cabecera">
+      <div>
+        <h2 class="sg-nombre">${escaparHtml(s.paciente_nombre)}</h2>
+        <div class="sg-meta">${badgeEstadoSeguimiento(s.estado)}${s.empresa?empresaTag(escaparHtml(s.empresa)):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>· En seguimiento desde el ${sgFecha(s.creado_en)} (${dias===0?'hoy':dias===1?'hace 1 día':'hace '+dias+' días'})</span></div>
+      </div>
+      ${acciones}
+    </div>
+    ${(s.diagnostico || s.notas) ? `<div class="sg-motivo">${escaparHtml(s.diagnostico || '')}${s.notas?`<div class="sg-motivo-notas">${escaparHtml(s.notas)}</div>`:''}</div>` : ''}
+    <div class="sg-resumen">${resumen.join('')}</div>
+    <div class="card">
+      <div class="card-hdr sg-hist-hdr">
+        <div class="card-title">Historia del caso <span class="badge b-gray">${d.hitos.length}</span></div>
+        <div class="sg-orden" role="group" aria-label="Orden">
+          <button aria-pressed="${ordenHistoria==='asc'}" onclick="cambiarOrdenHistoria('asc')">Más antiguo primero</button>
+          <button aria-pressed="${ordenHistoria==='desc'}" onclick="cambiarOrdenHistoria('desc')">Más reciente primero</button>
+        </div>
+      </div>
+      <div>${hitos.map(htmlHito).join('')}</div>
+    </div>
+    ${esAdmin ? htmlVinculosSeguimiento(d) : ''}`;
+}
+
+const TIPO_HITO = {
+  legajo:'Seguimiento', caso:'Pedido de la empresa', control:'Control domiciliario', turno:'Consulta',
+  inasistencia:'Inasistencia', informe:'Informe adjunto', certificado:'Certificado presentado'
+};
+
+function htmlHito(h, i){
+  const id = seguimientoActual.seguimiento.id;
+  let fecha, hora;
+  if(h.fecha){ fecha = sgFecha(h.fecha); hora = h.hora || ''; }
+  else {
+    const x = new Date(h.instante);
+    fecha = sgFecha(h.instante);
+    hora = x.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
+  }
+  const pendiente = h.tipo === 'turno' && h.estado !== 'completado';
+  const clasePunto = pendiente ? 'pendiente' : (h.alerta ? 'alerta' : h.tipo);
+  let tipo = TIPO_HITO[h.tipo] || h.tipo;
+  if(pendiente) tipo = h.estado === 'en-curso' ? 'Consulta en curso' : 'Turno programado';
+
+  let cuerpo = '';
+  if(h.tipo === 'turno' || h.tipo === 'inasistencia'){
+    const medicos = (h.medicos||[]).filter(Boolean).join(', ');
+    cuerpo += `<div class="sg-hito-tit">${escaparHtml(h.titulo)}${h.modalidad==='presencial'?' <span class="badge b-amber">Presencial</span>':''}</div>`;
+    if(medicos) cuerpo += `<div class="sg-hito-det">${escaparHtml(medicos)}</div>`;
+    if(h.tipo === 'inasistencia') cuerpo += `<div class="sg-hito-det" style="color:var(--magenta-ink);font-weight:600;">El paciente no se presentó.</div>`;
+    const p = h.previo || {};
+    if(p.diagnostico || p.dias_reposo || p.medico_tratante){
+      cuerpo += `<div class="sg-hito-det">Traía: ${escaparHtml([p.diagnostico, p.dias_reposo ? p.dias_reposo+' días de reposo' : '', p.medico_tratante ? 'tratante '+p.medico_tratante : ''].filter(Boolean).join(' · '))}</div>`;
+    }
+    for(const dic of (h.dictamenes||[])){
+      const filas = [
+        ['Diagnóstico', [dic.diagnostico_cie, dic.diagnostico_desc || dic.diagnostico].filter(Boolean).join(' · ')],
+        ['Aptitud', dic.aptitud_texto || dic.aptitud],
+        ['Reposo', dic.dias_reposo ? `${dic.dias_reposo} días` : ''],
+        ['Derivación', dic.derivacion && dic.derivacion !== 'Sin derivación' ? dic.derivacion : ''],
+        ['Indicaciones', dic.indicaciones],
+      ].filter(([,v]) => v);
+      const largo = (dic.conclusion||'').length > 260;
+      cuerpo += `<div class="sg-dic">
+        <div class="sg-hito-det" style="margin:0 0 6px;">Dictamen ${escaparHtml(dic.numero||'')}${dic.medico?` · ${escaparHtml(dic.medico)}`:''}${dic.firmado?' · <span style="color:var(--verde);font-weight:600;">firmado</span>':''}</div>
+        ${filas.length?`<dl class="sg-dic-filas">${filas.map(([k,v])=>`<dt>${k}</dt><dd>${escaparHtml(v)}</dd>`).join('')}</dl>`:''}
+        ${dic.conclusion?`<div class="sg-conclusion" id="sg-concl-${dic.id}">${escaparHtml(dic.conclusion)}</div>${largo?`<button class="sg-link" onclick="this.previousElementSibling.classList.toggle('abierta');this.textContent=this.textContent==='Ver conclusión completa'?'Ver menos':'Ver conclusión completa'">Ver conclusión completa</button>`:''}`:''}
+        <div class="sg-hito-acc"><a href="/api/dictamenes/${dic.id}/${dic.firmado?'pdf-firmado':'pdf'}?download=1" data-descarga-pdf class="btn btn-ghost">PDF del informe</a></div>
+      </div>`;
+    }
+    if(h.tipo === 'inasistencia') cuerpo += `<div class="sg-hito-acc"><a href="/api/turnos/${h.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost">Informe de inasistencia</a></div>`;
+    if(h.tipo === 'turno' && h.estado === 'completado' && !(h.dictamenes||[]).length)
+      cuerpo += `<div class="sg-hito-det">Sin dictamen cargado.</div>`;
+  } else if(h.tipo === 'informe' || h.tipo === 'certificado'){
+    const clase = h.tipo, archivoId = h.informe_id || h.certificado_id;
+    cuerpo += `<div class="sg-hito-tit">${escaparHtml(h.titulo)}</div>`;
+    if(h.detalle) cuerpo += `<div class="sg-hito-det">${escaparHtml(h.detalle)}</div>`;
+    cuerpo += `<div class="sg-hito-acc"><button class="btn btn-ghost" onclick="verArchivoSeguimiento(${id},'${clase}',${archivoId},this)">Ver ${clase==='informe'?'informe':'certificado'}</button></div>`;
+  } else if(h.tipo === 'caso'){
+    cuerpo += `<div class="sg-hito-tit">${escaparHtml(h.titulo)}</div>`;
+    const meta = [h.empresa, h.profesional ? 'Profesional: '+h.profesional : ''].filter(Boolean).join(' · ');
+    if(meta) cuerpo += `<div class="sg-hito-det">${escaparHtml(meta)}</div>`;
+    if(h.detalle) cuerpo += `<div class="sg-hito-det">${escaparHtml(h.detalle)}</div>`;
+    if(h.extra) cuerpo += `<div class="sg-hito-det">Documentación: ${escaparHtml(h.extra)}</div>`;
+  } else {
+    cuerpo += `<div class="sg-hito-tit"${h.alerta?' style="color:var(--magenta-ink);"':''}>${escaparHtml(h.titulo)}</div>`;
+    if(h.detalle) cuerpo += `<div class="sg-hito-det">${escaparHtml(h.detalle)}</div>`;
+  }
+
+  return `<div class="sg-hito">
+    <div class="sg-hito-fecha"><strong>${fecha}</strong>${escaparHtml(hora)}</div>
+    <div class="sg-hito-eje"><span class="sg-punto ${clasePunto}"></span></div>
+    <div class="sg-hito-cuerpo"><div class="sg-hito-tipo">${tipo}</div>${cuerpo}</div>
+  </div>`;
+}
+
+// Los certificados e informes se piden con la sesión, así que no alcanza con un link: la
+// pestaña se abre en el mismo click (si no, el navegador la bloquea) y se llena después.
+async function verArchivoSeguimiento(segId, clase, archivoId, btn){
+  const pestana = window.open('', '_blank');
+  const txt = btn ? btn.innerHTML : null;
+  if(btn){ btn.disabled = true; btn.innerHTML = 'Abriendo…'; }
+  try{
+    const r = await fetch(`/api/seguimientos/${segId}/archivo/${clase}/${archivoId}`, {headers:apiHeaders()});
+    if(!r.ok){
+      const d = await r.json().catch(() => ({}));
+      if(pestana) pestana.close();
+      mostrarError(d.error || 'No se pudo abrir el archivo');
+      return;
+    }
+    const url = URL.createObjectURL(await r.blob());
+    if(pestana) pestana.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    if(pestana) pestana.close();
+    mostrarError('No se pudo abrir el archivo');
+  }finally{
+    if(btn){ btn.disabled = false; btn.innerHTML = txt; }
+  }
+}
+
+// --- Registros vinculados (solo admin) ---
+function htmlVinculosSeguimiento(d){
+  const id = d.seguimiento.id;
+  return `<div class="card">
+    <div class="card-hdr"><div class="card-title">Registros vinculados <span class="badge b-gray">${d.vinculos.length}</span></div>
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="buscarSugerenciasDetalle(${id})">Buscar más registros</button></div>
+    <div class="card-body">
+      ${d.vinculos.length ? d.vinculos.map(v => `<div class="sg-vinc"><span>${escaparHtml(v.texto)}</span>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;color:var(--rosa-dark);" onclick="desvincularDeSeguimiento(${id},${v.id})">Quitar</button></div>`).join('')
+        : '<div class="sg-ayuda" style="margin:0;">Este seguimiento todavía no tiene turnos ni casos. Buscá los registros del paciente para armar su historia.</div>'}
+      <div id="sg-det-sugerencias"></div>
+    </div>
+  </div>`;
+}
+
+function htmlSugerencias(d, modo){
+  const items = [
+    ...d.casos.map(c => ({ clave:'caso:'+c.id, texto:`Caso de ausentismo · ${c.trabajador_nombre}`,
+      meta:`${c.empresa_nombre||''} · abierto el ${sgFecha(c.creado_en)} · ${c.estado}`, motivo:c.motivo_sugerencia })),
+    ...d.turnos.map(t => ({ clave:'turno:'+t.id, texto:`${t.tipo||'Turno'} · ${t.paciente}`,
+      meta:`${t.empresa||''} · ${sgFecha(t.fecha)} ${t.hora||''} · ${t.estado}`, motivo:t.motivo_sugerencia })),
+  ];
+  if(!items.length) return '<div class="sg-vacio" style="padding:1rem;">No se encontraron otros turnos ni casos con ese nombre o DNI.</div>';
+  // Primero lo seguro (DNI o nombre completo); los que solo comparten apellido, al final
+  items.sort((a,b) => (a.motivo==='Mismo apellido') - (b.motivo==='Mismo apellido'));
+  return items.map(it => {
+    const [tipo, valor] = it.clave.split(':');
+    const motivo = `<span class="badge ${it.motivo==='Mismo apellido'?'b-amber':'b-green'}">${it.motivo}</span>`;
+    if(modo === 'check'){
+      // Lo seguro viene tildado; "mismo apellido" lo decide el admin
+      return `<label class="sg-sug"><input type="checkbox" data-sg-vinc="${it.clave}" ${it.motivo!=='Mismo apellido'?'checked':''}/>
+        <span class="sg-sug-txt">${escaparHtml(it.texto)} ${motivo}<div class="sg-sug-meta">${escaparHtml(it.meta)}</div></span></label>`;
+    }
+    return `<div class="sg-sug" style="cursor:default;"><span class="sg-sug-txt">${escaparHtml(it.texto)} ${motivo}<div class="sg-sug-meta">${escaparHtml(it.meta)}</div></span>
+      <button class="btn btn-primary" style="padding:5px 11px;font-size:12px;" onclick="vincularASeguimiento(${seguimientoActual.seguimiento.id},'${tipo}','${escaparHtml(valor)}',this)">Vincular</button></div>`;
+  }).join('');
+}
+
+async function buscarSugerenciasDetalle(id){
+  const cont = document.getElementById('sg-det-sugerencias');
+  cont.innerHTML = '<div class="sg-sub-tit">Posibles registros de este paciente</div><div class="sg-vacio" style="padding:1rem;">Buscando...</div>';
+  try{
+    const r = await fetch('/api/seguimientos/sugerencias?seguimiento_id='+id, {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+    cont.innerHTML = '<div class="sg-sub-tit">Posibles registros de este paciente</div><div class="sg-ayuda">Por DNI o nombre. Revisá que sean de esta persona antes de vincular.</div>' + htmlSugerencias(d, 'boton');
+  }catch(e){ cont.innerHTML = '<div class="sg-error">No se pudo buscar. Probá de nuevo.</div>'; }
+}
+
+async function vincularASeguimiento(segId, tipo, valor, btn){
+  if(btn) btn.disabled = true;
+  try{
+    const body = tipo === 'caso' ? { caso_id: Number(valor) } : { turno_id: valor };
+    const r = await fetch(`/api/seguimientos/${segId}/vinculos`, {method:'POST', headers:apiHeaders(), body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+    await verDetalleSeguimiento(segId);
+    buscarSugerenciasDetalle(segId);
+    cargarMarcasSeguimiento();
+  }catch(e){ mostrarError(e.message || 'No se pudo vincular'); if(btn) btn.disabled = false; }
+}
+
+async function desvincularDeSeguimiento(segId, vinculoId){
+  if(!(await confirmar('El turno o caso no se borra: solo deja de formar parte de este seguimiento.', { titulo:'Quitar del seguimiento', textoConfirmar:'Quitar' }))) return;
+  try{
+    await fetch(`/api/seguimientos/${segId}/vinculos/${vinculoId}`, {method:'DELETE', headers:apiHeaders()});
+    await verDetalleSeguimiento(segId);
+    cargarMarcasSeguimiento();
+  }catch(e){ mostrarError('Error de conexión'); }
+}
+
+async function cambiarEstadoSeguimiento(estado){
+  const id = seguimientoActual?.seguimiento.id;
+  if(!id) return;
+  try{
+    const r = await fetch('/api/seguimientos/'+id, {method:'PATCH', headers:apiHeaders(), body:JSON.stringify({ estado })});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+    mostrarToast('✓ Estado actualizado: '+ESTADO_SEGUIMIENTO[estado].texto, '#1e6640');
+    await verDetalleSeguimiento(id);
+    cargarMarcasSeguimiento();
+  }catch(e){ mostrarError(e.message || 'No se pudo cambiar el estado'); }
+}
+
+async function eliminarSeguimiento(id){
+  if(!(await confirmar('Se borra el legajo. Los turnos, dictámenes, certificados e informes del paciente no se tocan.', { titulo:'Eliminar seguimiento', textoConfirmar:'Eliminar' }))) return;
+  try{
+    const r = await fetch('/api/seguimientos/'+id, {method:'DELETE', headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+    mostrarToast('Seguimiento eliminado', '#13233a');
+    await cargarMarcasSeguimiento();
+    mostrarListaSeguimientos();
+  }catch(e){ mostrarError(e.message || 'No se pudo eliminar'); }
+}
+
+// --- Alta y edición ---
+async function cargarEmpresasSelectSeguimiento(valor){
+  const sel = document.getElementById('sg-f-empresa');
+  let todas = [...EMPRESAS_HISTORICAS];
+  try{
+    const r = await fetch('/api/empresas-nombres', {headers:apiHeaders()});
+    const d = await r.json();
+    todas = [...new Set([...(d.empresas||[]), ...EMPRESAS_HISTORICAS])];
+  }catch(e){}
+  if(valor && !todas.includes(valor)) todas.push(valor);
+  todas.sort((a,b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">Sin empresa</option>' + todas.map(e => `<option value="${escaparHtml(e)}">${escaparHtml(e)}</option>`).join('');
+  sel.value = valor || '';
+}
+
+function abrirModalSeguimiento(id){
+  seguimientoEditandoId = id || null;
+  const s = id ? seguimientoActual?.seguimiento : null;
+  document.getElementById('sg-modal-titulo').textContent = s ? 'Editar seguimiento' : 'Nuevo seguimiento';
+  document.getElementById('sg-f-guardar').textContent = s ? 'Guardar cambios' : 'Abrir seguimiento';
+  document.getElementById('sg-f-nombre').value = s?.paciente_nombre || '';
+  document.getElementById('sg-f-dni').value = s?.paciente_dni || '';
+  document.getElementById('sg-f-diagnostico').value = s?.diagnostico || '';
+  document.getElementById('sg-f-notas').value = s?.notas || '';
+  // En la edición los registros se manejan desde el detalle, con su lista de vinculados
+  document.getElementById('sg-f-sugerencias-wrap').style.display = s ? 'none' : '';
+  document.getElementById('sg-f-sugerencias').innerHTML = '<div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div>';
+  document.getElementById('sg-f-error').style.display = 'none';
+  cargarEmpresasSelectSeguimiento(s?.empresa || '');
+  document.getElementById('modal-seguimiento').classList.add('open');
+  setTimeout(() => document.getElementById('sg-f-nombre').focus(), 50);
+}
+function cerrarModalSeguimiento(){ document.getElementById('modal-seguimiento').classList.remove('open'); }
+
+async function buscarSugerenciasModal(){
+  if(seguimientoEditandoId) return;
+  const nombre = document.getElementById('sg-f-nombre').value.trim();
+  const dni = document.getElementById('sg-f-dni').value.trim();
+  const cont = document.getElementById('sg-f-sugerencias');
+  if(!nombre && !dni){ cont.innerHTML = '<div class="sg-vacio">Escribí el nombre o el DNI para buscar.</div>'; return; }
+  cont.innerHTML = '<div class="sg-vacio">Buscando...</div>';
+  try{
+    const r = await fetch(`/api/seguimientos/sugerencias?nombre=${encodeURIComponent(nombre)}&dni=${encodeURIComponent(dni)}`, {headers:apiHeaders()});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error);
+    cont.innerHTML = htmlSugerencias(d, 'check');
+    // La empresa del registro más reciente es casi siempre la del paciente (si es el mismo
+    // paciente: un homónimo de apellido no cuenta)
+    const sel = document.getElementById('sg-f-empresa');
+    const seguro = x => x.motivo_sugerencia !== 'Mismo apellido';
+    const emp = d.casos.find(seguro)?.empresa_nombre || d.turnos.find(seguro)?.empresa;
+    if(!sel.value && emp){
+      if(![...sel.options].some(o => o.value === emp)) sel.insertAdjacentHTML('beforeend', `<option value="${escaparHtml(emp)}">${escaparHtml(emp)}</option>`);
+      sel.value = emp;
+    }
+  }catch(e){ cont.innerHTML = '<div class="sg-error">No se pudo buscar. Probá de nuevo.</div>'; }
+}
+
+async function guardarSeguimiento(){
+  const err = document.getElementById('sg-f-error');
+  const btn = document.getElementById('sg-f-guardar');
+  const datos = {
+    paciente_nombre: document.getElementById('sg-f-nombre').value.trim(),
+    paciente_dni: document.getElementById('sg-f-dni').value.trim(),
+    empresa: document.getElementById('sg-f-empresa').value,
+    diagnostico: document.getElementById('sg-f-diagnostico').value.trim(),
+    notas: document.getElementById('sg-f-notas').value.trim()
+  };
+  if(!datos.paciente_nombre){ err.textContent = 'Falta el nombre del paciente.'; err.style.display = 'block'; return; }
+  if(!seguimientoEditandoId){
+    const marcados = [...document.querySelectorAll('#sg-f-sugerencias [data-sg-vinc]:checked')].map(x => x.dataset.sgVinc);
+    datos.turnos = marcados.filter(m => m.startsWith('turno:')).map(m => m.slice(6));
+    datos.casos = marcados.filter(m => m.startsWith('caso:')).map(m => Number(m.slice(5)));
+  }
+  btn.disabled = true;
+  try{
+    const r = await fetch(seguimientoEditandoId ? '/api/seguimientos/'+seguimientoEditandoId : '/api/seguimientos', {
+      method: seguimientoEditandoId ? 'PATCH' : 'POST', headers:apiHeaders(), body:JSON.stringify(datos) });
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'No se pudo guardar');
+    cerrarModalSeguimiento();
+    mostrarToast(seguimientoEditandoId ? '✓ Seguimiento actualizado' : '✓ Seguimiento abierto', '#1e6640');
+    await cargarMarcasSeguimiento();
+    await verDetalleSeguimiento(seguimientoEditandoId || d.id);
+  }catch(e){
+    err.textContent = e.message; err.style.display = 'block';
+  }finally{ btn.disabled = false; }
 }
 
 checkSession();
