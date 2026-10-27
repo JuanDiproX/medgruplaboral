@@ -331,6 +331,34 @@ async function initDB() {
         creado_en TIMESTAMP DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_reunion_invitados_reunion ON reunion_invitados (reunion_id);
+
+      -- Seguimientos: pacientes crónicos o de caso largo, que pasan por varios controles hasta
+      -- una posible junta médica. El paciente no existe como entidad (es un nombre suelto en
+      -- cada turno y cada caso), así que el legajo junta a mano lo que es de la misma persona:
+      -- cada vínculo apunta a un turno o a un caso de ausentismo, nunca a los dos.
+      CREATE TABLE IF NOT EXISTS seguimientos (
+        id SERIAL PRIMARY KEY,
+        paciente_nombre VARCHAR(200) NOT NULL,
+        paciente_dni VARCHAR(50),
+        empresa VARCHAR(200),
+        diagnostico TEXT,
+        notas TEXT,
+        estado VARCHAR(30) DEFAULT 'en_seguimiento',
+        creado_por VARCHAR(200),
+        creado_en TIMESTAMPTZ DEFAULT NOW(),
+        cerrado_en TIMESTAMPTZ
+      );
+      CREATE TABLE IF NOT EXISTS seguimiento_vinculos (
+        id SERIAL PRIMARY KEY,
+        seguimiento_id INTEGER NOT NULL REFERENCES seguimientos(id) ON DELETE CASCADE,
+        turno_id VARCHAR(50) REFERENCES turnos(id) ON DELETE CASCADE,
+        caso_id INTEGER REFERENCES casos_ausentismo(id) ON DELETE CASCADE,
+        creado_en TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (seguimiento_id, turno_id),
+        UNIQUE (seguimiento_id, caso_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_seg_vinc_turno ON seguimiento_vinculos (turno_id);
+      CREATE INDEX IF NOT EXISTS idx_seg_vinc_caso  ON seguimiento_vinculos (caso_id);
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -374,6 +402,9 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS diagnostico_cie VARCHAR(200)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado_nombre VARCHAR(300)`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado_fecha TIMESTAMPTZ`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
       // Hay evaluaciones que no incluyen examen del estado mental. Con esto la sección se
       // apaga para ese informe y no vuelve aunque se regenere con la IA.
@@ -1610,6 +1641,7 @@ async function crearTurnoConVideollamada({ paciente, medicos: ml, tipo, fecha, h
      sala.name, linkPaciente, linkMedicoGenerico, JSON.stringify(linksMedicos), motivo||'',
      diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'', !!paciente_presencial]);
   for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
+  await vincularASeguimientosAbiertos({ turnoId, nombre: paciente });
 
   return { turnoId, sala: sala.name, url: sala.url, linkPaciente, linkMedicoGenerico, linksMedicos };
 }
@@ -1787,6 +1819,7 @@ app.post('/api/crear-turno-presencial', authMiddleware, async (req, res) => {
       [turnoId, paciente, fecha||new Date().toISOString().split('T')[0], hora||'', tipo||'Consulta', empresa||'',
        motivo||'', diagnostico_previo||'', parseInt(dias_reposo_previo)||0, medico_tratante||'', telefono||'']);
     for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
+    await vincularASeguimientosAbiertos({ turnoId, nombre: paciente });
     res.json({ ok: true, turno_id: turnoId, paciente });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3035,6 +3068,7 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
       [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
        motivo || '', documentacion || '', notas_admin || '',
        domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO, tipo_control || TIPO_CONTROL_DEFECTO]);
+    await vincularASeguimientosAbiertos({ casoId: r.rows[0].id, nombre: trabajador_nombre, dni: trabajador_dni });
     res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3712,6 +3746,378 @@ app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== SEGUIMIENTOS (pacientes crónicos / casos largos camino a junta) =====
+// El legajo junta turnos y casos de ausentismo de una misma persona para que el médico vea
+// de un vistazo por dónde pasó: consultas, dictámenes, informes y certificados en orden.
+// Lo abre y lo cierra el admin. Cada médico ve los legajos donde atendió algo.
+
+const ESTADOS_SEGUIMIENTO = ['en_seguimiento', 'derivado_junta', 'cerrado'];
+
+// "IGARZABAL, Darío Maximiliano" y "Dario Maximiliano Igarzabal" son la misma persona:
+// sin tildes, sin signos, sin títulos, y las palabras sin importar el orden.
+function palabrasDelNombre(nombre) {
+  return String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
+    .filter(p => p && !['dr', 'dra', 'sr', 'sra', 'de', 'del', 'la', 'los', 'y'].includes(p));
+}
+function claveNombre(nombre) { return palabrasDelNombre(nombre).sort().join(' '); }
+function soloDigitos(dni) { const d = String(dni || '').replace(/\D/g, ''); return d.length >= 6 ? d : ''; }
+
+// Un turno o caso nuevo de alguien que ya tiene legajo abierto se suma solo, pero únicamente
+// si el nombre (o el DNI) coincide exacto: lo dudoso queda como sugerencia para el admin.
+async function vincularASeguimientosAbiertos({ turnoId, casoId, nombre, dni }) {
+  try {
+    const clave = claveNombre(nombre), doc = soloDigitos(dni);
+    if (!clave && !doc) return;
+    const abiertos = await pool.query(`SELECT id, paciente_nombre, paciente_dni FROM seguimientos WHERE estado <> 'cerrado'`);
+    for (const s of abiertos.rows) {
+      const coincide = (clave && claveNombre(s.paciente_nombre) === clave) || (doc && soloDigitos(s.paciente_dni) === doc);
+      if (!coincide) continue;
+      await pool.query(
+        `INSERT INTO seguimiento_vinculos (seguimiento_id, turno_id, caso_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+        [s.id, turnoId || null, casoId || null]);
+    }
+  } catch (err) { console.error('No se pudo vincular al seguimiento:', err.message); }
+}
+
+// Médico: ve el legajo si estuvo en alguno de sus turnos o lleva alguno de sus casos
+const COND_SEG_DEL_MEDICO = `EXISTS (
+  SELECT 1 FROM seguimiento_vinculos v LEFT JOIN casos_ausentismo c ON c.id = v.caso_id
+  WHERE v.seguimiento_id = s.id AND (
+    EXISTS (SELECT 1 FROM turno_medicos tm WHERE tm.medico_nombre = $1 AND tm.turno_id IN (v.turno_id, c.turno_id))
+    OR c.profesional_id = $2::int))`;
+
+async function seguimientoVisiblePara(segId, usuario) {
+  if (usuario.rol === 'admin') {
+    const r = await pool.query('SELECT * FROM seguimientos WHERE id=$1', [segId]);
+    return r.rows[0] || null;
+  }
+  const r = await pool.query(`SELECT s.* FROM seguimientos s WHERE s.id=$3 AND ${COND_SEG_DEL_MEDICO}`,
+    [usuario.nombre, await medicoDelUsuario(usuario), segId]);
+  return r.rows[0] || null;
+}
+
+// Los turnos de un legajo: los vinculados directo y los de sus casos de ausentismo
+async function turnosDeSeguimientos(ids) {
+  const r = await pool.query(`
+    SELECT DISTINCT v.seguimiento_id, t.id, t.fecha, t.hora, t.estado, t.tipo
+    FROM seguimiento_vinculos v
+    LEFT JOIN casos_ausentismo c ON c.id = v.caso_id
+    JOIN turnos t ON t.id = COALESCE(v.turno_id, c.turno_id)
+    WHERE v.seguimiento_id = ANY($1)`, [ids]);
+  return r.rows;
+}
+
+function fechaLocal(d) {
+  if (!d) return '';
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+// Columna DATE: según el driver llega como medianoche local o UTC; leída en UTC da el mismo
+// día en los dos casos (es lo mismo que hace la agenda con fecha.split('T')[0]).
+function fechaDeColumna(d) {
+  if (!d) return '';
+  return d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+}
+// El turno tiene fecha y hora sueltas; el resto de los hitos, un timestamp
+function instanteTurno(t) {
+  const [y, m, d] = fechaDeColumna(t.fecha).split('-').map(Number);
+  const [hh, mm] = String(t.hora || '').split(':').map(Number);
+  return new Date(y, m - 1, d, Number.isFinite(hh) ? hh : 12, Number.isFinite(mm) ? mm : 0);
+}
+
+app.get('/api/seguimientos', authMiddleware, async (req, res) => {
+  try {
+    const esAdmin = req.usuario.rol === 'admin';
+    const segs = esAdmin
+      ? (await pool.query('SELECT s.* FROM seguimientos s ORDER BY s.creado_en DESC')).rows
+      : (await pool.query(`SELECT s.* FROM seguimientos s WHERE ${COND_SEG_DEL_MEDICO} ORDER BY s.creado_en DESC`,
+          [req.usuario.nombre, await medicoDelUsuario(req.usuario)])).rows;
+    if (!segs.length) return res.json({ ok: true, seguimientos: [] });
+
+    const ids = segs.map(s => s.id);
+    const turnos = await turnosDeSeguimientos(ids);
+    const casos = (await pool.query(
+      `SELECT seguimiento_id, COUNT(*) AS n FROM seguimiento_vinculos WHERE caso_id IS NOT NULL AND seguimiento_id = ANY($1) GROUP BY seguimiento_id`, [ids])).rows;
+    const hoy = fechaLocal(new Date());
+
+    res.json({ ok: true, seguimientos: segs.map(s => {
+      const propios = turnos.filter(t => t.seguimiento_id === s.id);
+      const hechos = propios.filter(t => t.estado === 'completado').sort((a, b) => instanteTurno(b) - instanteTurno(a));
+      const proximos = propios.filter(t => t.estado !== 'completado' && fechaDeColumna(t.fecha) >= hoy).sort((a, b) => instanteTurno(a) - instanteTurno(b));
+      return { ...s,
+        consultas: hechos.length,
+        casos: Number(casos.find(c => c.seguimiento_id === s.id)?.n || 0),
+        ultima_consulta: hechos[0] ? { fecha: fechaDeColumna(hechos[0].fecha), hora: hechos[0].hora, tipo: hechos[0].tipo } : null,
+        proximo_turno: proximos[0] ? { id: proximos[0].id, fecha: fechaDeColumna(proximos[0].fecha), hora: proximos[0].hora, tipo: proximos[0].tipo } : null };
+    }) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Para la agenda: qué turnos son de un paciente en seguimiento (para marcarlos). Solo se
+// devuelven los turnos que el usuario ya ve en su agenda.
+app.get('/api/seguimientos/turnos', authMiddleware, async (req, res) => {
+  try {
+    const esAdmin = req.usuario.rol === 'admin';
+    const r = await pool.query(`
+      SELECT DISTINCT COALESCE(v.turno_id, c.turno_id) AS turno_id, s.id AS seguimiento_id, s.estado
+      FROM seguimiento_vinculos v
+      JOIN seguimientos s ON s.id = v.seguimiento_id
+      LEFT JOIN casos_ausentismo c ON c.id = v.caso_id
+      WHERE COALESCE(v.turno_id, c.turno_id) IS NOT NULL
+      ${esAdmin ? '' : 'AND EXISTS (SELECT 1 FROM turno_medicos tm WHERE tm.turno_id = COALESCE(v.turno_id, c.turno_id) AND tm.medico_nombre = $1)'}`,
+      esAdmin ? [] : [req.usuario.nombre]);
+    res.json({ ok: true, turnos: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Turnos y casos que podrían ser de este paciente y todavía no están en el legajo.
+// Va por DNI y por nombre (al menos dos palabras en común, o el mismo apellido adelante):
+// es una sugerencia, el admin decide.
+app.get('/api/seguimientos/sugerencias', adminMiddleware, async (req, res) => {
+  try {
+    let { nombre, dni, seguimiento_id } = req.query;
+    if (seguimiento_id) {
+      const s = await pool.query('SELECT paciente_nombre, paciente_dni FROM seguimientos WHERE id=$1', [seguimiento_id]);
+      if (!s.rows.length) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+      nombre = nombre || s.rows[0].paciente_nombre; dni = dni || s.rows[0].paciente_dni;
+    }
+    const buscadas = palabrasDelNombre(nombre), doc = soloDigitos(dni);
+    if (!buscadas.length && !doc) return res.json({ ok: true, turnos: [], casos: [] });
+
+    const yaVinc = seguimiento_id
+      ? (await pool.query('SELECT turno_id, caso_id FROM seguimiento_vinculos WHERE seguimiento_id=$1', [seguimiento_id])).rows
+      : [];
+    const turnosVinc = new Set(yaVinc.map(v => v.turno_id).filter(Boolean));
+    const casosVinc = new Set(yaVinc.map(v => v.caso_id).filter(Boolean));
+
+    const parecido = (otroNombre, otroDni) => {
+      if (doc && soloDigitos(otroDni) === doc) return 'Mismo DNI';
+      const otras = palabrasDelNombre(otroNombre);
+      const comunes = otras.filter(p => buscadas.includes(p)).length;
+      if (comunes >= 2 || (comunes && comunes === Math.min(otras.length, buscadas.length))) return 'Mismo nombre';
+      if (comunes === 1 && otras[0] && otras[0] === buscadas[0] && otras[0].length >= 4) return 'Mismo apellido';
+      return null;
+    };
+
+    const casos = (await pool.query(
+      `SELECT id, trabajador_nombre, trabajador_dni, empresa_nombre, tipo_control, estado, turno_id, creado_en
+       FROM casos_ausentismo ORDER BY creado_en DESC`)).rows;
+    const casosSug = casos.filter(c => !casosVinc.has(c.id))
+      .map(c => ({ ...c, motivo_sugerencia: parecido(c.trabajador_nombre, c.trabajador_dni) }))
+      .filter(c => c.motivo_sugerencia);
+    // El turno de un caso entra con el caso (que además trae los certificados)
+    const turnosDeCasos = new Set(casos.filter(c => c.turno_id).map(c => c.turno_id));
+
+    const turnos = (await pool.query(`
+      SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa, t.estado,
+             (SELECT d.paciente_dni FROM dictamenes d WHERE d.turno_id=t.id AND d.paciente_dni <> '' LIMIT 1) AS dni
+      FROM turnos t ORDER BY t.fecha DESC, t.hora DESC`)).rows;
+    const turnosSug = turnos.filter(t => !turnosVinc.has(t.id) && !turnosDeCasos.has(t.id))
+      .map(t => ({ ...t, fecha: fechaDeColumna(t.fecha), motivo_sugerencia: parecido(t.paciente, t.dni) }))
+      .filter(t => t.motivo_sugerencia);
+
+    res.json({ ok: true, turnos: turnosSug.slice(0, 50), casos: casosSug.slice(0, 50) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/seguimientos', adminMiddleware, async (req, res) => {
+  const { paciente_nombre, paciente_dni, empresa, diagnostico, notas, turnos = [], casos = [] } = req.body;
+  if (!paciente_nombre || !paciente_nombre.trim()) return res.status(400).json({ error: 'Falta el nombre del paciente' });
+  try {
+    const r = await pool.query(
+      `INSERT INTO seguimientos (paciente_nombre, paciente_dni, empresa, diagnostico, notas, creado_por)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [paciente_nombre.trim(), (paciente_dni || '').trim(), (empresa || '').trim(), diagnostico || '', notas || '', req.usuario.nombre]);
+    const id = r.rows[0].id;
+    for (const t of turnos) await pool.query(
+      'INSERT INTO seguimiento_vinculos (seguimiento_id, turno_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, t]);
+    for (const c of casos) await pool.query(
+      'INSERT INTO seguimiento_vinculos (seguimiento_id, caso_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, c]);
+    res.json({ ok: true, id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
+  const { paciente_nombre, paciente_dni, empresa, diagnostico, notas, estado } = req.body;
+  if (estado && !ESTADOS_SEGUIMIENTO.includes(estado)) return res.status(400).json({ error: 'Estado desconocido' });
+  try {
+    const r = await pool.query(`
+      UPDATE seguimientos SET
+        paciente_nombre = COALESCE($1, paciente_nombre), paciente_dni = COALESCE($2, paciente_dni),
+        empresa = COALESCE($3, empresa), diagnostico = COALESCE($4, diagnostico), notas = COALESCE($5, notas),
+        estado = COALESCE($6, estado),
+        cerrado_en = CASE WHEN $6 = 'cerrado' THEN COALESCE(cerrado_en, NOW())
+                          WHEN $6 IS NOT NULL THEN NULL ELSE cerrado_en END
+      WHERE id = $7 RETURNING id`,
+      [paciente_nombre?.trim() || null, paciente_dni ?? null, empresa ?? null, diagnostico ?? null, notas ?? null,
+       estado || null, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Borra el legajo, no los turnos ni los casos: esos siguen viviendo en la agenda y en ausentismo
+app.delete('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM seguimientos WHERE id=$1 RETURNING paciente_nombre', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    res.json({ ok: true, paciente: r.rows[0].paciente_nombre });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/seguimientos/:id/vinculos', adminMiddleware, async (req, res) => {
+  const { turno_id, caso_id } = req.body;
+  if (!!turno_id === !!caso_id) return res.status(400).json({ error: 'Indicá un turno o un caso' });
+  try {
+    await pool.query(
+      'INSERT INTO seguimiento_vinculos (seguimiento_id, turno_id, caso_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+      [req.params.id, turno_id || null, caso_id || null]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/seguimientos/:id/vinculos/:vinculoId', adminMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM seguimiento_vinculos WHERE id=$1 AND seguimiento_id=$2', [req.params.vinculoId, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- La historia del legajo: todos los hitos de sus turnos y casos, en orden ---
+app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
+  try {
+    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
+    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+
+    const vinculos = (await pool.query('SELECT * FROM seguimiento_vinculos WHERE seguimiento_id=$1', [seg.id])).rows;
+    const casoIds = vinculos.map(v => v.caso_id).filter(Boolean);
+    const casos = casoIds.length ? (await pool.query(
+      `SELECT c.*, m.nombre AS profesional_nombre FROM casos_ausentismo c
+       LEFT JOIN medicos m ON m.id = c.profesional_id WHERE c.id = ANY($1)`, [casoIds])).rows : [];
+    const turnoIds = [...new Set([...vinculos.map(v => v.turno_id), ...casos.map(c => c.turno_id)].filter(Boolean))];
+
+    const turnos = turnoIds.length ? (await pool.query(`
+      SELECT t.id, t.paciente, t.fecha, t.hora, t.tipo, t.empresa, t.estado, t.modalidad, t.motivo,
+             t.diagnostico_previo, t.dias_reposo_previo, t.medico_tratante,
+             COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL), '{}') AS medicos,
+             EXISTS (SELECT 1 FROM eventos_turno e WHERE e.turno_id=t.id AND e.tipo='union_paciente') AS paciente_ingreso
+      FROM turnos t LEFT JOIN turno_medicos tm ON tm.turno_id = t.id
+      WHERE t.id = ANY($1) GROUP BY t.id`, [turnoIds])).rows : [];
+    const dictamenes = turnoIds.length ? (await pool.query(`
+      SELECT id, numero, turno_id, medico, fecha_consulta, diagnostico, diagnostico_desc, diagnostico_cie,
+             aptitud, aptitud_texto, dias_reposo, derivacion, conclusion, indicaciones,
+             (pdf_firmado IS NOT NULL) AS firmado, creado_en
+      FROM dictamenes WHERE turno_id = ANY($1) ORDER BY creado_en ASC`, [turnoIds])).rows : [];
+    const informes = (casoIds.length || turnoIds.length) ? (await pool.query(`
+      SELECT id, caso_id, turno_id, titulo, nombre_archivo, tipo_mime, subido_por, creado_en
+      FROM informes_ausentismo WHERE caso_id = ANY($1::int[]) OR turno_id = ANY($2::varchar[])`, [casoIds, turnoIds])).rows : [];
+    const certificados = casoIds.length ? (await pool.query(`
+      SELECT id, caso_id, nombre_archivo, tipo_mime, subido_por, creado_en
+      FROM certificados_ausentismo WHERE caso_id = ANY($1)`, [casoIds])).rows : [];
+    const ingresos = casoIds.length ? (await pool.query(`
+      SELECT caso_id, resultado, distancia_metros, creado_en
+      FROM ingresos_ubicacion WHERE caso_id = ANY($1) ORDER BY creado_en ASC`, [casoIds])).rows : [];
+
+    const hitos = [];
+    const casoDelTurno = id => casos.find(c => c.turno_id === id);
+
+    hitos.push({ tipo: 'legajo', instante: seg.creado_en, titulo: 'Se abrió el seguimiento',
+      detalle: seg.creado_por ? `Por ${seg.creado_por}` : '' });
+    if (seg.cerrado_en) hitos.push({ tipo: 'legajo', instante: seg.cerrado_en, titulo: 'Se cerró el seguimiento' });
+
+    for (const c of casos) {
+      hitos.push({ tipo: 'caso', instante: c.creado_en, caso_id: c.id,
+        titulo: c.tipo_control === 'examen_periodico' ? 'Pedido de seguimiento por examen periódico' : 'Pedido de control de ausentismo',
+        detalle: c.motivo || '', extra: c.documentacion || '', empresa: c.empresa_nombre, profesional: c.profesional_nombre || '' });
+      const deEste = ingresos.filter(i => i.caso_id === c.id);
+      const aceptado = deEste.find(i => i.resultado === 'aceptado');
+      const rechazos = deEste.filter(i => i.resultado !== 'aceptado').length;
+      if (aceptado) hitos.push({ tipo: 'control', instante: aceptado.creado_en, caso_id: c.id,
+        titulo: 'Ubicación verificada en el domicilio',
+        detalle: `${aceptado.distancia_metros != null ? `A ${Math.round(aceptado.distancia_metros)} m del domicilio declarado` : 'Dentro del radio'}${rechazos ? ` · ${rechazos} intento(s) rechazado(s)` : ''}` });
+      else if (rechazos) hitos.push({ tipo: 'control', instante: deEste[deEste.length - 1].creado_en, caso_id: c.id, alerta: true,
+        titulo: 'No se pudo verificar la ubicación', detalle: `${rechazos} intento(s) fuera del domicilio o sin permiso de ubicación` });
+    }
+
+    for (const t of turnos) {
+      const dics = dictamenes.filter(d => d.turno_id === t.id);
+      const caso = casoDelTurno(t.id);
+      const noVino = t.estado === 'completado' && !t.paciente_ingreso && !dics.length &&
+        ((caso && caso.estado === 'resuelto') || /^Control de licencia/i.test(t.tipo || ''));
+      hitos.push({ tipo: noVino ? 'inasistencia' : 'turno', instante: instanteTurno(t), turno_id: t.id,
+        fecha: fechaDeColumna(t.fecha), hora: t.hora, estado: t.estado, titulo: t.tipo || 'Consulta',
+        medicos: t.medicos, modalidad: t.modalidad, motivo: t.motivo,
+        previo: { diagnostico: t.diagnostico_previo, dias_reposo: t.dias_reposo_previo, medico_tratante: t.medico_tratante },
+        alerta: noVino,
+        dictamenes: dics.map(d => ({ id: d.id, numero: d.numero, medico: d.medico, diagnostico: d.diagnostico,
+          diagnostico_desc: d.diagnostico_desc, diagnostico_cie: d.diagnostico_cie, aptitud: d.aptitud,
+          aptitud_texto: d.aptitud_texto, dias_reposo: d.dias_reposo, derivacion: d.derivacion,
+          conclusion: d.conclusion, indicaciones: d.indicaciones, firmado: d.firmado })) });
+    }
+
+    for (const i of informes) hitos.push({ tipo: 'informe', instante: i.creado_en, informe_id: i.id,
+      titulo: i.titulo || i.nombre_archivo, detalle: i.subido_por ? `Subido por ${i.subido_por}` : '', archivo: i.nombre_archivo });
+    for (const c of certificados) hitos.push({ tipo: 'certificado', instante: c.creado_en, certificado_id: c.id,
+      titulo: c.nombre_archivo, detalle: c.subido_por ? `Subido por ${c.subido_por}` : '' });
+
+    hitos.sort((a, b) => new Date(a.instante) - new Date(b.instante));
+
+    // Resumen: lo que el médico quiere saber antes de leer el detalle. El reposo de una junta
+    // viene en varios dictámenes del mismo turno, así que se toma uno por turno.
+    const consultas = turnos.filter(t => t.estado === 'completado').sort((a, b) => instanteTurno(a) - instanteTurno(b));
+    const reposoPorTurno = consultas.map(t => Math.max(0, ...dictamenes.filter(d => d.turno_id === t.id).map(d => Number(d.dias_reposo) || 0)));
+    const dicsOrden = [...dictamenes].sort((a, b) => new Date(a.creado_en) - new Date(b.creado_en));
+    const ultimoConDx = [...dicsOrden].reverse().find(d => d.diagnostico_desc || d.diagnostico);
+    const ultimoConApt = [...dicsOrden].reverse().find(d => d.aptitud);
+    const hoy = fechaLocal(new Date());
+    const proximo = turnos.filter(t => t.estado !== 'completado' && fechaDeColumna(t.fecha) >= hoy)
+      .sort((a, b) => instanteTurno(a) - instanteTurno(b))[0];
+
+    res.json({ ok: true, seguimiento: seg, hitos,
+      vinculos: vinculos.map(v => {
+        const t = turnos.find(x => x.id === v.turno_id), c = casos.find(x => x.id === v.caso_id);
+        return { id: v.id, turno_id: v.turno_id, caso_id: v.caso_id,
+          texto: t ? `${t.tipo || 'Turno'} · ${fechaDeColumna(t.fecha).split('-').reverse().join('/')} · ${t.paciente}`
+               : c ? `Caso de ausentismo #${c.id} · ${c.trabajador_nombre} · ${c.empresa_nombre}` : 'Registro borrado' };
+      }),
+      resumen: {
+        consultas: consultas.length,
+        primera: consultas[0] ? fechaDeColumna(consultas[0].fecha) : null,
+        ultima: consultas.length ? fechaDeColumna(consultas[consultas.length - 1].fecha) : null,
+        dias_reposo_total: reposoPorTurno.reduce((a, b) => a + b, 0),
+        ultimo_reposo: reposoPorTurno.length ? reposoPorTurno[reposoPorTurno.length - 1] : null,
+        ultimo_diagnostico: ultimoConDx ? [ultimoConDx.diagnostico_cie, ultimoConDx.diagnostico_desc || ultimoConDx.diagnostico].filter(Boolean).join(' · ') : null,
+        ultima_aptitud: ultimoConApt ? (ultimoConApt.aptitud_texto || ultimoConApt.aptitud) : null,
+        certificados: certificados.length, informes: informes.length,
+        inasistencias: hitos.filter(h => h.tipo === 'inasistencia').length,
+        proximo_turno: proximo ? { id: proximo.id, fecha: fechaDeColumna(proximo.fecha), hora: proximo.hora, tipo: proximo.tipo } : null
+      } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Archivos del legajo. Los endpoints de ausentismo solo se los dan al profesional del caso;
+// acá alcanza con poder ver el legajo y que el archivo sea de algo vinculado a él.
+app.get('/api/seguimientos/:id/archivo/:clase/:archivoId', authMiddleware, async (req, res) => {
+  try {
+    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
+    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    const tabla = { certificado: 'certificados_ausentismo', informe: 'informes_ausentismo' }[req.params.clase];
+    if (!tabla) return res.status(400).json({ error: 'Tipo de archivo desconocido' });
+    const r = await pool.query(`SELECT * FROM ${tabla} WHERE id=$1`, [req.params.archivoId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Archivo no encontrado' });
+    const a = r.rows[0];
+    const pertenece = await pool.query(`
+      SELECT 1 FROM seguimiento_vinculos v LEFT JOIN casos_ausentismo c ON c.id = v.caso_id
+      WHERE v.seguimiento_id = $1 AND (v.caso_id = $2::int OR $3::varchar IN (v.turno_id, c.turno_id)) LIMIT 1`,
+      [seg.id, a.caso_id || null, a.turno_id || null]);
+    if (!pertenece.rows.length) return res.status(403).json({ error: 'Ese archivo no es de este seguimiento' });
+    res.setHeader('Content-Type', a.tipo_mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${(a.nombre_archivo || 'archivo').replace(/"/g, '')}"`);
+    res.send(Buffer.from(a.archivo_base64, 'base64'));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- Facturación: casos resueltos del mes, agrupados por empresa ---
 app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
   const mes = req.query.mes || new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -3756,6 +4162,7 @@ app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res
       [req.empresa.id, req.empresa.nombre, trabajador_nombre.trim(), trabajador_dni || '',
        trabajador_telefono || '', motivo.trim(), documentacion || '',
        (domicilio || '').trim(), g.punto?.lat ?? null, g.punto?.lng ?? null]);
+    await vincularASeguimientosAbiertos({ casoId: r.rows[0].id, nombre: trabajador_nombre, dni: trabajador_dni });
     res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en,
       domicilio_ubicado: !!g.punto, domicilio_normalizado: g.punto?.normalizada || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
