@@ -359,6 +359,16 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS idx_seg_vinc_turno ON seguimiento_vinculos (turno_id);
       CREATE INDEX IF NOT EXISTS idx_seg_vinc_caso  ON seguimiento_vinculos (caso_id);
+      -- Lo que la IA leyó de cada certificado o informe adjunto: se lee una vez y queda.
+      CREATE TABLE IF NOT EXISTS lecturas_ia (
+        id SERIAL PRIMARY KEY,
+        clase VARCHAR(20) NOT NULL,
+        archivo_id INTEGER NOT NULL,
+        datos JSONB NOT NULL,
+        modelo VARCHAR(60),
+        creado_en TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (clase, archivo_id)
+      );
     `);
 
     const adminHash = hashPassword('medgrup2026');
@@ -403,6 +413,9 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado TEXT`,
+      `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia TEXT`,
+      `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia_en TIMESTAMPTZ`,
+      `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia_firma VARCHAR(64)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado_nombre VARCHAR(300)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado_fecha TIMESTAMPTZ`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS aptitud_texto VARCHAR(500)`,
@@ -3836,8 +3849,9 @@ function dictamenComoSeImprime(d, esAuditoria) {
   return {
     id: d.id, numero: d.numero, medico: d.medico, firmado: d.firmado,
     diagnostico: d.diagnostico_cie || d.diagnostico_desc || d.diagnostico || '',
-    aptitud: conAptitud ? (APTITUD_TEXTO[d.aptitud] || d.aptitud || null) : null,
-    aptitud_detalle: conAptitud ? (d.aptitud_texto || '') : '',
+    // Un código que no está en la lista se muestra con su texto, no crudo
+    aptitud: conAptitud ? (APTITUD_TEXTO[d.aptitud] || d.aptitud_texto || d.aptitud || null) : null,
+    aptitud_detalle: conAptitud && APTITUD_TEXTO[d.aptitud] ? (d.aptitud_texto || '') : '',
     dias_reposo: conAptitud ? (Number(d.dias_reposo) || 0) : null,
     derivacion: conAptitud && d.derivacion && d.derivacion !== 'Sin derivación' ? d.derivacion : '',
     conclusion: d.conclusion || '', indicaciones: d.indicaciones || ''
@@ -4098,11 +4112,8 @@ app.delete('/api/seguimientos/:id/vinculos/:vinculoId', adminMiddleware, async (
 });
 
 // --- La historia del legajo: todos los hitos de sus turnos y casos, en orden ---
-app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
-  try {
-    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
-    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
-
+// La usa la pantalla y también el resumen con IA, que tiene que partir de los mismos datos.
+async function armarLegajo(seg) {
     const vinculos = (await pool.query('SELECT * FROM seguimiento_vinculos WHERE seguimiento_id=$1', [seg.id])).rows;
     const casoIds = vinculos.map(v => v.caso_id).filter(Boolean);
     const casos = casoIds.length ? (await pool.query(
@@ -4193,7 +4204,7 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
     const proximo = turnos.filter(t => t.estado !== 'completado' && fechaDeColumna(t.fecha) >= hoy)
       .sort((a, b) => instanteTurno(a) - instanteTurno(b))[0];
 
-    res.json({ ok: true, seguimiento: seg, hitos,
+    return { seguimiento: seg, hitos,
       vinculos: vinculos.map(v => {
         const t = turnos.find(x => x.id === v.turno_id), c = casos.find(x => x.id === v.caso_id);
         return { id: v.id, turno_id: v.turno_id, caso_id: v.caso_id,
@@ -4212,7 +4223,21 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
         certificados: certificados.length, informes: informes.length,
         inasistencias: hitos.filter(h => h.tipo === 'inasistencia').length,
         proximo_turno: proximo ? { id: proximo.id, fecha: fechaDeColumna(proximo.fecha), hora: proximo.hora, tipo: proximo.tipo } : null
-      } });
+      } };
+}
+
+app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
+  try {
+    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
+    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    const legajo = await armarLegajo(seg);
+    // Lo que la IA ya leyó de cada certificado e informe adjunto: la pantalla lo muestra
+    // sin tener que pedirlo aparte, y sabe qué falta leer.
+    legajo.lecturas = await lecturasDelLegajo(legajo.hitos);
+    legajo.resumen_ia = seg.resumen_ia ? { texto: seg.resumen_ia, generado_en: seg.resumen_ia_en,
+      desactualizado: seg.resumen_ia_firma !== firmaDelLegajo(legajo) } : null;
+    delete legajo.seguimiento.resumen_ia;
+    res.json({ ok: true, ...legajo });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -4236,6 +4261,205 @@ app.get('/api/seguimientos/:id/archivo/:clase/:archivoId', authMiddleware, async
     res.setHeader('Content-Disposition', `inline; filename="${(a.nombre_archivo || 'archivo').replace(/"/g, '')}"`);
     res.send(Buffer.from(a.archivo_base64, 'base64'));
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== IA DEL LEGAJO =====
+// Los certificados e informes adjuntos llegan como PDF o foto: para mostrar qué dice cada uno
+// —y para el resumen del caso— hay que leerlos. Cada archivo se lee una sola vez y la lectura
+// queda guardada; el resumen también, y se marca desactualizado cuando entra algo nuevo.
+const Anthropic = require('@anthropic-ai/sdk');
+const claude = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
+const MODELO_LEGAJO = 'claude-opus-5-5';
+
+async function preguntarAlModelo({ system, content, esquema, effort }) {
+  if (!claude) throw new Error('La IA no está configurada (falta ANTHROPIC_API_KEY en Railway).');
+  const resp = await claude.beta.messages.create({
+    model: MODELO_LEGAJO,
+    max_tokens: 16000,
+    system,
+    messages: [{ role: 'user', content }],
+    output_config: { effort, ...(esquema ? { format: { type: 'json_schema', schema: esquema } } : {}) },
+    // Si un clasificador de seguridad rechaza el pedido, la API lo reintenta sola con el
+    // modelo recomendado para ese caso, en vez de devolver el rechazo.
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default'
+  }, { timeout: IA_TIMEOUT_MS });
+  if (resp.stop_reason === 'refusal') throw new Error('La IA no pudo procesar este documento.');
+  if (resp.stop_reason === 'max_tokens') throw new Error('La respuesta de la IA quedó cortada.');
+  const texto = resp.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  return esquema ? JSON.parse(texto) : texto;
+}
+
+const textoONulo = descripcion => ({ anyOf: [{ type: 'string' }, { type: 'null' }], description: descripcion });
+const ESQUEMA_LECTURA = {
+  type: 'object', additionalProperties: false,
+  required: ['tipo_documento', 'fecha_emision', 'profesional', 'especialidad', 'institucion', 'diagnostico',
+    'dias_reposo', 'reposo_desde', 'reposo_hasta', 'indicaciones', 'resumen', 'legible'],
+  properties: {
+    tipo_documento: { type: 'string', enum: ['certificado', 'informe', 'estudio', 'alta', 'otro'] },
+    fecha_emision: textoONulo('Fecha en que se emitió el documento, AAAA-MM-DD'),
+    profesional: textoONulo('Nombre del profesional que lo firma'),
+    especialidad: textoONulo('Especialidad del profesional'),
+    institucion: textoONulo('Clínica, hospital o institución'),
+    diagnostico: textoONulo('Diagnóstico tal como figura, con código CIE si lo tiene'),
+    dias_reposo: { anyOf: [{ type: 'integer' }, { type: 'null' }], description: 'Días de reposo indicados' },
+    reposo_desde: textoONulo('Inicio del reposo, AAAA-MM-DD'),
+    reposo_hasta: textoONulo('Fin del reposo, AAAA-MM-DD'),
+    indicaciones: textoONulo('Indicaciones o tratamiento, breve'),
+    resumen: { type: 'string', description: 'Qué dice el documento, en una o dos oraciones' },
+    legible: { type: 'boolean', description: 'false si no se puede leer con seguridad' }
+  }
+};
+const SISTEMA_LECTURA = `Leés documentación médica que presentan trabajadores en un servicio de medicina laboral argentino (certificados, informes, estudios, altas). Extraé solo lo que figura en el documento: si un dato no aparece o no se lee con seguridad, devolvé null. No completes ni deduzcas datos. Escribí en español. Las fechas argentinas vienen como día/mes/año: convertilas a AAAA-MM-DD.`;
+
+// Qué hay para leer en el legajo y qué ya se leyó
+function archivosDelLegajo(hitos) {
+  return hitos.filter(h => h.tipo === 'certificado' || h.tipo === 'informe')
+    .map(h => ({ clase: h.tipo, id: h.certificado_id || h.informe_id }));
+}
+async function lecturasDelLegajo(hitos) {
+  const archivos = archivosDelLegajo(hitos);
+  if (!archivos.length) return [];
+  const r = await pool.query(
+    `SELECT clase, archivo_id, datos, creado_en FROM lecturas_ia
+     WHERE (clase, archivo_id) IN (SELECT * FROM unnest($1::varchar[], $2::int[]))`,
+    [archivos.map(a => a.clase), archivos.map(a => a.id)]);
+  return r.rows.map(x => ({ clase: x.clase, id: x.archivo_id, datos: x.datos, leido_en: x.creado_en }));
+}
+
+async function leerArchivo(clase, id) {
+  const tabla = clase === 'certificado' ? 'certificados_ausentismo' : 'informes_ausentismo';
+  const r = await pool.query(`SELECT * FROM ${tabla} WHERE id=$1`, [id]);
+  if (!r.rows.length) throw new Error('Archivo no encontrado');
+  const a = r.rows[0];
+  const mime = (a.tipo_mime || '').toLowerCase();
+  let bloque;
+  if (mime === 'application/pdf' || /\.pdf$/i.test(a.nombre_archivo)) {
+    bloque = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.archivo_base64 } };
+  } else if (['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) {
+    bloque = { type: 'image', source: { type: 'base64', media_type: mime, data: a.archivo_base64 } };
+  } else {
+    throw new Error('Formato que la IA no puede leer');
+  }
+  const datos = await preguntarAlModelo({
+    system: SISTEMA_LECTURA, esquema: ESQUEMA_LECTURA, effort: 'low',
+    content: [bloque, { type: 'text', text:
+      `${clase === 'certificado' ? 'Certificado presentado por el trabajador' : 'Informe adjuntado al legajo'}` +
+      ` (archivo "${a.nombre_archivo}", subido el ${fechaLocal(a.creado_en)}). Extraé sus datos.` }]
+  });
+  await pool.query(
+    `INSERT INTO lecturas_ia (clase, archivo_id, datos, modelo) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (clase, archivo_id) DO UPDATE SET datos=EXCLUDED.datos, modelo=EXCLUDED.modelo, creado_en=NOW()`,
+    [clase, id, JSON.stringify(datos), MODELO_LEGAJO]);
+  return datos;
+}
+
+// Lee lo que falta, de a tres por vez. Un archivo que falla no frena a los demás: vuelve con su
+// error y se reintenta la próxima vez.
+async function leerPendientes(hitos) {
+  const hechas = await lecturasDelLegajo(hitos);
+  const pendientes = archivosDelLegajo(hitos).filter(a => !hechas.some(h => h.clase === a.clase && h.id === a.id));
+  const errores = [];
+  for (let i = 0; i < pendientes.length; i += 3) {
+    await Promise.all(pendientes.slice(i, i + 3).map(a => leerArchivo(a.clase, a.id).catch(err => {
+      console.error(`IA: no se pudo leer ${a.clase} ${a.id}:`, err.message);
+      errores.push({ clase: a.clase, id: a.id, error: err.message });
+    })));
+  }
+  return { lecturas: await lecturasDelLegajo(hitos), errores };
+}
+
+app.post('/api/seguimientos/:id/lecturas', authMiddleware, async (req, res) => {
+  try {
+    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
+    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    const { hitos } = await armarLegajo(seg);
+    res.json({ ok: true, ...(await leerPendientes(hitos)) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// El resumen se rehace solo si cambió algo que lo alimenta: qué hitos hay (y sus dictámenes),
+// los datos del legajo y las lecturas. La firma es eso mismo, comprimido.
+function firmaDelLegajo(legajo) {
+  const s = legajo.seguimiento;
+  const base = JSON.stringify([s.paciente_nombre, s.diagnostico, s.notas,
+    legajo.hitos.map(h => [h.tipo, h.turno_id || h.caso_id || h.informe_id || h.certificado_id || '', h.estado || '',
+      (h.dictamenes || []).map(d => d.id)])]);
+  return crypto.createHash('sha256').update(base).digest('hex').slice(0, 32);
+}
+
+function textoParaResumen(legajo, lecturas) {
+  const s = legajo.seguimiento, lineas = [];
+  lineas.push(`Paciente: ${s.paciente_nombre}${s.paciente_dni ? ` (DNI ${s.paciente_dni})` : ''}${s.empresa ? `, empresa ${s.empresa}` : ''}.`);
+  if (s.diagnostico) lineas.push(`Motivo del seguimiento: ${s.diagnostico}`);
+  if (s.notas) lineas.push(`Notas del equipo: ${s.notas}`);
+  lineas.push(`Seguimiento abierto el ${fechaLocal(s.creado_en)}. Estado: ${s.estado}. Hoy es ${fechaLocal(new Date())}.`, '');
+  const lectura = (clase, id) => lecturas.find(l => l.clase === clase && l.id === id)?.datos;
+  for (const h of legajo.hitos) {
+    const cuando = h.fecha ? `${h.fecha} ${h.hora || ''}`.trim() : fechaLocal(h.instante);
+    if (h.tipo === 'turno' || h.tipo === 'inasistencia') {
+      lineas.push(`[${cuando}] ${h.estado === 'completado' ? 'Consulta' : 'Turno programado'}: ${h.titulo}${(h.medicos || []).length ? ` con ${h.medicos.join(', ')}` : ''}.${h.tipo === 'inasistencia' ? ' El paciente NO se presentó.' : ''}`);
+      const p = h.previo || {};
+      if (p.diagnostico || p.dias_reposo) lineas.push(`  Traía: ${[p.diagnostico, p.dias_reposo ? p.dias_reposo + ' días de reposo' : '', p.medico_tratante ? 'tratante ' + p.medico_tratante : ''].filter(Boolean).join(', ')}.`);
+      for (const d of h.dictamenes || []) {
+        lineas.push(`  Dictamen ${d.numero} (${d.medico}): ` + [
+          d.diagnostico && `diagnóstico ${d.diagnostico}`,
+          d.aptitud ? `aptitud: ${d.aptitud}${d.aptitud_detalle ? ` (${d.aptitud_detalle})` : ''}` : 'no dictamina aptitud',
+          d.dias_reposo ? `${d.dias_reposo} días de reposo` : '',
+          d.derivacion && `derivación a ${d.derivacion}`].filter(Boolean).join('; ') + '.');
+        if (d.conclusion) lineas.push(`  Conclusión: ${d.conclusion}`);
+        if (d.indicaciones) lineas.push(`  Indicaciones: ${d.indicaciones}`);
+      }
+    } else if (h.tipo === 'certificado' || h.tipo === 'informe') {
+      const l = lectura(h.tipo, h.certificado_id || h.informe_id);
+      const nombre = h.tipo === 'certificado' ? 'Certificado presentado' : 'Informe adjunto';
+      if (!l) { lineas.push(`[${cuando}] ${nombre}: "${h.titulo}" (no se pudo leer su contenido).`); continue; }
+      lineas.push(`[${cuando}] ${nombre} (${l.tipo_documento}, emitido ${l.fecha_emision || 'sin fecha'}${l.profesional ? ` por ${l.profesional}` : ''}${l.especialidad ? `, ${l.especialidad}` : ''}): ` +
+        [l.diagnostico && `diagnóstico ${l.diagnostico}`,
+         l.dias_reposo != null && `${l.dias_reposo} días de reposo${l.reposo_desde ? ` del ${l.reposo_desde}` : ''}${l.reposo_hasta ? ` al ${l.reposo_hasta}` : ''}`,
+         l.indicaciones && `indicaciones: ${l.indicaciones}`].filter(Boolean).join('; ') + `. ${l.resumen}${l.legible ? '' : ' (lectura dudosa)'}`);
+    } else if (h.tipo === 'caso') {
+      lineas.push(`[${cuando}] ${h.titulo} de ${h.empresa}${h.detalle ? `: ${h.detalle}` : ''}${h.extra ? ` Documentación declarada: ${h.extra}` : ''}`);
+    } else if (h.tipo === 'control') {
+      lineas.push(`[${cuando}] ${h.titulo}. ${h.detalle || ''}`.trim());
+    }
+  }
+  return lineas.join('\n');
+}
+
+const SISTEMA_RESUMEN = `Sos médico laboral y escribís el resumen de un legajo de seguimiento para que otro médico del equipo, antes de atender al paciente, entienda en un minuto en qué situación está. Usá solo los datos que te pasan: no agregues diagnósticos, fechas ni conclusiones que no estén. Escribí en español rioplatense profesional, en prosa (sin títulos, sin viñetas, sin markdown), en tres o cuatro párrafos cortos:
+1. Situación actual: diagnóstico vigente, último dictamen (aptitud y reposo, si se dictaminaron) y qué está pendiente.
+2. Evolución: cómo fue cambiando el cuadro a lo largo de las consultas, con fechas.
+3. Documentación presentada: qué certificados e informes trajo, de quién y qué indican; señalá si coinciden o no con lo dictaminado y si hay períodos de reposo sin certificado o certificados que se superponen.
+4. Si corresponde, lo que convendría evaluar en el próximo control (por ejemplo, si el caso va camino a junta médica). Omití este párrafo si no hay nada que decir.
+Cuando un informe no dictamina aptitud, no la infieras.`;
+
+app.post('/api/seguimientos/:id/resumen', authMiddleware, async (req, res) => {
+  try {
+    const seg = await seguimientoVisiblePara(req.params.id, req.usuario);
+    if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
+    const legajo = await armarLegajo(seg);
+    const firma = firmaDelLegajo(legajo);
+    if (!req.body?.forzar && seg.resumen_ia && seg.resumen_ia_firma === firma) {
+      return res.json({ ok: true, resumen_ia: { texto: seg.resumen_ia, generado_en: seg.resumen_ia_en, desactualizado: false } });
+    }
+    // El resumen tiene que conocer el contenido de los certificados: primero se lee lo que falte
+    const { lecturas, errores } = await leerPendientes(legajo.hitos);
+    if (!legajo.hitos.some(h => ['turno', 'inasistencia', 'certificado', 'informe', 'caso'].includes(h.tipo))) {
+      return res.status(400).json({ error: 'El seguimiento todavía no tiene consultas ni documentos para resumir.' });
+    }
+    const texto = await preguntarAlModelo({
+      system: SISTEMA_RESUMEN, effort: 'medium',
+      content: [{ type: 'text', text: `Datos del legajo, en orden cronológico:\n\n${textoParaResumen(legajo, lecturas)}` }]
+    });
+    const r = await pool.query(
+      `UPDATE seguimientos SET resumen_ia=$1, resumen_ia_en=NOW(), resumen_ia_firma=$2 WHERE id=$3 RETURNING resumen_ia_en`,
+      [texto, firma, seg.id]);
+    res.json({ ok: true, errores, resumen_ia: { texto, generado_en: r.rows[0].resumen_ia_en, desactualizado: false } });
+  } catch (err) {
+    console.error('IA resumen:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- Facturación: casos resueltos del mes, agrupados por empresa ---
