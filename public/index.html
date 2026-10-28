@@ -632,99 +632,192 @@ td.no-label::before{display:none;}
 }
 
 /* ── SEGUIMIENTOS ──
-   El detalle se lee como una historia clínica: arriba la situación actual en pocas cifras,
-   abajo los hitos en orden con su fecha en una columna propia. */
+   Se lee como una historia clínica: el nombre y el motivo arriba, una ficha con la
+   situación actual, y la historia en un solo recuadro con pestañas. Pocas cajas: la
+   jerarquía la llevan la tipografía y el aire, no los bordes. */
+
+/* Listado */
 .sg-hdr{flex-wrap:wrap;}
 .sg-hdr-acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.sg-hdr-acciones input{width:240px;max-width:100%;height:38px;}
-.sg-filtros{padding:.75rem 1.25rem 0;display:flex;gap:6px;flex-wrap:wrap;}
+.sg-hdr-acciones input{width:260px;max-width:100%;height:38px;}
+.sg-filtros{padding:.85rem 1.25rem .25rem;display:flex;gap:6px;flex-wrap:wrap;}
 .sg-filtros:empty{display:none;}
-.sg-vacio{text-align:center;padding:2rem 1rem;color:var(--ink-3);font-size:13.5px;}
-.sg-fila{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;padding:1rem 1.25rem;border-bottom:1px solid var(--rule);cursor:pointer;transition:background .15s;}
+.sg-vacio{text-align:center;padding:2.5rem 1.25rem;color:var(--ink-3);font-size:14px;line-height:1.6;}
+.sg-fila{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 24px;align-items:center;padding:1.05rem 1.25rem;border-bottom:1px solid var(--rule);cursor:pointer;transition:background .15s;}
 .sg-fila:last-child{border-bottom:none;}
 .sg-fila:hover{background:var(--surface2);}
-.sg-fila:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;}
-.sg-fila-nombre{font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.sg-fila-dx{font-size:13px;color:var(--ink-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sg-fila-lado{text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.6;}
+.sg-fila:focus-visible{outline:2px solid var(--blue-ink);outline-offset:-2px;}
+.sg-fila-nombre{font-size:16px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sg-fila-dx{font-size:13.5px;color:var(--ink-2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sg-fila-lado{text-align:right;font-size:13px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.65;}
 .sg-fila-lado strong{color:var(--ink);font-weight:600;}
 .sg-tag{border:none;cursor:pointer;font-family:inherit;}
-.sg-tag:hover{text-decoration:underline;}
+.sg-tag:hover{text-decoration:underline;text-underline-offset:2px;}
 
-.sg-volver{background:none;border:none;padding:0;color:var(--ink-2);font:inherit;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:1rem;}
-.sg-volver:hover{color:var(--ink);text-decoration:underline;}
-.sg-cabecera{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.25rem;}
-.sg-nombre{font-family:var(--display);font-size:2rem;font-weight:400;line-height:1.1;color:var(--ink);margin:0;}
-.sg-meta{font-size:13.5px;color:var(--ink-2);margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.sg-cab-acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.sg-cab-acciones select{height:38px;width:auto;}
-.sg-motivo{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--ink);border-radius:var(--r-sm);padding:.9rem 1.1rem;margin-bottom:1.25rem;font-size:14px;line-height:1.55;color:var(--ink);white-space:pre-line;}
-.sg-motivo-notas{margin-top:6px;font-size:13px;color:var(--ink-2);}
-.sg-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem;}
-.sg-dato{padding:.9rem 1.1rem;min-width:0;box-shadow:0 0 0 .5px var(--rule);}
-.sg-dato-lbl{font-size:12px;font-weight:600;color:var(--ink-3);}
-.sg-dato-val{font-size:20px;font-weight:600;color:var(--ink);margin-top:2px;font-variant-numeric:tabular-nums;line-height:1.25;}
-.sg-dato-val.texto{font-size:14px;line-height:1.4;overflow-wrap:anywhere;}
-.sg-dato-sub{font-size:12px;color:var(--ink-3);margin-top:2px;}
+/* Cabecera del legajo */
+.sg-volver{background:none;border:none;padding:4px 0;color:var(--ink-3);font:inherit;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:1.25rem;}
+.sg-volver:hover{color:var(--ink);}
+.sg-cabecera{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+.sg-nombre{font-family:var(--display);font-size:2.4rem;font-weight:400;line-height:1.05;letter-spacing:-.01em;color:var(--ink);margin:0;text-wrap:balance;}
+.sg-meta{font-size:14px;color:var(--ink-2);margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums;}
+.sg-cabecera > div:first-child{flex:1 1 380px;min-width:0;}
+.sg-cab-acciones{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:6px;}
+.sg-cab-acciones select{height:38px;width:auto;border-radius:999px;padding:0 34px 0 14px;font-weight:600;}
+.sg-cab-acciones .btn{border-radius:999px;}
+/* El motivo es la primera línea del caso: texto, no una caja */
+.sg-motivo{margin:1rem 0 0;max-width:68ch;font-size:16px;line-height:1.6;color:var(--ink);white-space:pre-line;}
+.sg-motivo-notas{margin-top:6px;font-size:14px;color:var(--ink-3);}
 
-.sg-hist-hdr{flex-wrap:wrap;}
-.sg-orden{display:inline-flex;border:1px solid var(--rule-2);border-radius:var(--r-sm);overflow:hidden;}
-.sg-orden button{background:#fff;border:none;padding:5px 11px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;}
-.sg-orden button[aria-pressed="true"]{background:var(--ink);color:#fff;}
-.sg-hito{display:grid;grid-template-columns:108px 14px minmax(0,1fr);gap:0 14px;padding:0 1.25rem;}
-.sg-hito-fecha{padding:1rem 0;text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.45;}
-.sg-hito-fecha strong{display:block;color:var(--ink);font-size:13.5px;font-weight:600;}
+/* Ficha: la situación actual de un vistazo */
+.sg-ficha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:1.75rem 0 1.5rem;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--shadow-sm);}
+.sg-dato{padding:1.1rem 1.35rem;min-width:0;}
+.sg-dato + .sg-dato{border-left:1px solid var(--rule);}
+.sg-dato.ancho{grid-column:span 2;border-left:0;}
+.sg-dato:nth-child(n+3){border-top:1px solid var(--rule);}
+.sg-dato:nth-child(3){border-left:0;}
+.sg-dato dt{font-size:12.5px;font-weight:500;color:var(--ink-3);}
+.sg-dato dd{margin:4px 0 0;}
+.sg-dato-val{display:block;font-size:17px;font-weight:600;color:var(--ink);line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.sg-dato.ancho .sg-dato-val{font-family:var(--display);font-weight:400;font-size:1.55rem;line-height:1.2;}
+.sg-dato.vacio .sg-dato-val{font-family:var(--sans);font-size:15px;font-weight:500;color:var(--ink-3);}
+.sg-dato-sub{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.45;}
+.sg-dato.proximo .sg-dato-val{color:var(--amber);}
+.sg-alerta-inasist{margin:-.75rem 0 1.5rem;font-size:13.5px;font-weight:600;color:var(--magenta-ink);}
+
+/* Recuadro de la historia con pestañas */
+.sg-hist{border-radius:var(--r);box-shadow:var(--shadow-sm);}
+.sg-tabs-barra{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--rule);padding-right:1.25rem;flex-wrap:wrap;}
+.sg-tabs-barra .tabs-turnos{border-bottom:0;}
+.sg-tabs-barra .tab-turno{height:52px;}
+.sg-orden{display:inline-flex;margin:8px 0;padding:2px;background:var(--paper-2);border-radius:999px;}
+.sg-orden button{background:none;border:none;border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;transition:background .15s,color .15s;}
+.sg-orden button:hover{color:var(--ink);}
+.sg-orden button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(19,35,58,.12);}
+
+/* Línea de tiempo: cuándo y qué a la izquierda, el contenido a la derecha */
+.sg-hito{display:grid;grid-template-columns:118px 18px minmax(0,1fr);gap:0 16px;padding:0 1.5rem;}
+.sg-hito:first-child .sg-hito-fecha,.sg-hito:first-child .sg-hito-cuerpo{padding-top:1.4rem;}
+.sg-hito:last-child .sg-hito-cuerpo{padding-bottom:1.5rem;}
+.sg-hito-fecha{padding:1.1rem 0;text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;line-height:1.5;display:flex;flex-direction:column;align-items:flex-end;}
+.sg-hito-fecha strong{color:var(--ink);font-size:13.5px;font-weight:600;}
+.sg-hito-tipo{margin-top:4px;font-size:12px;font-weight:500;color:var(--ink-2);}
 .sg-hito-eje{position:relative;}
-.sg-hito-eje::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:1px;background:var(--rule-2);}
-.sg-hito:first-child .sg-hito-eje::before{top:1.3rem;}
-.sg-hito:last-child .sg-hito-eje::before{bottom:auto;height:1.3rem;}
-.sg-punto{position:absolute;left:1px;top:1.15rem;width:11px;height:11px;border-radius:50%;background:var(--ink-3);border:2px solid #fff;box-shadow:0 0 0 1px var(--rule-2);}
-.sg-punto.turno{background:var(--blue-ink);}.sg-punto.certificado{background:var(--amber);}.sg-punto.informe,.sg-punto.control{background:var(--verde);}
-.sg-punto.inasistencia,.sg-punto.alerta{background:var(--magenta);}.sg-punto.pendiente{background:#fff;box-shadow:0 0 0 2px var(--blue-ink);}
-.sg-hito-cuerpo{padding:1rem 0;border-bottom:1px solid var(--rule);min-width:0;}
+.sg-hito-eje::before{content:"";position:absolute;left:8px;top:0;bottom:0;width:1px;background:var(--rule-2);}
+.sg-hito:first-child .sg-hito-eje::before{top:1.75rem;}
+.sg-hito:last-child .sg-hito-eje::before{bottom:auto;height:1.75rem;}
+.sg-punto{position:absolute;left:3px;top:1.45rem;width:11px;height:11px;border-radius:50%;background:var(--ink-3);box-shadow:0 0 0 3px var(--surface);}
+.sg-hito:first-child .sg-punto{top:1.75rem;}
+.sg-punto.turno{background:var(--blue-ink);}
+.sg-punto.certificado{background:var(--amber);}
+.sg-punto.informe,.sg-punto.control{background:var(--verde);}
+.sg-punto.inasistencia,.sg-punto.alerta{background:var(--magenta);}
+.sg-punto.pendiente{background:var(--surface);box-shadow:0 0 0 3px var(--surface),inset 0 0 0 2px var(--blue-ink);}
+.sg-punto.legajo,.sg-punto.caso{background:var(--rule-2);}
+.sg-hito-cuerpo{padding:1.1rem 0;border-bottom:1px solid var(--rule);min-width:0;}
 .sg-hito:last-child .sg-hito-cuerpo{border-bottom:none;}
-.sg-hito-tipo{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
-.sg-hito-tit{font-size:14.5px;font-weight:600;color:var(--ink);margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere;}
-.sg-hito-det{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-line;}
-.sg-dic{margin-top:10px;background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:.75rem .9rem;}
-.sg-dic + .sg-dic{margin-top:8px;}
-.sg-dic-filas{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;font-size:13px;margin:0;}
-.sg-dic-filas dt{color:var(--ink-3);font-weight:600;}
-.sg-dic-filas dd{margin:0;color:var(--ink);overflow-wrap:anywhere;}
-.sg-conclusion{margin-top:8px;font-size:13px;line-height:1.55;color:var(--ink-2);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-.sg-conclusion.abierta{display:block;}
-.sg-link{background:none;border:none;padding:0;font:inherit;font-size:12.5px;color:var(--blue-ink);cursor:pointer;text-decoration:underline;margin-top:4px;}
-.sg-hito-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
-.sg-hito-acc .btn{padding:5px 11px;font-size:12px;text-decoration:none;}
+.sg-hito-tit{font-size:15px;font-weight:600;color:var(--ink);display:flex;gap:8px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere;line-height:1.4;}
+.sg-hito-det{font-size:13.5px;color:var(--ink-2);margin-top:4px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-line;}
 
+/* El dictamen dentro de su consulta: datos alineados, sin otra caja adentro */
+.sg-dic{margin-top:12px;padding-top:12px;border-top:1px dashed var(--rule-2);}
+.sg-dic + .sg-dic{margin-top:14px;}
+.sg-dic > .sg-hito-det:first-child{margin:0 0 8px !important;font-size:12.5px;color:var(--ink-3);}
+.sg-dic-filas{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 18px;font-size:14px;margin:0;}
+.sg-dic-filas dt{color:var(--ink-3);font-weight:500;}
+.sg-dic-filas dd{margin:0;color:var(--ink);overflow-wrap:anywhere;}
+.sg-conclusion{margin-top:10px;max-width:72ch;font-size:14px;line-height:1.6;color:var(--ink-2);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.sg-conclusion.abierta{display:block;}
+.sg-link{background:none;border:none;padding:0;font:inherit;font-size:13px;font-weight:500;color:var(--blue-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--azul-mid);margin-top:6px;}
+.sg-link:hover{text-decoration-color:currentColor;}
+
+/* Acciones de cada hito: livianas, no botones de formulario */
+.sg-hito-acc{display:flex;gap:4px 14px;flex-wrap:wrap;margin-top:10px;}
+.sg-hito-acc .btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 2px;border:0;background:none;color:var(--blue-ink);font-size:13px;font-weight:600;text-decoration:none;border-radius:var(--r-sm);}
+.sg-hito-acc .btn:hover{background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px;}
+.sg-hito-acc .btn svg{width:15px;height:15px;flex-shrink:0;}
+
+/* Documentos leídos con IA */
+.sg-nota-ia{display:flex;gap:8px;align-items:flex-start;margin:0;padding:.9rem 1.5rem 0;font-size:12.5px;color:var(--ink-3);line-height:1.5;}
+.sg-nota-ia svg{width:15px;height:15px;flex-shrink:0;margin-top:1px;stroke:var(--ink-3);}
+.sg-doc-resumen{margin-top:10px;max-width:72ch;font-size:14px;line-height:1.6;color:var(--ink);}
+.sg-leyendo{display:flex;align-items:center;gap:10px;color:var(--ink-3);}
+.sg-resumen-ia{padding:1.6rem 1.75rem 1.75rem;}
+.sg-resumen-ia.sg-leyendo{padding:2.5rem 1.75rem;font-size:14px;}
+.sg-resumen-texto{max-width:68ch;font-size:15.5px;line-height:1.75;color:var(--ink);text-wrap:pretty;}
+.sg-resumen-texto p{margin:0 0 1em;}
+.sg-resumen-texto p:first-child{font-size:17px;line-height:1.65;}
+.sg-resumen-texto p:last-child{margin-bottom:0;}
+.sg-resumen-ia .sg-nota-ia{padding:1.25rem 0 0;margin-top:1.25rem;border-top:1px solid var(--rule);}
+.sg-aviso-nuevo{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--amber-light);color:var(--amber);font-size:13.5px;font-weight:600;padding:.65rem .95rem;border-radius:var(--r);margin-bottom:1.25rem;}
+.sg-aviso-nuevo .sg-link{color:var(--amber);text-decoration-color:currentColor;}
+
+/* Sugerencias y registros vinculados */
+.sg-sug-card{border-color:var(--amber-light);box-shadow:var(--shadow-sm);}
+.sg-sug-card .card-hdr{background:var(--amber-light);border-bottom-color:transparent;}
 .sg-sub-tit{font-size:14px;font-weight:600;color:var(--ink);margin-top:1.25rem;}
 .sg-ayuda{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin:3px 0 8px;}
-.sg-pac-lista{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:340px;overflow-y:auto;}
-.sg-pac{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;text-align:left;width:100%;background:#fff;border:1px solid var(--rule);border-radius:var(--r-sm);padding:10px 12px;font:inherit;cursor:pointer;transition:border-color .15s,background .15s;}
-.sg-pac:hover,.sg-pac:focus-visible{border-color:var(--ink);background:var(--surface2);outline:none;}
-.sg-pac-nombre{font-size:14.5px;font-weight:600;color:var(--ink);}
-.sg-pac-meta{grid-column:1;font-size:12.5px;color:var(--ink-3);}
-.sg-pac-accion{grid-column:2;grid-row:1 / span 2;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;}
-.sg-elegido{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;background:var(--surface2);border:1px solid var(--rule);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;}
-.sg-elegido strong{font-size:15px;}
-.sg-sug{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--rule);border-radius:var(--r-sm);margin-bottom:6px;font-size:13px;cursor:pointer;}
+.sg-sug{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:8px;font-size:13.5px;}
+.sg-sug:last-child{margin-bottom:0;}
 .sg-sug input{width:auto;margin-top:3px;}
 .sg-sug-txt{flex:1;min-width:0;}
-.sg-sug-meta{font-size:12px;color:var(--ink-3);}
-.sg-vinc{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule);font-size:13px;}
+.sg-sug-meta{font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+.sg-vinculados{margin-top:.25rem;}
+.sg-vinculados summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;list-style:none;font-size:13.5px;font-weight:500;color:var(--ink-2);padding:8px 2px;border-radius:var(--r-sm);}
+.sg-vinculados summary::-webkit-details-marker{display:none;}
+.sg-vinculados summary svg{width:14px;height:14px;transition:transform .2s var(--ease-out);}
+.sg-vinculados[open] summary svg{transform:rotate(90deg);}
+.sg-vinculados summary:hover{color:var(--ink);}
+.sg-vinculados-lista{margin-top:6px;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:.25rem 1.25rem;}
+.sg-vinc{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);font-size:13.5px;}
 .sg-vinc:last-child{border-bottom:none;}
-.sg-error{margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);}
+.sg-error{margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:10px 13px;font-size:13px;color:var(--rosa-dark);}
+
+/* Alta: buscador de pacientes */
+.sg-pac-lista{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow-y:auto;padding:2px;}
+.sg-pac{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 14px;align-items:center;text-align:left;width:100%;background:#fff;border:1px solid var(--rule);border-radius:var(--r);padding:12px 14px;font:inherit;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;}
+.sg-pac:hover,.sg-pac:focus-visible{border-color:var(--rule-2);background:var(--surface2);box-shadow:var(--shadow-sm);outline:none;}
+.sg-pac:focus-visible{box-shadow:0 0 0 2px var(--blue-ink);}
+.sg-pac-nombre{font-size:15px;font-weight:600;color:var(--ink);}
+.sg-pac-meta{grid-column:1;font-size:12.5px;color:var(--ink-3);}
+.sg-pac-accion{grid-column:2;grid-row:1 / span 2;font-size:13px;font-weight:600;color:var(--blue-ink);white-space:nowrap;}
+.sg-elegido{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;background:var(--surface2);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;}
+.sg-elegido strong{font-size:16px;}
 
 @media (max-width:640px){
   .sg-fila{grid-template-columns:1fr;}
   .sg-fila-lado{text-align:left;}
   .sg-hdr-acciones,.sg-hdr-acciones input{width:100%;}
-  .sg-nombre{font-size:1.6rem;}
-  .sg-hito{grid-template-columns:14px minmax(0,1fr);gap:0 12px;padding:0 1rem;}
-  .sg-hito-fecha{grid-column:2;grid-row:1;text-align:left;padding:1rem 0 0;}
-  .sg-hito-fecha strong{display:inline;margin-right:6px;}
+  .sg-nombre{font-size:1.85rem;}
+  .sg-cab-acciones{width:100%;}
+  .sg-cab-acciones select{flex:1 1 100%;}
+  .sg-cab-acciones .btn{flex:1 1 0;justify-content:center;}
+  .sg-motivo{font-size:15px;}
+  .sg-ficha{grid-template-columns:repeat(2,minmax(0,1fr));margin:1.25rem 0;}
+  .sg-dato{padding:.9rem 1rem;}
+  .sg-dato.ancho{grid-column:span 2;}
+  .sg-dato:nth-child(n+2){border-top:1px solid var(--rule);}
+  .sg-dato:nth-child(2),.sg-dato:nth-child(4){border-left:0;}
+  .sg-dato:nth-child(3),.sg-dato:nth-child(5){border-left:1px solid var(--rule);}
+  .sg-dato.ancho .sg-dato-val{font-size:1.3rem;}
+  .sg-hito{grid-template-columns:18px minmax(0,1fr);gap:0 12px;padding:0 1rem;}
+  .sg-hito-fecha{grid-column:2;grid-row:1;text-align:left;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:0 8px;padding:1rem 0 0;}
+  .sg-hito:first-child .sg-hito-fecha{padding-top:1.2rem;}
+  .sg-hito-tipo{margin-top:0;}
+  .sg-hito-tipo::before{content:"· ";}
   .sg-hito-eje{grid-column:1;grid-row:1 / span 2;}
-  .sg-hito-cuerpo{grid-column:2;padding-top:2px;}
+  .sg-punto,.sg-hito:first-child .sg-punto{top:1.3rem;}
+  .sg-hito:first-child .sg-punto{top:1.5rem;}
+  .sg-hito-cuerpo,.sg-hito:first-child .sg-hito-cuerpo{grid-column:2;padding-top:4px;}
+  .sg-dic-filas{grid-template-columns:1fr;gap:0;}
+  .sg-dic-filas dd{margin-bottom:6px;}
+  .sg-tab-largo{display:none;}
+  .sg-tabs-barra{padding-right:0;}
+  .sg-tabs-barra .tabs-turnos{width:100%;padding-left:0;}
+  .sg-tabs-barra .sg-orden{margin:8px 1rem;}
+  .sg-resumen-ia{padding:1.1rem 1rem 1.25rem;}
+  .sg-resumen-texto{font-size:15px;}
+  .sg-resumen-texto p:first-child{font-size:16px;}
+  .sg-nota-ia{padding:.8rem 1rem 0;}
 }
 </style>
 </head>
@@ -7753,6 +7846,7 @@ async function verDetalleSeguimiento(id){
     ]);
     if(!d.ok) throw new Error(d.error || 'No se pudo abrir');
     d.sugerencias = sug?.ok ? sug : null;
+    if(seguimientoActual?.seguimiento.id !== d.seguimiento.id){ pestanaLegajo = 'informes'; erroresLectura = []; errorResumen = ''; }
     seguimientoActual = d;
     renderDetalleSeguimiento();
     window.scrollTo({top:0,behavior:'smooth'});
@@ -7783,22 +7877,19 @@ function renderDetalleSeguimiento(){
       <button class="btn btn-ghost" style="color:var(--rosa-dark);" onclick="eliminarSeguimiento(${s.id})">Eliminar</button>
     </div>` : '';
 
-  const dato = (lbl, val, sub, texto) => `<div class="sg-dato"><div class="sg-dato-lbl">${lbl}</div><div class="sg-dato-val${texto?' texto':''}">${val}</div>${sub?`<div class="sg-dato-sub">${sub}</div>`:''}</div>`;
-  const resumen = [
-    dato('Consultas', r.consultas, r.primera ? `${sgFecha(r.primera,false)} → ${sgFecha(r.ultima,false)}` : 'Sin consultas todavía'),
+  const hecho = (lbl, val, sub, clase='') => `<div class="sg-dato ${clase}"><dt>${lbl}</dt><dd><span class="sg-dato-val">${val}</span>${sub?`<span class="sg-dato-sub">${sub}</span>`:''}</dd></div>`;
+  const ficha = [
+    hecho('Diagnóstico vigente', escaparHtml(r.ultimo_diagnostico || 'Los informes no consignan diagnóstico'), '', 'ancho' + (r.ultimo_diagnostico ? '' : ' vacio')),
+    hecho('Última aptitud', escaparHtml(r.ultima_aptitud || '—'),
+      r.ultima_aptitud ? escaparHtml(r.ultima_aptitud_detalle || '') : (r.consultas ? 'Los informes no la dictaminan' : '')),
     r.dias_reposo_total != null
-      ? dato('Reposo indicado', `${r.dias_reposo_total} días`, `Último control: ${r.ultimo_reposo} días`)
-      : dato('Reposo indicado', '—', r.consultas ? 'Los informes no indican reposo' : ''),
-    dato('Último diagnóstico', escaparHtml(r.ultimo_diagnostico || '—'), r.ultimo_diagnostico || !r.consultas ? '' : 'Los informes no consignan diagnóstico', true),
-    dato('Última aptitud', escaparHtml(r.ultima_aptitud || '—'), r.ultima_aptitud ? escaparHtml(r.ultima_aptitud_detalle || '') : (r.consultas ? 'Los informes no dictaminan aptitud' : ''), true),
-    dato('Documentación', `${r.certificados + r.informes}`, `${r.certificados} certificado(s) · ${r.informes} informe(s)`),
+      ? hecho('Reposo indicado', `${r.dias_reposo_total} días`, `Último control: ${r.ultimo_reposo} días`)
+      : hecho('Reposo indicado', '—', r.consultas ? 'Los informes no indican reposo' : ''),
+    hecho('Consultas', r.consultas, r.primera ? `${sgFecha(r.primera,false)} → ${sgFecha(r.ultima,false)}` : 'Ninguna todavía'),
     r.proximo_turno
-      ? dato('Próximo turno', `${sgFecha(r.proximo_turno.fecha,false)} · ${escaparHtml(r.proximo_turno.hora||'')}`, escaparHtml(r.proximo_turno.tipo||''))
-      : dato('Próximo turno', '—', 'Sin turno programado'),
+      ? hecho('Próximo turno', `${sgFecha(r.proximo_turno.fecha,false)} · ${escaparHtml(r.proximo_turno.hora||'')}`, escaparHtml(r.proximo_turno.tipo||''), 'proximo')
+      : hecho('Próximo turno', '—', 'Sin turno programado'),
   ];
-  if(r.inasistencias) resumen.push(dato('Inasistencias', `<span style="color:var(--magenta-ink);">${r.inasistencias}</span>`, 'No se presentó al control'));
-
-  const hitos = ordenHistoria === 'desc' ? [...d.hitos].reverse() : d.hitos;
 
   document.getElementById('sg-vista-detalle').innerHTML = `
     <button class="sg-volver" onclick="mostrarListaSeguimientos()">← Volver a Seguimientos</button>
@@ -7810,20 +7901,16 @@ function renderDetalleSeguimiento(){
       ${acciones}
     </div>
     ${(s.diagnostico || s.notas) ? `<div class="sg-motivo">${escaparHtml(s.diagnostico || '')}${s.notas?`<div class="sg-motivo-notas">${escaparHtml(s.notas)}</div>`:''}</div>` : ''}
-    <div class="sg-resumen">${resumen.join('')}</div>
+    <dl class="sg-ficha">${ficha.join('')}</dl>
+    ${r.inasistencias ? `<p class="sg-alerta-inasist">${r.inasistencias === 1 ? 'Faltó a 1 control' : `Faltó a ${r.inasistencias} controles`}</p>` : ''}
     ${esAdmin ? htmlSugerenciasDetalle(d) : ''}
-    <div class="card">
-      <div class="card-hdr sg-hist-hdr">
-        <div class="card-title">Historia del caso <span class="badge b-gray">${d.hitos.length}</span></div>
-        <div class="sg-orden" role="group" aria-label="Orden">
-          <button aria-pressed="${ordenHistoria==='asc'}" onclick="cambiarOrdenHistoria('asc')">Más antiguo primero</button>
-          <button aria-pressed="${ordenHistoria==='desc'}" onclick="cambiarOrdenHistoria('desc')">Más reciente primero</button>
-        </div>
-      </div>
-      <div>${hitos.map(htmlHito).join('')}</div>
-    </div>
+    ${htmlPestanasLegajo(d)}
     ${esAdmin ? htmlVinculosSeguimiento(d) : ''}`;
 }
+
+const ICONO_DESCARGA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>';
+const ICONO_VER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7"/><path d="M21 3 11 13"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg>';
+const ICONO_IA = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>';
 
 const TIPO_HITO = {
   legajo:'Seguimiento', caso:'Pedido de la empresa', control:'Control domiciliario', turno:'Consulta',
@@ -7867,17 +7954,17 @@ function htmlHito(h, i){
         <div class="sg-hito-det" style="margin:0 0 6px;">Dictamen ${escaparHtml(dic.numero||'')}${dic.medico?` · ${escaparHtml(dic.medico)}`:''}${dic.firmado?' · <span style="color:var(--verde);font-weight:600;">firmado</span>':''}</div>
         ${filas.length?`<dl class="sg-dic-filas">${filas.map(([k,v])=>`<dt>${k}</dt><dd>${escaparHtml(v)}</dd>`).join('')}</dl>`:''}
         ${dic.conclusion?`<div class="sg-conclusion" id="sg-concl-${dic.id}">${escaparHtml(dic.conclusion)}</div>${largo?`<button class="sg-link" onclick="this.previousElementSibling.classList.toggle('abierta');this.textContent=this.textContent==='Ver conclusión completa'?'Ver menos':'Ver conclusión completa'">Ver conclusión completa</button>`:''}`:''}
-        <div class="sg-hito-acc"><a href="/api/dictamenes/${dic.id}/${dic.firmado?'pdf-firmado':'pdf'}?download=1" data-descarga-pdf class="btn btn-ghost">PDF del informe</a></div>
+        <div class="sg-hito-acc"><a href="/api/dictamenes/${dic.id}/${dic.firmado?'pdf-firmado':'pdf'}?download=1" data-descarga-pdf class="btn btn-ghost">${ICONO_DESCARGA}PDF del informe</a></div>
       </div>`;
     }
-    if(h.tipo === 'inasistencia') cuerpo += `<div class="sg-hito-acc"><a href="/api/turnos/${h.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost">Informe de inasistencia</a></div>`;
+    if(h.tipo === 'inasistencia') cuerpo += `<div class="sg-hito-acc"><a href="/api/turnos/${h.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost">${ICONO_DESCARGA}Informe de inasistencia</a></div>`;
     if(h.tipo === 'turno' && h.estado === 'completado' && !(h.dictamenes||[]).length)
       cuerpo += `<div class="sg-hito-det">Sin dictamen cargado.</div>`;
   } else if(h.tipo === 'informe' || h.tipo === 'certificado'){
     const clase = h.tipo, archivoId = h.informe_id || h.certificado_id;
     cuerpo += `<div class="sg-hito-tit">${escaparHtml(h.titulo)}</div>`;
     if(h.detalle) cuerpo += `<div class="sg-hito-det">${escaparHtml(h.detalle)}</div>`;
-    cuerpo += `<div class="sg-hito-acc"><button class="btn btn-ghost" onclick="verArchivoSeguimiento(${id},'${clase}',${archivoId},this)">Ver ${clase==='informe'?'informe':'certificado'}</button></div>`;
+    cuerpo += `<div class="sg-hito-acc"><button class="btn btn-ghost" onclick="verArchivoSeguimiento(${id},'${clase}',${archivoId},this)">${ICONO_VER}Ver ${clase==='informe'?'informe':'certificado'}</button></div>`;
   } else if(h.tipo === 'caso'){
     cuerpo += `<div class="sg-hito-tit">${escaparHtml(h.titulo)}</div>`;
     const meta = [h.empresa, h.profesional ? 'Profesional: '+h.profesional : ''].filter(Boolean).join(' · ');
@@ -7890,9 +7977,9 @@ function htmlHito(h, i){
   }
 
   return `<div class="sg-hito">
-    <div class="sg-hito-fecha"><strong>${fecha}</strong>${escaparHtml(hora)}</div>
+    <div class="sg-hito-fecha"><strong>${fecha}</strong><span>${escaparHtml(hora)}</span><span class="sg-hito-tipo">${tipo}</span></div>
     <div class="sg-hito-eje"><span class="sg-punto ${clasePunto}"></span></div>
-    <div class="sg-hito-cuerpo"><div class="sg-hito-tipo">${tipo}</div>${cuerpo}</div>
+    <div class="sg-hito-cuerpo">${cuerpo}</div>
   </div>`;
 }
 
@@ -7925,13 +8012,13 @@ async function verArchivoSeguimiento(segId, clase, archivoId, btn){
 function htmlVinculosSeguimiento(d){
   const id = d.seguimiento.id;
   if(!d.vinculos.length) return '';
-  return `<div class="card">
-    <div class="card-hdr"><div class="card-title">Registros vinculados <span class="badge b-gray">${d.vinculos.length}</span></div></div>
-    <div class="card-body">
+  return `<details class="sg-vinculados">
+    <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>Registros vinculados <span class="tab-count">${d.vinculos.length}</span></summary>
+    <div class="sg-vinculados-lista">
       ${d.vinculos.map(v => `<div class="sg-vinc"><span>${escaparHtml(v.texto)}</span>
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;color:var(--rosa-dark);" onclick="desvincularDeSeguimiento(${id},${v.id})">Quitar</button></div>`).join('')}
     </div>
-  </div>`;
+  </details>`;
 }
 
 function itemsSugeridos(d){
@@ -8012,6 +8099,158 @@ async function eliminarSeguimiento(id){
     await cargarMarcasSeguimiento();
     mostrarListaSeguimientos();
   }catch(e){ mostrarError(e.message || 'No se pudo eliminar'); }
+}
+
+// --- Pestañas de la historia ---
+// Todo en un mismo recuadro: lo que dictaminó MEDGRUP, lo que presentó el paciente (leído con
+// IA) y un resumen en texto. Así la historia no se estira hacia abajo.
+let pestanaLegajo = 'informes';
+let leyendoDocumentos = false, resumiendoLegajo = false;
+let erroresLectura = [], errorResumen = '';
+
+const TIPO_DOCUMENTO = { certificado:'Certificado', informe:'Informe', estudio:'Estudio', alta:'Alta', otro:'Documento' };
+
+function documentosDelLegajo(d){
+  return d.hitos.filter(h => h.tipo === 'certificado' || h.tipo === 'informe').map(h => {
+    const id = h.certificado_id || h.informe_id;
+    return { h, clase:h.tipo, id, lectura:(d.lecturas||[]).find(l => l.clase === h.tipo && l.id === id)?.datos || null,
+      error: erroresLectura.find(e => e.clase === h.tipo && e.id === id)?.error || '' };
+  });
+}
+
+function htmlPestanasLegajo(d){
+  const consultas = d.hitos.filter(h => h.tipo === 'turno' || h.tipo === 'inasistencia').length;
+  const docs = documentosDelLegajo(d);
+  const tab = (id, corto, largo, n) => `<button type="button" role="tab" class="tab-turno${pestanaLegajo===id?' active':''}" aria-selected="${pestanaLegajo===id}" onclick="cambiarPestanaLegajo('${id}')"><span>${corto}<span class="sg-tab-largo">${largo}</span></span>${n!=null?` <span class="tab-count">${n}</span>`:''}</button>`;
+  const orden = pestanaLegajo === 'resumen' ? '' : `<div class="sg-orden" role="group" aria-label="Orden">
+      <button aria-pressed="${ordenHistoria==='asc'}" onclick="cambiarOrdenHistoria('asc')">Más antiguo primero</button>
+      <button aria-pressed="${ordenHistoria==='desc'}" onclick="cambiarOrdenHistoria('desc')">Más reciente primero</button></div>`;
+  let panel;
+  if(pestanaLegajo === 'certificados') panel = htmlPanelDocumentos(d, docs);
+  else if(pestanaLegajo === 'resumen') panel = htmlPanelResumen(d);
+  else {
+    let hitos = d.hitos.filter(h => h.tipo !== 'certificado' && h.tipo !== 'informe');
+    if(ordenHistoria === 'desc') hitos = [...hitos].reverse();
+    panel = hitos.map(htmlHito).join('');
+  }
+  return `<div class="card sg-hist">
+    <div class="sg-tabs-barra">
+      <div class="tabs-turnos sg-tabs" role="tablist" aria-label="Historia del caso">
+        ${tab('informes','Informes',' y diagnósticos',consultas)}
+        ${tab('certificados','Certificados',' y documentos',docs.length)}
+        ${tab('resumen','Resumen',' general',null)}
+      </div>
+      ${orden}
+    </div>
+    <div role="tabpanel">${panel}</div>
+  </div>`;
+}
+
+function cambiarPestanaLegajo(p){
+  pestanaLegajo = p;
+  renderDetalleSeguimiento();
+  if(p === 'certificados') leerDocumentosLegajo();
+  if(p === 'resumen' && !seguimientoActual?.resumen_ia) generarResumenLegajo(false);
+}
+
+function sgFechaDoc(ymd){ return ymd ? sgFecha(ymd) : null; }
+
+function htmlPanelDocumentos(d, docs){
+  if(!docs.length) return `<div class="sg-vacio">Todavía no hay certificados ni documentos en este seguimiento.<br>Se cargan desde el caso de ausentismo (Certificados) o desde el turno en la agenda (Adjuntos).</div>`;
+  const segId = d.seguimiento.id;
+  const lista = ordenHistoria === 'desc' ? [...docs].reverse() : docs;
+  const pendientes = docs.filter(x => !x.lectura && !x.error).length;
+  const filas = lista.map(({h, clase, id, lectura:l, error}) => {
+    const x = new Date(h.instante);
+    let cuerpo;
+    if(l){
+      const emitido = [l.fecha_emision ? 'Emitido el ' + sgFechaDoc(l.fecha_emision) : 'Sin fecha de emisión',
+        l.profesional ? 'por ' + l.profesional + (l.especialidad ? ` (${l.especialidad})` : '') : '',
+        l.institucion || ''].filter(Boolean).join(' ');
+      const reposo = l.dias_reposo != null
+        ? `${l.dias_reposo} días${l.reposo_desde || l.reposo_hasta ? ` · ${sgFechaDoc(l.reposo_desde) || '?'} → ${sgFechaDoc(l.reposo_hasta) || '?'}` : ''}` : '';
+      const filasDl = [['Diagnóstico', l.diagnostico], ['Reposo', reposo], ['Indicaciones', l.indicaciones]].filter(([,v]) => v);
+      cuerpo = `<div class="sg-hito-det">${escaparHtml(emitido)}</div>
+        ${filasDl.length ? `<dl class="sg-dic-filas" style="margin-top:6px;">${filasDl.map(([k,v]) => `<dt>${k}</dt><dd>${escaparHtml(v)}</dd>`).join('')}</dl>` : ''}
+        <div class="sg-doc-resumen">${escaparHtml(l.resumen)}</div>
+        ${l.legible === false ? '<div class="sg-hito-det" style="color:var(--amber);font-weight:600;">La lectura es dudosa: revisá el original.</div>' : ''}`;
+    } else if(error){
+      cuerpo = `<div class="sg-hito-det" style="color:var(--rosa-dark);">No se pudo leer: ${escaparHtml(error)}</div>`;
+    } else {
+      cuerpo = `<div class="sg-hito-det sg-leyendo"><span class="spinner"></span> ${leyendoDocumentos ? 'Leyendo el documento…' : 'Sin leer todavía'}</div>`;
+    }
+    return `<div class="sg-hito">
+      <div class="sg-hito-fecha"><strong>${sgFecha(h.instante)}</strong><span>${x.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</span><span class="sg-hito-tipo">${l ? TIPO_DOCUMENTO[l.tipo_documento] || 'Documento' : (clase === 'certificado' ? 'Certificado' : 'Documento')}</span></div>
+      <div class="sg-hito-eje"><span class="sg-punto ${clase}"></span></div>
+      <div class="sg-hito-cuerpo">
+        <div class="sg-hito-tit">${escaparHtml(h.titulo)}</div>
+        ${h.detalle ? `<div class="sg-hito-det" style="margin-top:0;">${escaparHtml(h.detalle)}</div>` : ''}
+        ${cuerpo}
+        <div class="sg-hito-acc"><button class="btn btn-ghost" onclick="verArchivoSeguimiento(${segId},'${clase}',${id},this)">${ICONO_VER}Ver original</button></div>
+      </div>
+    </div>`;
+  }).join('');
+  const reintentar = !leyendoDocumentos && (pendientes || erroresLectura.length)
+    ? ` <button class="sg-link" style="margin:0;" onclick="erroresLectura=[];leerDocumentosLegajo()">Leer los que faltan</button>` : '';
+  return `<p class="sg-nota-ia">${ICONO_IA}<span>Lo que dice cada documento lo lee la IA a partir del archivo. Confirmalo con el original antes de usarlo en un dictamen.${reintentar}</span></p>${filas}`;
+}
+
+async function leerDocumentosLegajo(){
+  const d = seguimientoActual;
+  if(!d || leyendoDocumentos) return;
+  if(!documentosDelLegajo(d).some(x => !x.lectura && !x.error)) return;
+  const id = d.seguimiento.id;
+  leyendoDocumentos = true;
+  if(pestanaLegajo === 'certificados') renderDetalleSeguimiento();
+  try{
+    const r = await fetch(`/api/seguimientos/${id}/lecturas`, {method:'POST', headers:apiHeaders()});
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error);
+    if(seguimientoActual?.seguimiento.id === id){ seguimientoActual.lecturas = res.lecturas; erroresLectura = res.errores || []; }
+  }catch(e){ mostrarError(e.message || 'No se pudieron leer los documentos'); }
+  finally{
+    leyendoDocumentos = false;
+    if(seguimientoActual?.seguimiento.id === id) renderDetalleSeguimiento();
+  }
+}
+
+function htmlPanelResumen(d){
+  const r = d.resumen_ia;
+  if(resumiendoLegajo) return `<div class="sg-resumen-ia sg-leyendo"><span class="spinner"></span> Leyendo los documentos y armando el resumen. Puede tardar un minuto…</div>`;
+  if(errorResumen && !r) return `<div class="sg-resumen-ia"><div class="sg-error" style="margin-top:0;">${escaparHtml(errorResumen)}</div>
+    <button class="btn btn-ghost" style="margin-top:10px;" onclick="generarResumenLegajo(true)">Volver a intentar</button></div>`;
+  if(!r) return `<div class="sg-resumen-ia"><button class="btn btn-primary" onclick="generarResumenLegajo(false)">Armar el resumen</button></div>`;
+  const cuando = new Date(r.generado_en);
+  return `<div class="sg-resumen-ia">
+    ${r.desactualizado ? `<div class="sg-aviso-nuevo">Hay información nueva desde este resumen. <button class="sg-link" style="margin:0;" onclick="generarResumenLegajo(true)">Actualizarlo</button></div>` : ''}
+    <div class="sg-resumen-texto">${escaparHtml(r.texto).split(/\n\s*\n/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('')}</div>
+    <p class="sg-nota-ia">${ICONO_IA}<span>Resumen hecho con IA a partir de los dictámenes y documentos del legajo el ${sgFecha(r.generado_en)} a las ${cuando.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}. Revisalo antes de usarlo en un informe.
+      ${r.desactualizado ? '' : ` <button class="sg-link" style="margin:0;" onclick="generarResumenLegajo(true)">Rehacerlo</button>`}</span></p>
+  </div>`;
+}
+
+async function generarResumenLegajo(forzar){
+  const d = seguimientoActual;
+  if(!d || resumiendoLegajo) return;
+  const id = d.seguimiento.id;
+  resumiendoLegajo = true; errorResumen = '';
+  if(pestanaLegajo === 'resumen') renderDetalleSeguimiento();
+  try{
+    const r = await fetch(`/api/seguimientos/${id}/resumen`, {method:'POST', headers:apiHeaders(), body:JSON.stringify({ forzar })});
+    const res = await r.json();
+    if(!res.ok) throw new Error(res.error || 'No se pudo armar el resumen');
+    if(seguimientoActual?.seguimiento.id === id){
+      seguimientoActual.resumen_ia = res.resumen_ia;
+      erroresLectura = res.errores || [];
+      // El resumen leyó los documentos que faltaban: se traen esas lecturas para la otra pestaña
+      const l = await fetch(`/api/seguimientos/${id}/lecturas`, {method:'POST', headers:apiHeaders()}).then(x => x.json()).catch(() => null);
+      if(l?.ok && seguimientoActual?.seguimiento.id === id) seguimientoActual.lecturas = l.lecturas;
+    }
+  }catch(e){ errorResumen = e.message; }
+  finally{
+    resumiendoLegajo = false;
+    if(seguimientoActual?.seguimiento.id === id) renderDetalleSeguimiento();
+  }
 }
 
 // --- Alta y edición ---
