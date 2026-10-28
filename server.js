@@ -425,6 +425,7 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado TEXT`,
       `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia TEXT`,
+      `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS caso_anterior_id INTEGER REFERENCES casos_ausentismo(id) ON DELETE SET NULL`,
       `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia_en TIMESTAMPTZ`,
       `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia_firma VARCHAR(64)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado_nombre VARCHAR(300)`,
@@ -3164,7 +3165,9 @@ const SELECT_CASO = `
          m.especialidad AS profesional_especialidad,
          t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado,
          (SELECT COUNT(*) FROM certificados_ausentismo ce WHERE ce.caso_id = c.id) AS certificados,
-         (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos
+         (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos,
+         (c.estado = 'resuelto' AND c.turno_id IS NOT NULL AND NOT EXISTS
+              (SELECT 1 FROM eventos_turno et WHERE et.turno_id = c.turno_id AND et.tipo = 'union_paciente')) AS no_comparecio
   FROM casos_ausentismo c
   LEFT JOIN medicos m ON m.id = c.profesional_id
   LEFT JOIN turnos  t ON t.id = c.turno_id`;
@@ -3249,6 +3252,59 @@ app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
        domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO, tipo_control || TIPO_CONTROL_DEFECTO]);
     await vincularASeguimientosAbiertos({ casoId: r.rows[0].id, nombre: trabajador_nombre, dni: trabajador_dni });
     res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null, motivo_geocode: motivoGeo });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Nuevo control de un trabajador ya visitado ---
+// Antes, cada control era un caso nuevo que había que cargar desde cero (datos, domicilio,
+// ubicación en el mapa, profesional). Ahora el siguiente control sale del anterior con todo
+// copiado y enlazado a él; se sigue facturando por control. Si ya hay uno abierto para ese
+// caso (doble clic, o lo abrió otro), se devuelve ese en vez de duplicarlo.
+app.post('/api/ausentismo/casos/:id/nuevo-control', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
+    const c = r.rows[0];
+    if (!['resuelto', 'cancelado'].includes(c.estado)) {
+      return res.status(400).json({ error: 'Este control todavía está en curso: programalo o cerralo antes de abrir otro.' });
+    }
+    const abierto = await pool.query(
+      `SELECT id FROM casos_ausentismo WHERE caso_anterior_id=$1 AND estado NOT IN ('resuelto','cancelado') LIMIT 1`, [c.id]);
+    if (abierto.rows.length) return res.json({ ok: true, id: abierto.rows[0].id, ya_existia: true });
+
+    // Si el último caso quedó incompleto (por ejemplo, un duplicado cargado a mano sin
+    // domicilio), los datos que falten se toman del control anterior más reciente que los tenga:
+    // los enlazados, o los del mismo DNI en la misma empresa.
+    const dni = String(c.trabajador_dni || '').replace(/\D/g, '');
+    const previos = (await pool.query(
+      `SELECT * FROM casos_ausentismo WHERE id <> $1 AND empresa_nombre = $2
+         AND (id = $3::int OR ($4::varchar <> '' AND regexp_replace(COALESCE(trabajador_dni,''), '[^0-9]', '', 'g') = $4::varchar))
+       ORDER BY creado_en DESC`, [c.id, c.empresa_nombre, c.caso_anterior_id, dni.length >= 6 ? dni : ''])).rows;
+    const completar = campo => c[campo] || previos.find(x => x[campo])?.[campo] || null;
+    if (c.domicilio_lat == null) {
+      const conMapa = previos.find(x => x.domicilio_lat != null);
+      if (conMapa) Object.assign(c, { domicilio: conMapa.domicilio, domicilio_lat: conMapa.domicilio_lat,
+        domicilio_lng: conMapa.domicilio_lng, radio_metros: conMapa.radio_metros, excepcion_geo: conMapa.excepcion_geo });
+    }
+    c.trabajador_dni = completar('trabajador_dni');
+    c.trabajador_telefono = completar('trabajador_telefono');
+    c.profesional_id = completar('profesional_id');
+
+    // El profesional se mantiene si sigue activo; si no, el caso queda para asignar
+    const prof = c.profesional_id
+      ? (await pool.query('SELECT id FROM medicos WHERE id=$1 AND activo=true', [c.profesional_id])).rows[0]?.id || null
+      : null;
+    const motivo = (req.body?.motivo || '').trim() || c.motivo || '';
+    const n = await pool.query(
+      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono,
+         motivo, documentacion, notas_admin, domicilio, domicilio_lat, domicilio_lng, radio_metros, excepcion_geo,
+         tipo_control, profesional_id, estado, caso_anterior_id)
+       VALUES ($1,$2,$3,$4,$5,$6,'','',$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+      [c.empresa_id, c.empresa_nombre, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono,
+       motivo, c.domicilio, c.domicilio_lat, c.domicilio_lng, c.radio_metros, c.excepcion_geo,
+       c.tipo_control, prof, prof ? 'asignado' : 'nuevo', c.id]);
+    await vincularASeguimientosAbiertos({ casoId: n.rows[0].id, nombre: c.trabajador_nombre, dni: c.trabajador_dni });
+    res.json({ ok: true, id: n.rows[0].id, profesional_asignado: !!prof });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -3386,7 +3442,7 @@ app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) =
     }
     // resuelto_en es lo que después se factura, así que se sella acá y se limpia si vuelve atrás
     await pool.query(
-      `UPDATE casos_ausentismo SET estado=$1, resuelto_en = CASE WHEN $1='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
+      `UPDATE casos_ausentismo SET estado=$1::varchar, resuelto_en = CASE WHEN $1::varchar='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
       [estado, req.params.id]);
     res.json({ ok: true, estado });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -4239,9 +4295,9 @@ app.patch('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
       UPDATE seguimientos SET
         paciente_nombre = COALESCE($1, paciente_nombre), paciente_dni = COALESCE($2, paciente_dni),
         empresa = COALESCE($3, empresa), diagnostico = COALESCE($4, diagnostico), notas = COALESCE($5, notas),
-        estado = COALESCE($6, estado),
-        cerrado_en = CASE WHEN $6 = 'cerrado' THEN COALESCE(cerrado_en, NOW())
-                          WHEN $6 IS NOT NULL THEN NULL ELSE cerrado_en END
+        estado = COALESCE($6::varchar, estado),
+        cerrado_en = CASE WHEN $6::varchar = 'cerrado' THEN COALESCE(cerrado_en, NOW())
+                          WHEN $6::varchar IS NOT NULL THEN NULL ELSE cerrado_en END
       WHERE id = $7 RETURNING id`,
       [paciente_nombre?.trim() || null, paciente_dni ?? null, empresa ?? null, diagnostico ?? null, notas ?? null,
        estado || null, req.params.id]);
@@ -4688,7 +4744,9 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
              m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
              t.fecha AS turno_fecha, t.hora AS turno_hora,
              (SELECT d.id FROM dictamenes d WHERE d.turno_id = c.turno_id ORDER BY d.creado_en DESC LIMIT 1) AS dictamen_id,
-             (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos
+             (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos,
+             c.caso_anterior_id, (c.estado = 'resuelto' AND c.turno_id IS NOT NULL AND NOT EXISTS
+              (SELECT 1 FROM eventos_turno et WHERE et.turno_id = c.turno_id AND et.tipo = 'union_paciente')) AS no_comparecio
       FROM casos_ausentismo c
       LEFT JOIN medicos m ON m.id = c.profesional_id
       LEFT JOIN turnos  t ON t.id = c.turno_id
