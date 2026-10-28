@@ -650,6 +650,8 @@ td.no-label::before{display:none;}
   .aviso-version-acciones{width:100%;justify-content:flex-end;}
 }
 @media (min-width:900px){.aviso-version-texto{white-space:nowrap;}}
+.aviso-seguridad{background:var(--magenta-ink);border-radius:var(--r);padding:12px 12px 12px 18px;width:min(720px,calc(100vw - 32px));}
+.aviso-seguridad .aviso-version-texto{white-space:normal;}
 @media (prefers-reduced-motion:reduce){.aviso-version{transition:none;}}
 
 /* ── SEGUIMIENTOS ──
@@ -2207,7 +2209,7 @@ td.no-label::before{display:none;}
 // "CEMEP" queda como alias: los registros viejos se renombran al arrancar el server, pero si
 // alguno quedó sin migrar no tiene por qué perder su color.
 const EMPRESAS={'LOGANT S.A.':'emp-logant','Huinoil S.A.':'emp-huinoil','C.E.Me.P S.R.L':'emp-cemep','CEMEP':'emp-cemep','Grupo L':'emp-grupol'};
-function empresaTag(emp){return`<span class="empresa-tag ${EMPRESAS[emp]||'emp-otra'}">${emp||'—'}</span>`;}
+function empresaTag(emp){return`<span class="empresa-tag ${EMPRESAS[emp]||'emp-otra'}">${escaparHtml(emp||'—')}</span>`;}
 
 let sessionToken=localStorage.getItem('medgrup_token');
 let usuarioActual=null;
@@ -3277,6 +3279,7 @@ function mostrarApp(){
   chequearFirmasPendientes();
   refrescarBadgeAusentismo();
   iniciarPollFirmasPendientes();
+  revisarSeguridadAdmin();
 }
 
 async function checkSession(){
@@ -3418,9 +3421,11 @@ async function agregarMedico(){
   if(document.getElementById('new-email')) document.getElementById('new-email').value='';
   if(document.getElementById('new-password')) document.getElementById('new-password').value='';
   document.getElementById('medico-ok').style.display='block';
-  document.getElementById('medico-ok').textContent = data.accesoCreado
-    ? '✓ Médico agregado con acceso a la app — puede loguearse y firmar juntas'
-    : '✓ Médico agregado';
+  document.getElementById('medico-ok').textContent = data.aviso
+    ? '⚠ ' + data.aviso
+    : data.accesoCreado
+      ? '✓ Médico agregado con acceso a la app — puede loguearse y firmar juntas'
+      : '✓ Médico agregado';
   await cargarMedicos();
 }
 async function agregarAdmin(){
@@ -3816,7 +3821,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${t.paciente}</span>${tagSeguimientoTurno(t.id)}${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${t.tipo}</span><span>·</span><span>${Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${t.diagnosticoPrevio}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+t.medicoTratante:''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${escaparHtml(t.paciente)}</span>${tagSeguimientoTurno(t.id)}${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${escaparHtml(t.tipo)}</span><span>·</span><span>${escaparHtml(Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos)}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${escaparHtml(t.diagnosticoPrevio)}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+escaparHtml(t.medicoTratante):''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
   agruparAgendaPorDia(lista);
  }catch(err){
@@ -4112,7 +4117,7 @@ async function buildLinksHtml(t){
   const keyP=`pac_${t.id}`;
   mensajesLinks[keyP]=makeMsg(t.linkPaciente,t.paciente);
   html+=`<div class="participante-link">
-    <div class="participante-nombre">${t.paciente} <span class="participante-rol rol-paciente">Paciente</span></div>
+    <div class="participante-nombre">${escaparHtml(t.paciente)} <span class="participante-rol rol-paciente">Paciente</span></div>
     <div class="link-row"><div class="link-url">${t.linkPaciente}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${t.linkPaciente}')">Copiar</button></div>
     <div class="share-btns">
       <button class="btn-wa" onclick="abrirWA('${keyP}')"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WA</button>
@@ -4680,10 +4685,10 @@ function abrirCertificadosDeLlamada(){
 
   // Junto al certificado va el contexto que necesita para leerlo: qué denunció la empresa y
   // si el trabajador estaba efectivamente en su domicilio.
-  const partes = [`${c.trabajador_nombre}${c.empresa_nombre?' · '+c.empresa_nombre:''}`];
-  if(c.motivo) partes.push(`<b>Motivo informado por la empresa:</b> ${c.motivo}`);
-  if(c.documentacion) partes.push(`<b>Documentación declarada:</b> ${c.documentacion}`);
-  if(c.domicilio) partes.push(`<b>Domicilio informado:</b> ${c.domicilio}`);
+  const partes = [escaparHtml(`${c.trabajador_nombre}${c.empresa_nombre?' · '+c.empresa_nombre:''}`)];
+  if(c.motivo) partes.push(`<b>Motivo informado por la empresa:</b> ${escaparHtml(c.motivo)}`);
+  if(c.documentacion) partes.push(`<b>Documentación declarada:</b> ${escaparHtml(c.documentacion)}`);
+  if(c.domicilio) partes.push(`<b>Domicilio informado:</b> ${escaparHtml(c.domicilio)}`);
   partes.push(v
     ? `<b>Ubicación verificada:</b> a ${Math.round(v.distancia_metros)} m del domicilio (radio admitido ${c.radio_metros} m), ${new Date(v.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})} hs`
     : `<b>Ubicación:</b> sin verificación registrada para este control`);
@@ -6179,13 +6184,13 @@ function renderCasosAusentismo(){
 
     return `<div class="turno-item" style="align-items:flex-start;">
       <div class="turno-info" style="flex:1;">
-        <div class="turno-paciente"><span>${c.trabajador_nombre}</span><span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
+        <div class="turno-paciente"><span>${escaparHtml(c.trabajador_nombre)}</span><span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
         <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+c.trabajador_dni:'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
         <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
           ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
           : '<span style="color:#c8a800;font-weight:600;">Sin profesional asignado</span>'}</div>
         ${domicilioTag(c)}
-        ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${c.motivo}</div>`:''}
+        ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${escaparHtml(c.motivo)}</div>`:''}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${acciones.join('')}</div>
       </div>
     </div>`;
@@ -6210,7 +6215,7 @@ function domicilioTag(c){
   const ok = c.domicilio_lat != null;
   return `<div class="turno-meta" style="margin-top:3px;">
     <span style="color:${ok?'var(--text3)':'#c8a800'};font-weight:${ok?'400':'600'};">
-      ${ok?'📍':'⚠️'} ${c.domicilio}${ok?` (radio ${c.radio_metros||300} m)`:' — sin coordenadas, no se puede verificar'}
+      ${ok?'📍':'⚠️'} ${escaparHtml(c.domicilio)}${ok?` (radio ${c.radio_metros||300} m)`:' — sin coordenadas, no se puede verificar'}
     </span></div>`;
 }
 
@@ -6717,8 +6722,9 @@ async function registrarInasistencia(id){
     const r = await fetch(`/api/ausentismo/casos/${id}/inasistencia`, { method:'POST', headers:apiHeaders() });
     const d = await r.json();
     if(!d.ok){ mostrarError(d.error || 'No se pudo registrar la inasistencia'); return; }
-    // Si el navegador bloquea la pestaña, el acta igual queda a un click desde "Ver acta"
-    if(!window.open(d.acta, '_blank')) mostrarToast('Acta lista — abrila con el botón "Ver acta"','#2a5080');
+    // El acta se pide con la sesión; si el navegador bloquea la pestaña, igual queda a un
+    // click desde "Ver acta"
+    abrirPDF(d.acta);
     mostrarToast('✓ Inasistencia registrada','#c0365a');
     addLog('rosa','Inasistencia registrada', c.trabajador_nombre);
     await cargarCasosAusentismo();
@@ -7838,7 +7844,7 @@ function renderSeguimientos(){
     return `<div class="sg-fila" role="button" tabindex="0" onclick="verDetalleSeguimiento(${s.id})" onkeydown="if(event.key==='Enter')verDetalleSeguimiento(${s.id})">
       <div style="min-width:0;">
         <div class="sg-fila-nombre">${escaparHtml(s.paciente_nombre)} ${badgeEstadoSeguimiento(s.estado)}</div>
-        <div class="turno-meta">${s.empresa?empresaTag(escaparHtml(s.empresa)):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>Desde ${sgFecha(s.creado_en)}</span></div>
+        <div class="turno-meta">${s.empresa?empresaTag(s.empresa):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>Desde ${sgFecha(s.creado_en)}</span></div>
         ${s.diagnostico?`<div class="sg-fila-dx">${escaparHtml(s.diagnostico)}</div>`:''}
       </div>
       <div class="sg-fila-lado">${lado.join('<br>')}</div>
@@ -7917,7 +7923,7 @@ function renderDetalleSeguimiento(){
     <div class="sg-cabecera">
       <div>
         <h2 class="sg-nombre">${escaparHtml(s.paciente_nombre)}</h2>
-        <div class="sg-meta">${badgeEstadoSeguimiento(s.estado)}${s.empresa?empresaTag(escaparHtml(s.empresa)):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>· En seguimiento desde el ${sgFecha(s.creado_en)} (${dias===0?'hoy':dias===1?'hace 1 día':'hace '+dias+' días'})</span></div>
+        <div class="sg-meta">${badgeEstadoSeguimiento(s.estado)}${s.empresa?empresaTag(s.empresa):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>· En seguimiento desde el ${sgFecha(s.creado_en)} (${dias===0?'hoy':dias===1?'hace 1 día':'hace '+dias+' días'})</span></div>
       </div>
       ${acciones}
     </div>
@@ -8448,6 +8454,31 @@ async function guardarSeguimiento(){
   }finally{ btn.disabled = false; }
 }
 
+
+// ===== AVISO DE SEGURIDAD (solo admin) =====
+// Si alguna cuenta todavía usa una contraseña que estuvo escrita en el código público, o falta
+// el secreto propio en Railway, se le avisa al admin al entrar. Se cierra con "Entendido".
+async function revisarSeguridadAdmin(){
+  if(usuarioActual?.rol !== 'admin') return;
+  try{
+    const d = await fetch('/api/admin/seguridad', {headers:apiHeaders()}).then(r => r.json());
+    if(!d.ok) return;
+    const avisos = [];
+    if(d.cuentas_con_contrasena_publica?.length)
+      avisos.push(`Estas cuentas usan una contraseña que estuvo publicada y conviene cambiarla ya: ${d.cuentas_con_contrasena_publica.map(escaparHtml).join(', ')}.`);
+    if(d.falta_session_secret)
+      avisos.push('Falta definir SESSION_SECRET en Railway.');
+    if(d.dictamenes_numero_repetido?.length)
+      avisos.push(`Hay números de dictamen repetidos de antes de este arreglo: ${d.dictamenes_numero_repetido.map(escaparHtml).join(', ')}. Los nuevos ya no se repiten.`);
+    if(!avisos.length) return;
+    const el = document.createElement('div');
+    el.className = 'aviso-version aviso-seguridad visible';
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `<span class="aviso-version-texto">${avisos.join(' ')}</span>
+      <span class="aviso-version-acciones"><button type="button" class="av-recargar" onclick="this.closest('.aviso-seguridad').remove()">Entendido</button></span>`;
+    document.body.appendChild(el);
+  }catch(e){ /* el aviso es una ayuda: si falla, no frena la entrada */ }
+}
 
 // ===== AVISO DE VERSIÓN NUEVA =====
 // El portal queda abierto todo el día: después de un despliegue, cada pestaña sigue con el
