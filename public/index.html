@@ -654,6 +654,16 @@ td.no-label::before{display:none;}
 .aviso-seguridad .aviso-version-texto{white-space:normal;}
 @media (prefers-reduced-motion:reduce){.aviso-version{transition:none;}}
 
+/* Ausentismo: controles anteriores del mismo trabajador */
+.au-anteriores{margin-top:10px;font-size:12.5px;color:var(--ink-2);}
+.au-anteriores summary{cursor:pointer;color:var(--ink-2);padding:4px 0;list-style-position:outside;margin-left:14px;}
+.au-anteriores summary:hover{color:var(--ink);}
+.au-anteriores[open] summary{margin-bottom:4px;}
+.au-anterior{display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;align-items:center;padding:7px 10px;border-top:1px solid var(--rule);margin-left:14px;}
+.au-anterior-dato{color:var(--ink-2);}
+.au-anterior-dato strong{color:var(--ink);font-weight:600;}
+.au-anterior-acc{display:flex;gap:12px;flex-wrap:wrap;}
+
 /* ── SEGUIMIENTOS ──
    Se lee como una historia clínica: el nombre y el motivo arriba, una ficha con la
    situación actual, y la historia en un solo recuadro con pestañas. Pocas cajas: la
@@ -6130,23 +6140,25 @@ function renderCasosAusentismo(){
   const filtros = document.getElementById('au-filtros');
   const abiertos = casosAusentismo.filter(c => !['resuelto','cancelado'].includes(c.estado));
 
-  document.getElementById('badge-casos').textContent = casosAusentismo.length;
+  // Una fila por trabajador: el control vigente (el último) y, debajo, los anteriores
+  const filas = agruparCasosPorTrabajador(casosAusentismo);
+  document.getElementById('badge-casos').textContent = filas.length;
   pintarBadgeAusentismo(casosAusentismo);
 
-  const cuenta = e => casosAusentismo.filter(c => c.estado === e).length;
-  filtros.innerHTML = [['','Todos',casosAusentismo.length], ['nuevo','Nuevos',cuenta('nuevo')],
+  const cuenta = e => filas.filter(f => f.actual.estado === e).length;
+  filtros.innerHTML = [['','Todos',filas.length], ['nuevo','Nuevos',cuenta('nuevo')],
     ['asignado','Asignados',cuenta('asignado')], ['programado','Programados',cuenta('programado')],
     ['resuelto','Resueltos',cuenta('resuelto')]]
     .map(([v,t,n]) => `<button class="btn ${filtroCasos===v?'btn-primary':'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="filtrarCasos('${v}')">${t} (${n})</button>`).join('');
 
-  const visibles = filtroCasos ? casosAusentismo.filter(c => c.estado === filtroCasos) : casosAusentismo;
+  const visibles = filtroCasos ? filas.filter(f => f.actual.estado === filtroCasos) : filas;
   if(!visibles.length){
     lista.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">${casosAusentismo.length?'No hay casos con ese estado.':'Todavía no hay casos de ausentismo.'}</div>`;
     return;
   }
 
   const esAdmin = usuarioActual?.rol === 'admin';
-  lista.innerHTML = visibles.map(c => {
+  lista.innerHTML = visibles.map(({ actual: c, anteriores }) => {
     const est = ESTADO_CASO[c.estado] || { texto:c.estado, clase:'b-gray' };
     const creado = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
     const turno = c.turno_fecha
@@ -6155,7 +6167,10 @@ function renderCasosAusentismo(){
 
     const nCert = Number(c.certificados) || 0;
     const nInf = Number(c.informes_adjuntos) || 0;
-    const acciones = [`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`];
+    const acciones = [];
+    if(esAdmin && ['resuelto','cancelado'].includes(c.estado))
+      acciones.push(`<button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="nuevoControlCaso(${c.id})">+ Nuevo control</button>`);
+    acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`);
     acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirInformesCaso(${c.id})">📄 Informes${nInf?' ('+nInf+')':''}</button>`);
     if(esAdmin)
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDomicilioCaso(${c.id})">📍 Domicilio</button>`);
@@ -6184,17 +6199,92 @@ function renderCasosAusentismo(){
 
     return `<div class="turno-item" style="align-items:flex-start;">
       <div class="turno-info" style="flex:1;">
-        <div class="turno-paciente"><span>${escaparHtml(c.trabajador_nombre)}</span><span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
-        <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+c.trabajador_dni:'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
+        <div class="turno-paciente"><span>${escaparHtml(c.trabajador_nombre)}</span>${anteriores.length?`<span class="badge b-blue">${anteriores.length+1}º control</span>`:''}<span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
+        <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+escaparHtml(c.trabajador_dni):'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
         <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
           ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
           : '<span style="color:#c8a800;font-weight:600;">Sin profesional asignado</span>'}</div>
         ${domicilioTag(c)}
         ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${escaparHtml(c.motivo)}</div>`:''}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${acciones.join('')}</div>
+        ${htmlControlesAnteriores(anteriores)}
       </div>
     </div>`;
   }).join('');
+}
+
+// Mismo trabajador = mismo DNI, o mismo nombre (sin importar orden ni tildes) en la misma
+// empresa, o enlazado como control siguiente. Junta también los casos duplicados de antes de
+// que existiera "Nuevo control".
+function agruparCasosPorTrabajador(casos){
+  const palabras = n => String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  const padre = new Map();
+  const raiz = x => { while(padre.get(x) !== x){ padre.set(x, padre.get(padre.get(x))); x = padre.get(x); } return x; };
+  const nodo = x => { if(!padre.has(x)) padre.set(x, x); return x; };
+  const unir = (a, b) => padre.set(raiz(nodo(a)), raiz(nodo(b)));
+  for(const c of casos){
+    const yo = nodo('c' + c.id);
+    const dni = String(c.trabajador_dni||'').replace(/\D/g,'');
+    if(dni.length >= 6) unir(yo, `${c.empresa_nombre}|d${dni}`);
+    const nom = palabras(c.trabajador_nombre);
+    if(nom) unir(yo, `${c.empresa_nombre}|n${nom}`);
+    if(c.caso_anterior_id) unir(yo, 'c' + c.caso_anterior_id);
+  }
+  const grupos = new Map();
+  for(const c of casos){
+    const k = raiz('c' + c.id);
+    if(!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(c);
+  }
+  return [...grupos.values()].map(g => {
+    g.sort((a, b) => new Date(a.creado_en) - new Date(b.creado_en) || a.id - b.id);
+    return { actual: g[g.length - 1], anteriores: g.slice(0, -1) };
+  }).sort((a, b) => new Date(b.actual.creado_en) - new Date(a.actual.creado_en));
+}
+
+function resultadoControl(c){
+  if(c.estado === 'resuelto') return c.no_comparecio ? 'no compareció' : 'resuelto';
+  return (ESTADO_CASO[c.estado]?.texto || c.estado).toLowerCase();
+}
+
+// Los controles anteriores del trabajador, en una línea que se despliega con sus documentos
+function htmlControlesAnteriores(anteriores){
+  if(!anteriores.length) return '';
+  const fecha = c => new Date(c.turno_fecha ? String(c.turno_fecha).split('T')[0] + 'T12:00' : c.creado_en)
+    .toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+  const resumen = anteriores.map(c => `${fecha(c)} ${resultadoControl(c)}`).join(' · ');
+  const filas = [...anteriores].reverse().map((c, i) => `<div class="au-anterior">
+      <span class="au-anterior-dato"><strong>${anteriores.length - i}º control</strong> · ${fecha(c)} · ${resultadoControl(c)}${c.profesional_nombre ? ' · ' + escaparHtml(c.profesional_nombre) : ''}</span>
+      <span class="au-anterior-acc">
+        ${c.turno_id ? `<a href="/api/turnos/${c.turno_id}/acta" class="sg-link" style="margin:0;">Acta</a>` : ''}
+        <button class="sg-link" style="margin:0;" onclick="abrirInformesCaso(${c.id})">Informes${Number(c.informes_adjuntos)?' ('+c.informes_adjuntos+')':''}</button>
+        <button class="sg-link" style="margin:0;" onclick="abrirCertificadosCaso(${c.id})">Certificados${Number(c.certificados)?' ('+c.certificados+')':''}</button>
+      </span>
+    </div>`).join('');
+  return `<details class="au-anteriores">
+    <summary>${anteriores.length === 1 ? 'Control anterior' : `${anteriores.length} controles anteriores`}: ${resumen}</summary>
+    ${filas}
+  </details>`;
+}
+
+// Abre el siguiente control con los datos del anterior y va directo a programarlo
+async function nuevoControlCaso(id){
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  if(!(await confirmar(`Se abre un nuevo control de ${c.trabajador_nombre} con los datos que ya están cargados (los que falten se toman de sus controles anteriores), sin volver a escribir nada. Después elegís fecha y hora.`,
+    { titulo:'Nuevo control', textoConfirmar:'Abrir nuevo control', danger:false }))) return;
+  try{
+    const r = await fetch(`/api/ausentismo/casos/${id}/nuevo-control`, { method:'POST', headers:apiHeaders(), body:'{}' });
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error || 'No se pudo abrir el nuevo control');
+    mostrarToast(d.ya_existia ? 'Ya había un control abierto para este trabajador'
+      : d.profesional_asignado ? '✓ Nuevo control abierto: elegí fecha y hora' : '✓ Nuevo control abierto: asigná el profesional', '#1e6640');
+    await cargarCasosAusentismo();
+    const nuevo = casosAusentismo.find(x => x.id === d.id);
+    if(nuevo?.profesional_id) abrirProgramarCaso(d.id);
+    else if(nuevo) abrirAsignarCaso(d.id);
+  }catch(e){ mostrarError(e.message); }
 }
 
 function filtrarCasos(estado){ filtroCasos = estado; renderCasosAusentismo(); }

@@ -843,14 +843,69 @@ async function cargarCasosEmpresa(){
   }
 }
 
+const escEmp = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Una fila por trabajador: el control vigente y, debajo, los anteriores. Mismo criterio que el
+// panel de MEDGRUP (mismo DNI, mismo nombre o control siguiente del anterior).
+function agruparCasosEmpresa(casos){
+  const palabras = n => String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  const padre = new Map();
+  const raiz = x => { while(padre.get(x) !== x){ padre.set(x, padre.get(padre.get(x))); x = padre.get(x); } return x; };
+  const nodo = x => { if(!padre.has(x)) padre.set(x, x); return x; };
+  const unir = (a, b) => padre.set(raiz(nodo(a)), raiz(nodo(b)));
+  for(const c of casos){
+    const yo = nodo('c' + c.id);
+    const dni = String(c.trabajador_dni||'').replace(/\D/g,'');
+    if(dni.length >= 6) unir(yo, 'd' + dni);
+    const nom = palabras(c.trabajador_nombre);
+    if(nom) unir(yo, 'n' + nom);
+    if(c.caso_anterior_id) unir(yo, 'c' + c.caso_anterior_id);
+  }
+  const grupos = new Map();
+  for(const c of casos){
+    const k = raiz('c' + c.id);
+    if(!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(c);
+  }
+  return [...grupos.values()].map(g => {
+    g.sort((a, b) => new Date(a.creado_en) - new Date(b.creado_en) || a.id - b.id);
+    return { actual: g[g.length - 1], anteriores: g.slice(0, -1) };
+  }).sort((a, b) => new Date(b.actual.creado_en) - new Date(a.actual.creado_en));
+}
+
+function anterioresEmpresa(anteriores){
+  if(!anteriores.length) return '';
+  const fecha = c => new Date(c.turno_fecha ? String(c.turno_fecha).split('T')[0] + 'T12:00' : c.creado_en)
+    .toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+  const resultado = c => c.estado === 'resuelto' ? (c.no_comparecio ? 'no compareció' : 'resuelto')
+    : ((ESTADO_CASO_EMPRESA[c.estado] || {}).texto || c.estado).toLowerCase();
+  const filas = [...anteriores].reverse().map((c, i) => {
+    const total = (c.dictamen_id ? 1 : 0) + (Number(c.informes_adjuntos) || 0);
+    const informe = !total ? ''
+      : total === 1 && c.dictamen_id
+        ? `<a href="/api/dictamenes/${c.dictamen_id}/pdf" style="color:var(--azul);font-weight:600;">Ver informe</a>`
+        : `<a href="#" style="color:var(--azul);font-weight:600;" onclick="event.preventDefault();verInformesCaso(${c.id}, ${c.dictamen_id || 'null'})">Ver informes (${total})</a>`;
+    return `<div style="display:flex;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border2);font-size:12.5px;">
+      <span style="color:var(--text2);"><b style="color:var(--text);">${anteriores.length - i}º control</b> · ${fecha(c)} · ${resultado(c)}</span>
+      <span style="display:flex;gap:12px;">${informe}<a href="#" style="color:var(--azul);" onclick="event.preventDefault();abrirCertificadosEmpresa(${c.id})">Certificados</a></span>
+    </div>`;
+  }).join('');
+  return `<details style="margin-top:10px;font-size:12.5px;color:var(--text2);">
+    <summary style="cursor:pointer;">${anteriores.length === 1 ? 'Control anterior' : anteriores.length + ' controles anteriores'}: ${anteriores.map(c => fecha(c) + ' ' + resultado(c)).join(' · ')}</summary>
+    ${filas}
+  </details>`;
+}
+
 function renderCasosEmpresa(){
   const lista = document.getElementById('casos-empresa-lista');
-  document.getElementById('badge-casos-empresa').textContent = casosEmpresa.length;
+  const filas = agruparCasosEmpresa(casosEmpresa);
+  document.getElementById('badge-casos-empresa').textContent = filas.length;
   if(!casosEmpresa.length){
     lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:13px;">Todavía no informaste ninguna ausencia.</div>';
     return;
   }
-  lista.innerHTML = casosEmpresa.map(c => {
+  lista.innerHTML = filas.map(({ actual: c, anteriores }) => {
     const est = ESTADO_CASO_EMPRESA[c.estado] || { texto:c.estado, clase:'b-gris', ayuda:'' };
     const abierto = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
     const entrevista = c.turno_fecha
@@ -878,24 +933,25 @@ function renderCasosEmpresa(){
     // El control es domiciliario: si la dirección no quedó ubicada, no se puede verificar nada
     const domicilio = c.domicilio
       ? `<div style="font-size:12px;color:${c.domicilio_ubicado?'var(--text3)':'var(--amber)'};margin-top:4px;">
-           ${c.domicilio_ubicado?'📍':'⚠️'} ${c.domicilio}${c.domicilio_ubicado?'':' — no pudimos ubicarla en el mapa, avisanos para corregirla'}
+           ${c.domicilio_ubicado?'📍':'⚠️'} ${escEmp(c.domicilio)}${c.domicilio_ubicado?'':' — no pudimos ubicarla en el mapa, avisanos para corregirla'}
          </div>`
       : `<div style="font-size:12px;color:var(--text3);margin-top:4px;">Sin domicilio de reposo cargado</div>`;
     return `<div style="border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
-          <div style="font-size:14.5px;font-weight:600;">${c.trabajador_nombre}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${c.trabajador_dni?'DNI '+c.trabajador_dni+' · ':''}Informado el ${abierto}</div>
+          <div style="font-size:14.5px;font-weight:600;">${escEmp(c.trabajador_nombre)}${anteriores.length ? ` <span style="font-size:12px;font-weight:600;color:var(--azul);">· ${anteriores.length + 1}º control</span>` : ''}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${c.trabajador_dni?'DNI '+escEmp(c.trabajador_dni)+' · ':''}Informado el ${abierto}</div>
           ${tipo}${prof}${entrevista}${domicilio}
         </div>
         <span class="badge ${est.clase}">${est.texto}</span>
       </div>
-      ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.5;">${c.motivo}</div>`:''}
+      ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.5;">${escEmp(c.motivo)}</div>`:''}
       <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">${est.ayuda}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
         <button class="btn btn-ghost" onclick="abrirCertificadosEmpresa(${c.id})">📎 Certificados</button>
         ${informe}${cancelar}
       </div>
+      ${anterioresEmpresa(anteriores)}
     </div>`;
   }).join('');
 }
