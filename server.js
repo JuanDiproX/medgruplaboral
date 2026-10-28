@@ -2938,6 +2938,22 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC_API_KEY, daily: !!DAILY_API_KEY }));
+
+// Versión del portal: una huella de lo que descarga el navegador. El portal queda abierto
+// todo el día, así que después de un despliegue cada pestaña sigue con el código viejo hasta
+// que se recarga; con esto la página se da cuenta sola y avisa. Un cambio solo del servidor no
+// cambia la huella y no molesta a nadie.
+const VERSION_PORTAL = (() => {
+  const h = crypto.createHash('sha256');
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js']) {
+    try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
+  }
+  return h.digest('hex').slice(0, 16);
+})();
+app.get('/api/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ version: VERSION_PORTAL });
+});
 // ===== SUBIR PDF FIRMADO =====
 app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => {
   try {

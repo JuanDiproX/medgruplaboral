@@ -631,6 +631,27 @@ td.no-label::before{display:none;}
 .turno-item{padding:.8rem .85rem;}
 }
 
+
+/* ── AVISO DE VERSIÓN NUEVA ──
+   Abajo y chico: no tapa la agenda ni mueve nada. Durante una videollamada no se muestra. */
+.aviso-version{position:fixed;left:50%;bottom:20px;transform:translate(-50%,12px);opacity:0;pointer-events:none;z-index:800;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);background:var(--ink);color:#fff;border-radius:999px;padding:8px 8px 8px 20px;box-shadow:var(--shadow-lg);font-size:14px;transition:opacity .25s var(--ease-out),transform .25s var(--ease-out);}
+.aviso-version.visible{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+.aviso-version-texto{line-height:1.35;}
+.aviso-version-acciones{display:flex;gap:4px;flex-shrink:0;}
+.aviso-version button{border:0;border-radius:999px;font:inherit;font-size:13.5px;font-weight:600;padding:8px 14px;cursor:pointer;}
+.aviso-version .av-recargar{background:var(--celeste);color:var(--ink);}
+.aviso-version .av-recargar:hover{background:#c4e7f2;}
+.aviso-version .av-luego{background:transparent;color:rgba(255,255,255,.75);}
+.aviso-version .av-luego:hover{color:#fff;}
+.aviso-version button:focus-visible{outline:2px solid var(--celeste);outline-offset:2px;}
+@media (max-width:640px){
+  .aviso-version{left:16px;right:16px;bottom:16px;transform:translateY(12px);border-radius:var(--r);flex-wrap:wrap;padding:12px 12px 10px 16px;gap:8px 12px;}
+  .aviso-version.visible{transform:none;}
+  .aviso-version-acciones{width:100%;justify-content:flex-end;}
+}
+@media (min-width:900px){.aviso-version-texto{white-space:nowrap;}}
+@media (prefers-reduced-motion:reduce){.aviso-version{transition:none;}}
+
 /* ── SEGUIMIENTOS ──
    Se lee como una historia clínica: el nombre y el motivo arriba, una ficha con la
    situación actual, y la historia en un solo recuadro con pestañas. Pocas cajas: la
@@ -8427,6 +8448,62 @@ async function guardarSeguimiento(){
   }finally{ btn.disabled = false; }
 }
 
+
+// ===== AVISO DE VERSIÓN NUEVA =====
+// El portal queda abierto todo el día: después de un despliegue, cada pestaña sigue con el
+// código viejo hasta que se recarga. La página compara su versión con la del servidor y, si
+// cambió, ofrece recargar. Nunca recarga sola, y durante una videollamada no aparece: se
+// muestra cuando la llamada termina.
+let versionCargada = null;
+let hayVersionNueva = false;
+let avisoVersionPospuestoHasta = 0;
+
+function enVideollamada(){
+  return !!document.querySelector('#video-container.active, #reunion-video-container.active');
+}
+
+function pintarAvisoVersion(){
+  let el = document.getElementById('aviso-version');
+  const mostrar = hayVersionNueva && !enVideollamada() && Date.now() >= avisoVersionPospuestoHasta;
+  if(!mostrar){ if(el) el.classList.remove('visible'); return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'aviso-version';
+    el.className = 'aviso-version';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `<span class="aviso-version-texto">Hay una versión nueva del portal. Guardá lo que estés escribiendo y recargá.</span>
+      <span class="aviso-version-acciones">
+        <button type="button" class="av-luego" onclick="posponerAvisoVersion()">Más tarde</button>
+        <button type="button" class="av-recargar" onclick="location.reload()">Recargar</button>
+      </span>`;
+    document.body.appendChild(el);
+    void el.offsetWidth;
+  }
+  el.classList.add('visible');
+}
+
+function posponerAvisoVersion(){
+  avisoVersionPospuestoHasta = Date.now() + 30 * 60 * 1000;
+  pintarAvisoVersion();
+}
+
+async function revisarVersionPortal(){
+  try{
+    const r = await fetch('/api/version', { cache:'no-store' });
+    const { version } = await r.json();
+    if(!version) return;
+    if(!versionCargada){ versionCargada = version; return; }
+    if(version !== versionCargada) hayVersionNueva = true;
+  }catch(e){ /* sin conexión o servidor reiniciando: se vuelve a probar en la próxima vuelta */ }
+  pintarAvisoVersion();
+}
+
+revisarVersionPortal();
+setInterval(revisarVersionPortal, 5 * 60 * 1000);
+// Al volver a la pestaña se revisa enseguida, y mientras haya aviso pendiente se re-evalúa
+// seguido para que aparezca apenas termina la llamada.
+document.addEventListener('visibilitychange', () => { if(!document.hidden) revisarVersionPortal(); });
+setInterval(() => { if(hayVersionNueva) pintarAvisoVersion(); }, 15 * 1000);
 
 checkSession();
 chequearTokenReset();
