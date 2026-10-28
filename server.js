@@ -24,10 +24,15 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_FROM = process.env.RESEND_FROM || 'MEDGRUP <onboarding@resend.dev>';
+// Ojo: las contraseñas se guardan cifradas con este secreto. Si en Railway no está definido se
+// usa el de abajo, que es público; cambiarlo después invalida todas las contraseñas guardadas.
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
+if (!process.env.SESSION_SECRET) console.warn('⚠ SESSION_SECRET no está definido: las contraseñas usan el secreto por defecto');
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb', verify: (req, res, buf) => {
+  if (req.originalUrl.startsWith('/api/webhooks/')) req.cuerpoCrudo = buf.toString('utf8');
+} }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Las páginas del sitio público viven en laboral.medgrup.com.ar, pero sus archivos también están
 // en public/ porque el sitio se arma desde acá. Si alguien (o Google) las pide en el dominio del
@@ -359,6 +364,11 @@ async function initDB() {
       );
       CREATE INDEX IF NOT EXISTS idx_seg_vinc_turno ON seguimiento_vinculos (turno_id);
       CREATE INDEX IF NOT EXISTS idx_seg_vinc_caso  ON seguimiento_vinculos (caso_id);
+      CREATE TABLE IF NOT EXISTS configuracion (
+        clave VARCHAR(100) PRIMARY KEY,
+        valor TEXT NOT NULL,
+        actualizado_en TIMESTAMPTZ DEFAULT NOW()
+      );
       -- Lo que la IA leyó de cada certificado o informe adjunto: se lee una vez y queda.
       CREATE TABLE IF NOT EXISTS lecturas_ia (
         id SERIAL PRIMARY KEY,
@@ -371,16 +381,17 @@ async function initDB() {
       );
     `);
 
-    const adminHash = hashPassword('medgrup2026');
-    const barbozaHash = hashPassword('barboza2026');
-    const muroniHash = hashPassword('muroni2026');
-    await client.query(`
-      INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES
-        ('Administrador','adm.medgrup@gmail.com',$1,'admin'),
-        ('Dr. Barboza, Raúl','barboza@medgrup.com',$2,'medico'),
-        ('Dr. Muroni, Esteban','muroni@medgrup.com',$3,'medico')
-      ON CONFLICT (email) DO NOTHING
-    `, [adminHash, barbozaHash, muroniHash]);
+    // Primer arranque con la base vacía: se crea un admin para poder entrar. La contraseña sale
+    // de ADMIN_PASSWORD_INICIAL o se genera al azar y se muestra una sola vez en el log; nunca
+    // está escrita en el código (el repositorio es público).
+    const hayAdmin = await client.query(`SELECT 1 FROM usuarios WHERE rol='admin' LIMIT 1`);
+    if (!hayAdmin.rows.length) {
+      const inicial = process.env.ADMIN_PASSWORD_INICIAL || crypto.randomBytes(9).toString('base64url');
+      await client.query(
+        `INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES ('Administrador','adm.medgrup@gmail.com',$1,'admin')
+         ON CONFLICT (email) DO NOTHING`, [hashPassword(inicial)]);
+      if (!process.env.ADMIN_PASSWORD_INICIAL) console.log(`⚠ Admin inicial creado: adm.medgrup@gmail.com / ${inicial} — cambiala al entrar`);
+    }
 
     await client.query(`
       INSERT INTO medicos (nombre, matricula, especialidad)
@@ -734,14 +745,11 @@ app.post('/api/presupuestos', authMiddleware, async (req, res) => {
     });
     const total = +itemsCalc.reduce((acc, it) => acc + it.subtotal, 0).toFixed(2);
 
-    const count = await pool.query('SELECT COUNT(*) FROM presupuestos');
-    const numero = `PRES-${new Date().getFullYear()}-` + String(parseInt(count.rows[0].count)+1).padStart(4,'0');
-
-    const r = await pool.query(`INSERT INTO presupuestos
+    const presupuesto = await conNumeroNuevo('PRES', 'presupuestos', (client, numero) => client.query(`INSERT INTO presupuestos
       (numero,empresa,contacto,validez_dias,items,subtotal,total,notas,creado_por)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [numero, empresa, contacto||'', parseInt(validez_dias)||15, JSON.stringify(itemsCalc), total, total, notas||'', req.usuario.nombre]);
-    res.json({ ok: true, presupuesto: r.rows[0] });
+      [numero, empresa, contacto||'', parseInt(validez_dias)||15, JSON.stringify(itemsCalc), total, total, notas||'', req.usuario.nombre]).then(r => r.rows[0]));
+    res.json({ ok: true, presupuesto });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.patch('/api/presupuestos/:id/estado', authMiddleware, async (req, res) => {
@@ -760,7 +768,7 @@ app.delete('/api/presupuestos/:id', adminMiddleware, async (req, res) => {
 });
 
 // PDF del presupuesto (público, igual que los informes — para que se pueda mandar el link directo a la empresa)
-app.get('/api/presupuestos/:id/pdf', async (req, res) => {
+app.get('/api/presupuestos/:id/pdf', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM presupuestos WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
@@ -910,7 +918,15 @@ app.get('/api/medicos', authMiddleware, async (req, res) => {
   try { const r = await pool.query('SELECT * FROM medicos WHERE activo=true ORDER BY id'); res.json(r.rows); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/api/medicos', authMiddleware, async (req, res) => {
+// Un email que ya usa otra cuenta (un admin, u otra persona) no se pisa: antes, cargar un
+// médico con el email del administrador le cambiaba la contraseña al administrador.
+async function emailDeOtraCuenta(email, nombre) {
+  const r = await pool.query('SELECT nombre, rol FROM usuarios WHERE LOWER(email)=LOWER($1)', [email]);
+  if (!r.rows.length) return false;
+  return r.rows[0].rol === 'admin' || r.rows[0].nombre !== nombre;
+}
+
+app.post('/api/medicos', adminMiddleware, async (req, res) => {
   const { nombre, matricula, especialidad, email, password, telefono } = req.body;
   if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
   try {
@@ -919,6 +935,10 @@ app.post('/api/medicos', authMiddleware, async (req, res) => {
     // pueda loguearse y firmar juntas médicas
     let accesoCreado = false;
     if (email && password) {
+      if (await emailDeOtraCuenta(email.trim(), nombre)) {
+        return res.json({ ok: true, medico: r.rows[0], accesoCreado: false,
+          aviso: 'El médico quedó cargado, pero ese email ya es de otra cuenta: el acceso no se creó.' });
+      }
       const hash = hashPassword(password);
       await pool.query(
         `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'medico')
@@ -927,6 +947,23 @@ app.post('/api/medicos', authMiddleware, async (req, res) => {
       accesoCreado = true;
     }
     res.json({ ok: true, medico: r.rows[0], accesoCreado });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Contraseñas que estuvieron escritas en el código cuando el repositorio ya era público: si
+// alguna cuenta todavía la usa, cualquiera que lea el repo puede entrar. Se avisa al admin
+// (solo a él) en vez de probarlas desde afuera.
+const CONTRASENAS_PUBLICADAS = ['medgrup2026', 'barboza2026', 'muroni2026'];
+app.get('/api/admin/seguridad', adminMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT email FROM usuarios WHERE activo=true AND password_hash = ANY($1) ORDER BY email`,
+      [CONTRASENAS_PUBLICADAS.map(hashPassword)]);
+    const rep = await pool.query(
+      `SELECT numero, COUNT(*)::int AS veces FROM dictamenes GROUP BY numero HAVING COUNT(*) > 1 ORDER BY numero`);
+    res.json({ ok: true, cuentas_con_contrasena_publica: r.rows.map(x => x.email),
+      falta_session_secret: !process.env.SESSION_SECRET,
+      dictamenes_numero_repetido: rep.rows.map(x => x.numero) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1312,7 +1349,7 @@ app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
     res.json({ ok: true, firmasFaltantes: faltan.rows.map(x=>x.medico_nombre) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.delete('/api/medicos/:id', authMiddleware, async (req, res) => {
+app.delete('/api/medicos/:id', adminMiddleware, async (req, res) => {
   try { await pool.query('UPDATE medicos SET activo=false WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1428,7 +1465,7 @@ app.post('/api/medicos/:id/unificar-nombre', adminMiddleware, async (req, res) =
   } finally { client.release(); }
 });
 
-app.patch('/api/medicos/:id', authMiddleware, async (req, res) => {
+app.patch('/api/medicos/:id', adminMiddleware, async (req, res) => {
   const { nombre, matricula, especialidad, telefono } = req.body;
   const client = await pool.connect();
   try {
@@ -1463,6 +1500,9 @@ app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
   try {
     const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
     if (!m.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
+    if (await emailDeOtraCuenta(email.trim(), m.rows[0].nombre)) {
+      return res.status(409).json({ error: 'Ese email ya es de otra cuenta. Usá otro email para este médico.' });
+    }
     await pool.query(
       `INSERT INTO usuarios (nombre,email,password_hash,rol) VALUES ($1,$2,$3,'medico')
        ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3`,
@@ -1851,8 +1891,13 @@ app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
 });
 
 // ===== EVENTOS =====
+const EVENTOS_DEL_MEDICO = ['inicio_medico', 'union_medico', 'fin_consulta'];
 app.post('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
   try {
+    if (req.usuario.rol !== 'admin') {
+      if (!EVENTOS_DEL_MEDICO.includes(req.body.tipo)) return res.status(403).json({ error: 'Ese evento no se puede registrar desde acá' });
+      if (!(await puedeGestionarInformesDelTurno(req.params.id, req.usuario))) return res.status(403).json({ error: 'Este turno no está asignado a vos' });
+    }
     const r = await pool.query('INSERT INTO eventos_turno (turno_id,tipo,participante) VALUES ($1,$2,$3) RETURNING *', [req.params.id, req.body.tipo, req.body.participante||'']);
     res.json({ ok: true, evento: r.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1926,13 +1971,45 @@ app.get('/api/dictamenes/turno/:turnoId/medico', authMiddleware, async (req, res
     res.json({ ok: !r.rows.length?false:true, dictamen: r.rows[0]||null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// Número correlativo por año que nunca se repite. Antes salía de contar las filas: si se borraba
+// un turno con dictamen, el siguiente repetía un número ya impreso (y /verificar mostraba otro
+// informe), dos altas simultáneas podían salir iguales, y el año estaba fijo en 2026.
+async function conNumeroNuevo(prefijo, tabla, insertar) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [tabla]);
+    const anio = new Date().getFullYear();
+    // Contador guardado que solo sube: si se borra el último dictamen, su número no vuelve a
+    // salir. La primera vez arranca del mayor número existente (o de la cantidad de filas, que
+    // es lo que usaba el método anterior, si es mayor).
+    const clave = `numero_${prefijo}_${anio}`;
+    const guardado = await client.query('SELECT valor FROM configuracion WHERE clave=$1', [clave]);
+    const existentes = await client.query(
+      `SELECT COALESCE(MAX(CAST(substring(numero from '([0-9]+)$') AS INTEGER)), 0) AS max,
+              COUNT(*) FILTER (WHERE numero LIKE $1) AS cant
+       FROM ${tabla} WHERE numero LIKE $1`, [`${prefijo}-${anio}-%`]);
+    const ultimo = guardado.rows.length ? Number(guardado.rows[0].valor)
+      : Math.max(Number(existentes.rows[0].max), Number(existentes.rows[0].cant));
+    const siguiente = Math.max(ultimo, Number(existentes.rows[0].max)) + 1;
+    await client.query(
+      `INSERT INTO configuracion (clave, valor) VALUES ($1,$2)
+       ON CONFLICT (clave) DO UPDATE SET valor=EXCLUDED.valor, actualizado_en=NOW()`, [clave, String(siguiente)]);
+    const numero = `${prefijo}-${anio}-${String(siguiente).padStart(4, '0')}`;
+    const fila = await insertar(client, numero);
+    await client.query('COMMIT');
+    return fila;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally { client.release(); }
+}
+
 app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
     const { turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,aptitud,dias_reposo,derivacion,indicaciones,sala,matricula,especialidad,
       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
-    const count = await pool.query('SELECT COUNT(*) FROM dictamenes');
-    const numero = 'DICT-2026-' + String(parseInt(count.rows[0].count)+1).padStart(4,'0');
-    const r = await pool.query(`INSERT INTO dictamenes
+    const dictamen = await conNumeroNuevo('DICT', 'dictamenes', (client, numero) => client.query(`INSERT INTO dictamenes
       (numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo,derivacion,indicaciones,sala,
        paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,matricula,especialidad,
        apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie)
@@ -1941,10 +2018,10 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
        derivacion||'Sin derivación',indicaciones||'',sala||'',paciente_dni||'',edad||'',obra_social||'',profesion||'',
        antecedentes||'',hallazgos||'',conclusion||'',matricula||'',especialidad||'Medicina Laboral',
        apellido_nombre||'',fecha_nacimiento||'',lugar_nacimiento||'',estado_civil||'',estudios||'',
-       puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'']);
+       puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'']).then(r => r.rows[0]));
     // Emitir el informe es lo que cierra un caso de ausentismo: es lo que se factura
     await avanzarCasoDelTurno(turno_id, 'resuelto');
-    res.json({ ok: true, dictamen: r.rows[0], numero });
+    res.json({ ok: true, dictamen, numero: dictamen.numero });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
@@ -2104,11 +2181,24 @@ h1.error{color:#b02a2a;}
 });
 
 // ===== PDF INFORME =====
-app.get('/api/dictamenes/:id/pdf', async (req, res) => {
+// Los informes y actas tienen datos de salud: se piden con sesión (del equipo o de la empresa)
+// y solo los ve quien tiene que ver ese turno. Antes bastaba con el número del dictamen, que
+// es correlativo, para descargar cualquiera.
+async function puedeVerDictamen(d, req) {
+  if (req.empresa) {
+    if (d.turno_id) return turnoVisiblePara(d.turno_id, req);
+    return !!d.empresa && d.empresa === req.empresa.nombre;
+  }
+  if (req.usuario.rol === 'admin' || d.medico === req.usuario.nombre) return true;
+  return d.turno_id ? puedeGestionarInformesDelTurno(d.turno_id, req.usuario) : false;
+}
+
+app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     const d = r.rows[0];
+    if (!(await puedeVerDictamen(d, req))) return res.status(403).json({ error: 'No tenés acceso a este informe' });
     // Los campos redactados por la IA (o tipeados a mano) se imprimen tal cual, sin intérprete
     // de markdown: si alguno trae **negrita** o __negrita__ suelta, se limpia antes de armar el HTML.
     for (const campo of ['metodologia','antecedentes','hallazgos','analisis','conclusion','situacion_licencia','indicaciones','aptitud_texto']) {
@@ -2522,10 +2612,11 @@ ${trazaFirmasHtml}
 });
 
 // ===== ACTA =====
-app.get('/api/turnos/:id/acta', async (req, res) => {
+app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM turnos WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
+    if (!(await turnoVisiblePara(req.params.id, req))) return res.status(403).json({ error: 'No tenés acceso a esta acta' });
     const t = r.rows[0];
     const eventos = (await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC', [req.params.id])).rows;
     const medicosTurno = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1 ORDER BY medico_nombre', [req.params.id])).rows.map(x=>x.medico_nombre);
@@ -2774,6 +2865,42 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 });
 
 // ===== WEBHOOK DAILY =====
+// El "se unió el paciente" de este webhook es lo que el acta afirma como asistencia, así que
+// solo se acepta si viene de Daily: con su firma (HMAC con el secreto que le configuramos al
+// arrancar) o, si la firma no valida, confirmando con Daily que esa persona está en la sala.
+// Antes cualquiera podía mandar un aviso falso y convertir una inasistencia en asistencia.
+let secretoWebhookDaily = null;
+
+function firmaDailyValida(req) {
+  const ts = req.headers['x-webhook-timestamp'], firma = req.headers['x-webhook-signature'];
+  if (!secretoWebhookDaily || !ts || !firma) return false;
+  // Un aviso viejo reenviado no sirve
+  const seg = Number(ts) > 1e12 ? Number(ts) / 1000 : Number(ts);
+  if (!Number.isFinite(seg) || Math.abs(Date.now() / 1000 - seg) > 10 * 60) return false;
+  const esperada = crypto.createHmac('sha256', Buffer.from(secretoWebhookDaily, 'base64'))
+    .update(`${ts}.${req.cuerpoCrudo ?? JSON.stringify(req.body)}`).digest('base64');
+  const a = Buffer.from(esperada), b = Buffer.from(String(firma));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+async function presenteEnSalaDaily(sala, nombre) {
+  if (!DAILY_API_KEY) return false;
+  const normal = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  // La presencia puede tardar unos segundos en reflejar a quien recién entró
+  for (let intento = 0; intento < 3; intento++) {
+    try {
+      const r = await fetch(`https://api.daily.co/v1/rooms/${encodeURIComponent(sala)}/presence`,
+        { headers: { 'Authorization': `Bearer ${DAILY_API_KEY}` } });
+      if (r.ok) {
+        const d = await r.json();
+        if ((d.data || []).some(p => normal(p.userName) === normal(nombre))) return true;
+      }
+    } catch {}
+    await new Promise(ok => setTimeout(ok, 2000));
+  }
+  return false;
+}
+
 app.post('/api/webhooks/daily', async (req, res) => {
   try {
     const { type, payload={} } = req.body;
@@ -2782,6 +2909,10 @@ app.post('/api/webhooks/daily', async (req, res) => {
     const nombre = decodeURIComponent(nombreRaw).replace(/\+/g,' ').trim();
 
     if (type==='participant.joined' && sala) {
+      if (!firmaDailyValida(req) && !(await presenteEnSalaDaily(sala, nombre))) {
+        console.warn(`Webhook Daily descartado: sin firma válida y ${nombre} no figura en la sala ${sala}`);
+        return res.json({ ok: true });
+      }
       const t = await pool.query('SELECT id FROM turnos WHERE sala=$1 LIMIT 1', [sala]);
       if (t.rows.length) {
         const turnoId = t.rows[0].id;
@@ -2807,10 +2938,28 @@ async function registrarWebhookDaily() {
   try {
     const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'https://medgruplaboral-production.up.railway.app';
     const webhookUrl = `${baseUrl}/api/webhooks/daily`;
-    const existing = await fetch('https://api.daily.co/v1/webhooks', { headers: { 'Authorization': `Bearer ${DAILY_API_KEY}` } }).then(r=>r.json()).catch(()=>({data:[]}));
-    if ((existing.data||[]).some(w=>w.url===webhookUrl)) { console.log('✓ Webhook Daily ya registrado'); return; }
-    await fetch('https://api.daily.co/v1/webhooks', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${DAILY_API_KEY}`}, body: JSON.stringify({ url: webhookUrl, eventTypes: ['participant.joined'] }) });
-    console.log('✓ Webhook Daily registrado:', webhookUrl);
+    // Secreto propio para firmar los avisos: se guarda en la base para que sobreviva a los
+    // reinicios y se le configura a Daily en cada arranque (base64, como lo pide Daily).
+    let secreto = (await pool.query(`SELECT valor FROM configuracion WHERE clave='daily_webhook_hmac'`)).rows[0]?.valor;
+    if (!secreto) {
+      secreto = crypto.randomBytes(32).toString('base64');
+      await pool.query(`INSERT INTO configuracion (clave, valor) VALUES ('daily_webhook_hmac', $1) ON CONFLICT (clave) DO NOTHING`, [secreto]);
+      secreto = (await pool.query(`SELECT valor FROM configuracion WHERE clave='daily_webhook_hmac'`)).rows[0].valor;
+    }
+    const cab = { 'Content-Type':'application/json', 'Authorization':`Bearer ${DAILY_API_KEY}` };
+    const existing = await fetch('https://api.daily.co/v1/webhooks', { headers: cab }).then(r=>r.json()).catch(()=>({data:[]}));
+    const nuestro = (Array.isArray(existing) ? existing : (existing.data||[])).find(w=>w.url===webhookUrl);
+    const cuerpo = JSON.stringify({ url: webhookUrl, eventTypes: ['participant.joined'], hmac: secreto });
+    const r = nuestro
+      ? await fetch(`https://api.daily.co/v1/webhooks/${nuestro.uuid}`, { method:'POST', headers: cab, body: cuerpo })
+      : await fetch('https://api.daily.co/v1/webhooks', { method:'POST', headers: cab, body: cuerpo });
+    if (r.ok) {
+      secretoWebhookDaily = secreto;
+      console.log(`✓ Webhook Daily ${nuestro ? 'actualizado' : 'registrado'} con firma:`, webhookUrl);
+    } else {
+      // Sin secreto confirmado, cada aviso se verifica preguntándole a Daily quién está en la sala
+      console.log('⚠ Webhook Daily sin firma configurada:', r.status, await r.text().catch(()=>''));
+    }
   } catch (err) { console.log('⚠ Webhook Daily no registrado:', err.message); }
 }
 
@@ -2974,10 +3123,11 @@ app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => 
 });
 
 // Servir el PDF firmado (si existe) o el generado
-app.get('/api/dictamenes/:id/pdf-firmado', async (req, res) => {
+app.get('/api/dictamenes/:id/pdf-firmado', authMedgrupOEmpresa, async (req, res) => {
   try {
-    const r = await pool.query('SELECT pdf_firmado, pdf_firmado_nombre FROM dictamenes WHERE id=$1', [req.params.id]);
+    const r = await pool.query('SELECT pdf_firmado, pdf_firmado_nombre, turno_id, medico, empresa FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!r.rows.length || !r.rows[0].pdf_firmado) return res.status(404).json({ error: 'No hay PDF firmado' });
+    if (!(await puedeVerDictamen(r.rows[0], req))) return res.status(403).json({ error: 'No tenés acceso a este informe' });
     const buf = Buffer.from(r.rows[0].pdf_firmado, 'base64');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `${req.query.download === '1' ? 'attachment' : 'inline'}; filename="${pdfFilename(r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf')}"`);
