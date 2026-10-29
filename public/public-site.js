@@ -47,8 +47,25 @@ if(quoteForm){
       const response=await fetch('/api/contacto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(30000)});
       const result=await response.json();
       status.textContent=result.message;
-      if(response.ok)quoteForm.reset();
+      if(response.ok){trackCommercialEvent('form_success');quoteForm.reset();}else{trackCommercialEvent('form_error');}
     }catch{status.textContent='No pudimos confirmar el envío. Conservamos tus datos; escribinos a administracion@medgrup.com.ar si el problema continúa.';}
     finally{button.disabled=false;quoteForm.removeAttribute('aria-busy');}
   });
 }
+
+// Contadores sin cookies: solo evento y ruta pública, nunca campos ni parámetros.
+function trackCommercialEvent(event) {
+  if (navigator.doNotTrack === '1' || navigator.globalPrivacyControl) return;
+  const payload = JSON.stringify({event, path: location.pathname});
+  if (navigator.sendBeacon) navigator.sendBeacon('/api/eventos', new Blob([payload], {type:'application/json'}));
+}
+document.addEventListener('click', event => {
+  const link = event.target.closest('a');
+  if (!link) return;
+  if (link.dataset.track === 'whatsapp') trackCommercialEvent('whatsapp_click');
+  else if (link.getAttribute('href')?.startsWith('/contacto.html')) trackCommercialEvent('contact_click');
+  else if (link.getAttribute('href')?.startsWith('mailto:')) trackCommercialEvent('email_click');
+});
+if (quoteForm) quoteForm.addEventListener('focusin', () => trackCommercialEvent('form_start'), {once:true});
+
+trackCommercialEvent('page_view');

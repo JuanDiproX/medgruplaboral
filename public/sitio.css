@@ -1194,3 +1194,21 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+/* Captación comercial: conserva el sistema editorial de MEDGRUP. */
+.hero-case { grid-column: 8 / -1; align-self: center; padding: 30px 0 30px 30px; border-left: 1px solid var(--line, #e4e3da); }
+.hero-case h2 { margin: 0 0 18px; font: 400 clamp(1.8rem, 3vw, 2.6rem)/1.12 var(--display); text-wrap: balance; }
+.hero-case > p { max-width: 42ch; color: var(--ink-2); }
+.case-route { list-style: none; margin: 24px 0; padding: 0; }
+.case-route li { padding: 15px 0; border-top: 1px solid var(--line, #e4e3da); }
+.case-route strong, .case-route span { display: block; }
+.case-route span { margin-top: 5px; color: var(--ink-2); font-size: .9375rem; line-height: 1.5; }
+.monthly { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding-block: 80px; border-top: 1px solid var(--line, #e4e3da); }
+.monthly h2 { font: 400 clamp(2rem, 4vw, 3.5rem)/1.1 var(--display); margin: 0 0 24px; text-wrap: balance; }
+.monthly .btn { margin-block: 16px; }
+.contact-direct .btn { margin-bottom: 16px; }
+.contact-email { overflow-wrap: anywhere; }
+@media(max-width:1080px) { .hero-case { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line, #e4e3da); padding: 28px 0 0; margin-top: 32px; } .monthly { grid-template-columns: 1fr; gap: 24px; } }
+@media(max-width:600px) { .monthly { padding-block: 48px; } .hero-main h1 { font-size: clamp(2.5rem, 10vw, 3.2rem); } .hero-case { margin-top: 24px; } .contact-intro .lead { font-size: 1rem; } .site-nav { gap: 12px; font-size: .875rem; } }
+.hero-case { min-width: 0; }
+.hero-case .text-link { white-space: normal; }
+@media(max-width:600px) { .site-nav { gap: 10px; font-size: .8125rem; } }

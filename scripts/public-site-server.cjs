@@ -8,6 +8,7 @@ const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8',
 http.createServer((req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
+  if(req.url==='/api/eventos'&&req.method==='POST')return require('./public-events.cjs')(req,res);
   if(req.url==='/api/contacto'&&req.method==='POST')return contact(req,res);
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405,{Allow:'GET, HEAD'});return res.end();}
   let pathname;
