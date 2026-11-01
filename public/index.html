@@ -853,6 +853,7 @@ td.no-label::before{display:none;}
   .sg-nota-ia{padding:.8rem 1rem 0;}
 }
 </style>
+<link rel="stylesheet" href="/ausentismo-flow.css">
 </head>
 <body>
 
@@ -3569,7 +3570,7 @@ async function cargarTurnos(){
       document.getElementById('agenda-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">Error al cargar los turnos: '+(data.error||'respuesta inválida')+'</div>';
       return;
     }
-    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[],informesExtra:Number(t.informes_extra)||0}));
+    turnos=data.map(t=>({id:t.id,paciente:t.paciente,telefono:t.telefono||'',fecha:t.fecha.split('T')[0],hora:t.hora,tipo:t.tipo,empresa:t.empresa,estado:t.estado,sala:t.sala,motivo:t.motivo||'',modalidad:t.modalidad||'telemedicina',pacientePresencial:!!t.paciente_presencial,diagnosticoPrevio:t.diagnostico_previo||'',diasReposoPrevio:t.dias_reposo_previo||0,medicoTratante:t.medico_tratante||'',linkPaciente:t.link_paciente,linksMedicos:Array.isArray(t.links_medicos)?t.links_medicos:(typeof t.links_medicos==='string'?JSON.parse(t.links_medicos):t.links_medicos||[]),medicos:t.medicos||[],inasistencia:!!t.inasistencia,informesExtra:Number(t.informes_extra)||0}));
     poblarFiltroEmpresasAgenda();
     await cargarMarcasSeguimiento();
     renderAgenda();
@@ -6184,7 +6185,7 @@ function renderCasosAusentismo(){
     // y si no compareció sale la de inasistencia. Por eso alcanza con un solo link.
     if(c.turno_id)
       acciones.push(`<a href="/api/turnos/${c.turno_id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Ver acta</a>`);
-    if(c.turno_id && c.estado === 'resuelto')
+    if(c.turno_id && c.no_comparecio)
       acciones.push(`<a href="/api/turnos/${c.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Informe de inasistencia</a>`);
     if(c.turno_id && ['programado','en-curso'].includes(c.estado))
       acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="registrarInasistencia(${c.id})">No compareció</button>`);
@@ -6228,7 +6229,7 @@ function agruparCasosPorTrabajador(casos){
     const dni = String(c.trabajador_dni||'').replace(/\D/g,'');
     if(dni.length >= 6) unir(yo, `${c.empresa_nombre}|d${dni}`);
     const nom = palabras(c.trabajador_nombre);
-    if(nom) unir(yo, `${c.empresa_nombre}|n${nom}`);
+    if(nom && dni.length < 6) unir(yo, `${c.empresa_nombre}|n${nom}`);
     if(c.caso_anterior_id) unir(yo, 'c' + c.caso_anterior_id);
   }
   const grupos = new Map();
@@ -8632,6 +8633,7 @@ chequearTokenReset();
 <script src="/descargas.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.93.0/dist/daily.js" crossorigin="anonymous"></script>
 <script src="/llamada.js"></script>
+<script src="/ausentismo-flow.js"></script>
 <script src="/chat-medico.js"></script>
 </body>
 </html>

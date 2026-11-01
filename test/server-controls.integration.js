@@ -1,0 +1,72 @@
+// Load production route declarations with an isolated pool, never initDB or Daily.
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('fs'),path=require('path'),vm=require('vm');
+const {createRequire}=require('module');
+const {PGlite}=require('@electric-sql/pglite');
+const crypto=require('crypto');
+test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coherentes',async()=>{
+  const db=new PGlite();let http;
+  try{
+    await db.exec(`CREATE TABLE usuarios(id SERIAL PRIMARY KEY,nombre TEXT,email TEXT,password_hash TEXT,rol TEXT,activo BOOLEAN);
+      CREATE TABLE turnos(id TEXT PRIMARY KEY,paciente TEXT,empresa TEXT,estado TEXT,fecha DATE,hora TEXT,tipo TEXT,paciente_presencial BOOLEAN,modalidad TEXT,sala TEXT);
+      CREATE TABLE turno_medicos(turno_id TEXT,medico_nombre TEXT);
+      CREATE TABLE medicos(id SERIAL PRIMARY KEY,nombre TEXT,matricula TEXT,especialidad TEXT,activo BOOLEAN);
+      CREATE TABLE eventos_turno(id SERIAL PRIMARY KEY,turno_id TEXT,tipo TEXT,participante TEXT,creado_en TIMESTAMPTZ DEFAULT NOW());
+      CREATE TABLE firmas_acta(id SERIAL PRIMARY KEY,turno_id TEXT,medico_nombre TEXT,es_paciente BOOLEAN,firma_base64 TEXT);
+      CREATE TABLE casos_ausentismo(id SERIAL PRIMARY KEY,turno_id TEXT,estado TEXT,domicilio TEXT,radio_metros INT,control_iniciado_en TIMESTAMPTZ,profesional_id INT,resuelto_en TIMESTAMPTZ);
+      CREATE TABLE ingresos_ubicacion(caso_id INT,resultado TEXT,creado_en TIMESTAMPTZ);
+      CREATE TABLE informes_ausentismo(turno_id TEXT);
+      INSERT INTO turnos VALUES('test','Persona <script>alert(1)</script>','Empresa & prueba','completado','2026-10-23','17:20','Control de ausentismo',false,'telemedicina','sala-ficticia');
+      INSERT INTO turno_medicos VALUES('test','Médica de prueba');
+      INSERT INTO medicos(nombre,matricula,especialidad,activo) VALUES('Médica de prueba','123','Clínica',true);
+      INSERT INTO casos_ausentismo(turno_id,estado,domicilio,radio_metros,profesional_id) VALUES('test','resuelto','Domicilio de prueba',300,1);
+      INSERT INTO ingresos_ubicacion VALUES(1,'aceptado',NOW());
+      INSERT INTO eventos_turno(turno_id,tipo,participante,creado_en) VALUES
+      ('test','union_medico','Médica de prueba','2026-10-23T17:20:53-03:00'),('test','fin_consulta','Médica de prueba','2026-10-23T17:40:28-03:00');`);
+    const query=(sql,p)=>db.query(sql,p?.map(x=>x===undefined?null:x));
+    const pool={on(){},query,connect:async()=>({query,release(){}})};
+    const nativeRequire=createRequire(path.resolve('server.js'));
+    const context={require:name=>name==='pg'?{Pool:function(){return pool;}}:nativeRequire(name),__dirname:path.resolve('.'),console:{log(){},warn(){},error(){}},process:{env:{SESSION_SECRET:'isolated-fixture',ENABLE_TURNO_CHAT:'false'}},Buffer,setTimeout,clearTimeout,setInterval,clearInterval,URL};
+    vm.createContext(context);
+    let source=fs.readFileSync('server.js','utf8');
+    for(const table of ['dictamenes','firmas_dictamen']){
+      const ddl=source.match(new RegExp('CREATE TABLE IF NOT EXISTS '+table+' \\([\\s\\S]*?\\n      \\);'));
+      assert.ok(ddl);await db.exec(ddl[0]);
+    }
+    for(const alter of source.matchAll(/`(ALTER TABLE IF EXISTS dictamenes ADD COLUMN[^`]+)`/g))await db.exec(alter[1]);
+    await db.exec('CREATE TABLE dictamen_revisiones(id BIGSERIAL PRIMARY KEY,dictamen_id INT,contenido JSONB,firmas JSONB,editado_por TEXT)');
+    source=source.slice(0,source.indexOf('initDB().then(async () =>'));
+    vm.runInContext(source+'\nglobalThis.fixture={app,sessionStore};',context);
+    const {app,sessionStore}=context.fixture;await sessionStore.init();
+    const token=await sessionStore.create('staff',{id:1,nombre:'Médica de prueba',rol:'medico'});
+    const other=await sessionStore.create('staff',{id:2,nombre:'Otro profesional',rol:'medico'});
+    const company=await sessionStore.create('company',{id:3,nombre:'Otra empresa'});
+    http=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
+    const base='http://127.0.0.1:'+http.address().port;
+    const oldHash=crypto.createHmac('sha256','isolated-fixture').update('clave-ficticia').digest('hex');
+    await db.query("INSERT INTO usuarios(nombre,email,password_hash,rol,activo) VALUES('Médica de prueba','demo@example.invalid',$1,'medico',true)",[oldHash]);
+    const login=()=>fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'demo@example.invalid',password:'clave-ficticia'})});
+    let loginResponse=await login();assert.equal(loginResponse.status,200);assert.ok((await loginResponse.json()).token);
+    assert.ok((await db.query("SELECT password_hash FROM usuarios WHERE email='demo@example.invalid'")).rows[0].password_hash.startsWith('scrypt$'));
+    loginResponse=await login();assert.equal(loginResponse.status,200,'el segundo login usa el hash migrado');
+    const get=(route,headers)=>fetch(base+route,{headers});
+    assert.equal((await get('/api/turnos/test/acta',{})).status,401);
+    assert.equal((await get('/api/turnos/test/acta',{'x-session-token':other})).status,403);
+    assert.equal((await get('/api/turnos/test/informe-inasistencia',{'x-empresa-token':company})).status,403);
+    const staff={'x-session-token':token};
+    let response=await get('/api/turnos/test/acta',staff);assert.equal(response.status,200);const acta=await response.text();
+    assert.match(acta,/Acta de Inasistencia/);assert.match(acta,/19 minutos y 35 segundos/);assert.match(acta,/&lt;script&gt;/);assert.ok(!acta.includes('<script>alert(1)</script>'));
+    response=await get('/api/turnos/test/informe-inasistencia',staff);assert.equal(response.status,200);assert.match(await response.text(),/19 minutos y 35 segundos/);
+    response=await fetch(base+'/api/turnos/test/estado',{method:'PATCH',headers:{'x-session-token':other,'Content-Type':'application/json'},body:JSON.stringify({estado:'pendiente'})});assert.equal(response.status,403);
+    await db.query("INSERT INTO eventos_turno(turno_id,tipo,creado_en) VALUES('test','union_paciente',NOW())");
+    response=await get('/api/turnos/test/informe-inasistencia',staff);assert.equal(response.status,409);
+    response=await get('/api/turnos/test/acta',staff);assert.match(await response.text(),/Acta de Asistencia/);
+    await db.query("INSERT INTO dictamenes(numero,turno_id,paciente,medico,conclusion,firma_doctor,pdf_firmado) VALUES('DICT-TEST','test','Persona ficticia','Médica de prueba','Original','firma-ficticia','pdf-ficticio')");
+    await db.query("INSERT INTO firmas_dictamen(dictamen_id,medico_nombre,firma_base64) VALUES(1,'Médica de prueba','firma-ficticia')");
+    response=await fetch(base+'/api/dictamenes/1',{method:'PATCH',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({conclusion:'Texto corregido'})});
+    assert.equal(response.status,200);assert.equal((await response.json()).requiere_firma,true);
+    const amended=(await db.query('SELECT * FROM dictamenes WHERE id=1')).rows[0];assert.equal(amended.conclusion,'Texto corregido');assert.equal(amended.firma_doctor,null);assert.equal(amended.pdf_firmado,null);
+    const revision=(await db.query('SELECT * FROM dictamen_revisiones')).rows[0];assert.equal(revision.contenido.conclusion,'Original');assert.equal(revision.contenido.pdf_firmado,'pdf-ficticio');assert.equal(revision.firmas.length,1);
+  }finally{if(http)await new Promise(resolve=>http.close(resolve));await db.close();}
+});

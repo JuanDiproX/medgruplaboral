@@ -64,7 +64,7 @@ async function abrirPDF(url, link) {
   }
 }
 
-const DOCUMENTO_CON_SESION = /^\/api\/(dictamenes\/\d+\/(pdf|pdf-firmado)|turnos\/[^/]+\/acta|presupuestos\/\d+\/pdf)$/;
+const DOCUMENTO_CON_SESION = /^\/api\/(dictamenes\/\d+\/(pdf|pdf-firmado)|turnos\/[^/]+\/(acta|informe-inasistencia)|presupuestos\/\d+\/pdf)$/;
 
 document.addEventListener('click', event => {
   const descarga = event.target.closest('[data-descarga-pdf]');

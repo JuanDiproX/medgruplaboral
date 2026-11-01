@@ -1,14 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-let active = false;
+let pending = 0;
+let queue = Promise.resolve();
 
 function filename(value) {
   return String(value).normalize('NFKD').replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120);
 }
 
-async function renderPdf(html) {
-  if (active) throw new Error('Hay otro PDF preparándose. Intentá nuevamente en unos segundos.');
-  active = true;
+async function generatePdf(html) {
   let browser;
   try {
     const candidates = [process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -28,8 +27,16 @@ async function renderPdf(html) {
     return Buffer.from(await page.pdf({format: 'A4', printBackground: true, timeout: 20000,
       margin: {top: '10mm', bottom: '10mm', left: '5mm', right: '5mm'}}));
   } finally {
-    try { if (browser) await browser.close(); } finally { active = false; }
+    if (browser) await browser.close();
   }
+}
+
+async function renderPdf(html) {
+  if (pending >= 4) throw new Error('Hay varias descargas preparándose. Intentá nuevamente en unos segundos.');
+  pending++;
+  const job=queue.then(()=>generatePdf(html));
+  queue=job.catch(()=>{});
+  try{return await job;}finally{pending--;}
 }
 
 async function sendDocument(req, res, html, name) {

@@ -2,8 +2,8 @@
 // node --test test/chat-postgres.integration.js
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {PGlite}=require('../tmp/chat-validation/node_modules/@electric-sql/pglite');
-const express=require('../tmp/chat-validation/node_modules/express');
+const {PGlite}=require('@electric-sql/pglite');
+const express=require('express');
 const {createTurnoChat}=require('../lib/turno-chat');
 
 test('HTTP + PostgreSQL aislado: esquema, invitaciones, archivos, permisos y revocación',async()=>{
@@ -29,11 +29,13 @@ test('HTTP + PostgreSQL aislado: esquema, invitaciones, archivos, permisos y rev
       const role=req.headers['x-test-role'];if(!role)return res.status(401).json({error:'No autorizado'});
       req.usuario={rol:role,nombre:req.headers['x-test-name']||'Administrador ficticio'};next();
     };
-    const chat=createTurnoChat({app,pool,authMiddleware,enabled:true});await chat.init();await chat.init();
+    const chat=createTurnoChat({app,pool,authMiddleware,enabled:true,stableSecret:'secret-for-isolated-test'});await chat.init();await chat.init();
     server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
     const base='http://127.0.0.1:'+server.address().port;
     const admin={'x-test-role':'admin'};
     const invite=await(await fetch(base+'/api/turnos/prueba/chat/invitacion',{method:'POST',headers:admin})).json();
+    const repeated=await(await fetch(base+'/api/turnos/prueba/chat/invitacion',{method:'POST',headers:admin})).json();
+    assert.equal(repeated.link,invite.link,'recargar invitaciones conserva el enlace vigente');
     const patient={'x-chat-token':invite.link.split('=')[1]};
     let response=await fetch(base+'/api/chat/paciente/sesion',{headers:patient});
     let session=await response.json();assert.equal(session.paciente,'Paciente ficticio');assert.ok(session.llamada);
@@ -52,6 +54,8 @@ test('HTTP + PostgreSQL aislado: esquema, invitaciones, archivos, permisos y rev
     session=await(await fetch(base+'/api/chat/paciente/sesion',{headers:{'x-chat-token':verified.split('=')[1]}})).json();assert.ok(session.llamada);
     await fetch(base+'/api/turnos/prueba/chat/revocar',{method:'POST',headers:admin});
     response=await fetch(base+'/api/chat/paciente/mensajes',{headers:patient});assert.equal(response.status,401);
+    const renewed=await(await fetch(base+'/api/turnos/prueba/chat/invitacion',{method:'POST',headers:admin})).json();
+    assert.notEqual(renewed.link,invite.link,'revocar permite emitir un enlace nuevo');
     await db.query("DELETE FROM turnos WHERE id='prueba'");
     assert.equal((await db.query('SELECT count(*)::int AS n FROM chat_mensajes')).rows[0].n,0);
   }finally{if(server)await new Promise(resolve=>server.close(resolve));await db.close();}

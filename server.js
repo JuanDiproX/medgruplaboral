@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const {sendDocument, filename: pdfFilename} = require('./document-pdf');
 
+const {controlEvidence, validCoordinates, escapeHtml} = require('./lib/control-evidence');
+const {insertEvent,closeNoShow} = require('./lib/control-events');
 const app = express();
 const PORT = process.env.PORT || 3000;
 // La firma de actas se sumó este día: no la pedimos retroactivamente para turnos previos ya cerrados
@@ -64,7 +66,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 // arma los meses en UTC, así que una consulta de las 22 hs caía en el mes siguiente.
 pool.on('connect', c => c.query(`SET TIME ZONE '${ZONA_ARG}'`));
 
-function hashPassword(p) { return crypto.createHmac('sha256', SESSION_SECRET).update(p).digest('hex'); }
+const {hashPassword,verifyPassword}=require('./lib/passwords');
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
 // A pesar de la instrucción de no usar markdown, la IA a veces desliza un **texto** o __texto__
@@ -98,8 +100,9 @@ async function generarQRDataUrl(numero) {
   } catch (err) { console.error('Error generando QR:', err.message); return null; }
 }
 
-const sessions = {};
-const empresaSessions = {};
+const sessionStore=require('./lib/session-store').createSessionStore(pool);
+const sessions=sessionStore.staff;
+const empresaSessions=sessionStore.companies;
 
 function authMiddleware(req, res, next) {
   const token = req.headers['x-session-token'];
@@ -122,6 +125,33 @@ function empresaAuthMiddleware(req, res, next) {
   req.empresa = empresaSessions[token];
   next();
 }
+
+// Resource authorization is enforced independently of which buttons the UI displays.
+app.use(async (req,res,next) => {
+  const match = req.path.match(/^\/api\/(turnos\/([^/]+)|dictamenes\/(?:turno\/([^/]+)|([0-9]+)))(?:\/|$)/);
+  if (!match) return next();
+  const token = req.headers['x-session-token'];
+  const company = req.headers['x-empresa-token'];
+  const user = sessions[token];
+  // Company access is subsequently checked by each document route's own middleware.
+  if (!user) {
+    if (empresaSessions[company] && req.method === 'GET') return next();
+    return res.status(401).json({error:'No autorizado',needsLogin:true});
+  }
+  req.usuario = user;
+  try {
+    if (user.rol === 'admin') return next();
+    let turnoId = match[2] || match[3];
+    if (!turnoId && match[4]) {
+      const d = (await pool.query('SELECT turno_id FROM dictamenes WHERE id=$1',[match[4]])).rows[0];
+      if (!d) return res.status(404).json({error:'Informe no encontrado'});
+      turnoId = d.turno_id;
+    }
+    if (!turnoId || !await puedeGestionarInformesDelTurno(turnoId,user)) return res.status(403).json({error:'No estás asignado a este turno'});
+    next();
+  } catch { res.status(500).json({error:'No se pudo comprobar el acceso'}); }
+});
+
 
 async function initDB() {
   const client = await pool.connect();
@@ -506,6 +536,9 @@ async function initDB() {
          AND tipo='Control de licencia'
     `).catch(err => console.error('No se pudo corregir el tipo de control de Prieto:', err.message));
 
+    await client.query(`CREATE TABLE IF NOT EXISTS dictamen_revisiones (
+      id BIGSERIAL PRIMARY KEY, dictamen_id INTEGER NOT NULL, contenido JSONB NOT NULL,
+      firmas JSONB NOT NULL, editado_por TEXT NOT NULL, creado_en TIMESTAMPTZ DEFAULT NOW())`);
     await migrarTimestampsAZonaHoraria(client);
 
     console.log('✓ Base de datos lista');
@@ -539,20 +572,30 @@ async function migrarTimestampsAZonaHoraria(client) {
   console.log(`✓ ${pendientes.rows.length} columna(s) de fecha/hora corregidas a hora argentina`);
 }
 
+const authAttempts=new Map();
+app.use((req,res,next)=>{
+  if(req.method!=='POST'||!['/api/login','/api/empresa/login','/api/forgot-password','/api/empresa/forgot-password'].includes(req.path))return next();
+  const key=req.path+'|'+String(req.body.email||'').trim().toLowerCase();
+  const now=Date.now();let record=authAttempts.get(key);
+  if(!record||record.until<=now){record={count:0,until:now+10*60*1000};authAttempts.set(key,record);}
+  if(++record.count>15){res.setHeader('Retry-After',Math.ceil((record.until-now)/1000));return res.status(429).json({error:'Demasiados intentos. Esperá unos minutos antes de volver a intentar.'});}
+  if(authAttempts.size>5000)for(const [k,v] of authAttempts)if(v.until<=now)authAttempts.delete(k);
+  next();
+});
 // ===== AUTH MEDGRUP =====
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Faltan datos' });
   try {
-    const r = await pool.query('SELECT * FROM usuarios WHERE LOWER(email)=LOWER($1) AND password_hash=$2 AND activo=true', [email.trim(), hashPassword(password.trim())]);
-    if (!r.rows.length) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    const r = await pool.query('SELECT * FROM usuarios WHERE LOWER(email)=LOWER($1) AND activo=true', [email.trim()]);
+    if (!r.rows.length || !verifyPassword(password.trim(),r.rows[0].password_hash,SESSION_SECRET)) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     const u = r.rows[0];
-    const token = generateToken();
-    sessions[token] = { id: u.id, nombre: u.nombre, email: u.email, rol: u.rol };
+    if(!u.password_hash.startsWith('scrypt$')) await pool.query('UPDATE usuarios SET password_hash=$1 WHERE id=$2',[hashPassword(password.trim()),u.id]);
+    const token = await sessionStore.create('staff',{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol});
     res.json({ ok: true, token, usuario: { nombre: u.nombre, email: u.email, rol: u.rol } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/api/logout', (req, res) => { const t = req.headers['x-session-token']; if (t) delete sessions[t]; res.json({ ok: true }); });
+app.post('/api/logout', async (req,res)=>{try{if(req.headers['x-session-token'])await sessionStore.remove('staff',req.headers['x-session-token']);res.json({ok:true});}catch{res.status(500).json({error:'No se pudo cerrar la sesión'});}});
 app.get('/api/me', authMiddleware, (req, res) => res.json({ ok: true, usuario: req.usuario }));
 
 // ===== AUTH EMPRESAS =====
@@ -560,15 +603,15 @@ app.post('/api/empresa/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Faltan datos' });
   try {
-    const r = await pool.query('SELECT * FROM empresas_clientes WHERE LOWER(email)=LOWER($1) AND password_hash=$2 AND activo=true', [email.trim(), hashPassword(password.trim())]);
-    if (!r.rows.length) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    const r = await pool.query('SELECT * FROM empresas_clientes WHERE LOWER(email)=LOWER($1) AND activo=true', [email.trim()]);
+    if (!r.rows.length || !verifyPassword(password.trim(),r.rows[0].password_hash,SESSION_SECRET)) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     const e = r.rows[0];
-    const token = generateToken();
-    empresaSessions[token] = { id: e.id, nombre: e.nombre, email: e.email };
+    if(!e.password_hash.startsWith('scrypt$')) await pool.query('UPDATE empresas_clientes SET password_hash=$1 WHERE id=$2',[hashPassword(password.trim()),e.id]);
+    const token = await sessionStore.create('company',{id:e.id,nombre:e.nombre,email:e.email});
     res.json({ ok: true, token, empresa: { nombre: e.nombre, email: e.email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.post('/api/empresa/logout', (req, res) => { const t = req.headers['x-empresa-token']; if (t) delete empresaSessions[t]; res.json({ ok: true }); });
+app.post('/api/empresa/logout', async(req,res)=>{try{if(req.headers['x-empresa-token'])await sessionStore.remove('company',req.headers['x-empresa-token']);res.json({ok:true});}catch{res.status(500).json({error:'No se pudo cerrar la sesión'});}});
 
 // ===== RECUPERAR CONTRASEÑA (médicos/admin y empresas comparten la misma tabla de tokens) =====
 function baseUrlApp() {
@@ -627,7 +670,7 @@ app.get('/api/empresa/mis-turnos', empresaAuthMiddleware, async (req, res) => {
   try {
     const nombre = req.empresa.nombre;
     const r = await pool.query(`
-      SELECT t.*,
+      SELECT t.id,t.paciente,t.empresa,t.estado,t.fecha,t.hora,t.tipo,t.modalidad,
         COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL), '{}') as medicos,
         (SELECT json_agg(d.*) FROM dictamenes d WHERE d.turno_id=t.id) as dictamenes_data,
         (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id=t.id) as informes_extra
@@ -958,11 +1001,10 @@ const CONTRASENAS_PUBLICADAS = ['medgrup2026', 'barboza2026', 'muroni2026'];
 app.get('/api/admin/seguridad', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT email FROM usuarios WHERE activo=true AND password_hash = ANY($1) ORDER BY email`,
-      [CONTRASENAS_PUBLICADAS.map(hashPassword)]);
+      `SELECT email,password_hash FROM usuarios WHERE activo=true ORDER BY email`);
     const rep = await pool.query(
       `SELECT numero, COUNT(*)::int AS veces FROM dictamenes GROUP BY numero HAVING COUNT(*) > 1 ORDER BY numero`);
-    res.json({ ok: true, cuentas_con_contrasena_publica: r.rows.map(x => x.email),
+    res.json({ ok: true, cuentas_con_contrasena_publica: r.rows.filter(x=>CONTRASENAS_PUBLICADAS.some(p=>verifyPassword(p,x.password_hash,SESSION_SECRET))).map(x => x.email),
       falta_session_secret: !process.env.SESSION_SECRET,
       dictamenes_numero_repetido: rep.rows.map(x => x.numero) });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1378,9 +1420,7 @@ async function migrarNombreMedico(client, nombreViejo, nombreNuevo) {
     await client.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(actualizados), fila.id]);
   }
   // Las sesiones abiertas guardan el nombre viejo: se actualizan para no dejarlo sin turnos
-  for (const tok of Object.keys(sessions)) {
-    if (sessions[tok].nombre === nombreViejo) sessions[tok].nombre = nombreNuevo;
-  }
+  await sessionStore.renameStaff(nombreViejo,nombreNuevo);
 }
 
 // Compara nombres ignorando título, acentos, puntuación y mayúsculas, para detectar que
@@ -1512,6 +1552,7 @@ app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
 // ===== TURNOS =====
 app.get('/api/turnos', authMiddleware, async (req, res) => {
   try {
@@ -1522,10 +1563,10 @@ app.get('/api/turnos', authMiddleware, async (req, res) => {
     const r = await pool.query(`
       SELECT t.*, COALESCE(array_agg(tm.medico_nombre) FILTER (WHERE tm.medico_nombre IS NOT NULL),'{}') as medicos,
         (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.turno_id = t.id) AS informes_extra,
-        (EXISTS (SELECT 1 FROM casos_ausentismo ca WHERE ca.turno_id=t.id AND ca.estado='resuelto'
-          AND NOT EXISTS (SELECT 1 FROM eventos_turno et WHERE et.turno_id=t.id AND et.tipo='union_paciente'))
-         OR (t.estado='completado' AND t.tipo ILIKE 'Control de licencia%'
-          AND NOT EXISTS (SELECT 1 FROM eventos_turno et WHERE et.turno_id=t.id AND et.tipo='union_paciente'))) AS inasistencia
+        (t.estado='completado' AND (t.tipo ~* 'control\\s+de\\s+(ausentismo|licencia)' OR EXISTS (SELECT 1 FROM casos_ausentismo ca WHERE ca.turno_id=t.id))
+          AND NOT COALESCE(t.paciente_presencial,false)
+          AND EXISTS (SELECT 1 FROM eventos_turno et WHERE et.turno_id=t.id AND et.tipo IN ('fin_consulta','cierre_inasistencia'))
+          AND NOT EXISTS (SELECT 1 FROM eventos_turno et WHERE et.turno_id=t.id AND et.tipo='union_paciente')) AS inasistencia
       FROM turnos t LEFT JOIN turno_medicos tm ON t.id=tm.turno_id
       ${esAdmin ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos a WHERE a.turno_id=t.id AND a.medico_nombre=$1)'}
       GROUP BY t.id ORDER BY t.fecha ASC, t.hora ASC
@@ -1644,11 +1685,11 @@ app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
 // ===== CREAR SALA =====
 // Un token de reunión real (no un query param suelto) es lo único que hace que Daily complete
 // user_name y owner en el webhook — de eso depende que el acta reconozca médico vs. paciente.
-async function crearMeetingToken(roomName, userName, isOwner) {
+async function crearMeetingToken(roomName, userName, isOwner, rol = isOwner ? 'medico' : 'paciente') {
   const resp = await fetch('https://api.daily.co/v1/meeting-tokens', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DAILY_API_KEY}` },
-    body: JSON.stringify({ properties: { room_name: roomName, user_name: userName, is_owner: isOwner } })
+    body: JSON.stringify({ properties: { room_name: roomName, user_name: userName, is_owner: isOwner, user_id: rol + ':' + crypto.randomBytes(12).toString('hex') } })
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || 'No se pudo crear el token de acceso');
@@ -1884,8 +1925,8 @@ app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
   if (!passwordActual || !passwordNueva) return res.status(400).json({ error: 'Faltan datos' });
   if (passwordNueva.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
   try {
-    const u = await pool.query('SELECT * FROM usuarios WHERE id=$1 AND password_hash=$2', [req.usuario.id, hashPassword(passwordActual)]);
-    if (!u.rows.length) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    const u = await pool.query('SELECT * FROM usuarios WHERE id=$1', [req.usuario.id]);
+    if (!u.rows.length || !verifyPassword(passwordActual,u.rows[0].password_hash,SESSION_SECRET)) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
     await pool.query('UPDATE usuarios SET password_hash=$1 WHERE id=$2', [hashPassword(passwordNueva), req.usuario.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1899,8 +1940,10 @@ app.post('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
       if (!EVENTOS_DEL_MEDICO.includes(req.body.tipo)) return res.status(403).json({ error: 'Ese evento no se puede registrar desde acá' });
       if (!(await puedeGestionarInformesDelTurno(req.params.id, req.usuario))) return res.status(403).json({ error: 'Este turno no está asignado a vos' });
     }
-    const r = await pool.query('INSERT INTO eventos_turno (turno_id,tipo,participante) VALUES ($1,$2,$3) RETURNING *', [req.params.id, req.body.tipo, req.body.participante||'']);
-    res.json({ ok: true, evento: r.rows[0] });
+    const allowed=req.usuario.rol==='admin' ? ['inicio_medico','union_medico','union_paciente','fin_consulta','union_invitado'] : ['inicio_medico','union_medico','fin_consulta'];
+    if(!allowed.includes(req.body.tipo)) return res.status(400).json({error:'Tipo de evento no permitido'});
+    const evento = await insertEvent(pool,req.params.id,req.body.tipo,req.body.participante||req.usuario.nombre);
+    res.json({ok:true,evento});
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
@@ -1920,7 +1963,7 @@ app.post('/api/turnos/:id/invitados', authMiddleware, async (req, res) => {
     const t = await pool.query('SELECT sala, link_paciente FROM turnos WHERE id=$1', [req.params.id]);
     if (!t.rows.length) return res.status(404).json({ error: 'Turno no encontrado' });
     if (!t.rows[0].sala) return res.status(400).json({ error: 'Este turno todavía no tiene sala de videollamada' });
-    const token = await crearMeetingToken(t.rows[0].sala, nombre, false);
+    const token = await crearMeetingToken(t.rows[0].sala, nombre, false, 'invitado');
     const base = (t.rows[0].link_paciente || '').split('?')[0];
     res.json({ ok: true, nombre, link: `${base}?t=${token}` });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1959,7 +2002,7 @@ app.delete('/api/eventos/:id', adminMiddleware, async (req, res) => {
 
 // ===== DICTÁMENES =====
 app.get('/api/dictamenes', authMiddleware, async (req, res) => {
-  try { const r = await pool.query('SELECT * FROM dictamenes ORDER BY creado_en DESC LIMIT 50'); res.json(r.rows); }
+  try { const r = await pool.query(`SELECT d.* FROM dictamenes d ${req.usuario.rol === 'admin' ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos tm WHERE tm.turno_id=d.turno_id AND tm.medico_nombre=$1)'} ORDER BY d.creado_en DESC LIMIT 50`, req.usuario.rol === 'admin' ? [] : [req.usuario.nombre]); res.json(r.rows); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/dictamenes/turno/:turnoId', authMiddleware, async (req, res) => {
@@ -2008,6 +2051,7 @@ async function conNumeroNuevo(prefijo, tabla, insertar) {
 
 app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
+    if (!await puedeGestionarInformesDelTurno(req.body.turno_id,req.usuario)) return res.status(403).json({error:'No estás asignado a este turno'});
     const { turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,aptitud,dias_reposo,derivacion,indicaciones,sala,matricula,especialidad,
       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
     const dictamen = await conNumeroNuevo('DICT', 'dictamenes', (client, numero) => client.query(`INSERT INTO dictamenes
@@ -2026,10 +2070,15 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
+  const db=await pool.connect();
   try {
-    const chk = await pool.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
+    const chk = await db.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!chk.rows.length) return res.status(404).json({ error: 'No encontrado' });
 
+    await db.query('BEGIN');
+    await db.query(`INSERT INTO dictamen_revisiones (dictamen_id,contenido,firmas,editado_por)
+      SELECT d.id,to_jsonb(d),COALESCE((SELECT jsonb_agg(to_jsonb(f)) FROM firmas_dictamen f WHERE f.dictamen_id=d.id),'[]'::jsonb),$2
+      FROM dictamenes d WHERE d.id=$1`,[req.params.id,req.usuario.nombre]);
     // El dictamen queda editable siempre, sin límite de horas — el médico tiene que poder
     // corregirlo a mano (o con la IA) el tiempo que haga falta, no solo el mismo día.
     const esAdmin = req.usuario.rol === 'admin';
@@ -2047,7 +2096,7 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
 
     if (esAdmin) {
       // Admin: actualiza todos los campos incluidos médico, matrícula, especialidad, nombre paciente
-      await pool.query(`UPDATE dictamenes SET
+      await db.query(`UPDATE dictamenes SET
         aptitud=COALESCE($1,aptitud), dias_reposo=COALESCE($2,dias_reposo),
         derivacion=COALESCE($3,derivacion), indicaciones=COALESCE($4,indicaciones),
         paciente_dni=COALESCE($5,paciente_dni), edad=COALESCE($6,edad),
@@ -2074,7 +2123,7 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
          sin_aptitud === undefined ? null : !!sin_aptitud,
          req.params.id]);
     } else {
-      await pool.query(`UPDATE dictamenes SET
+      await db.query(`UPDATE dictamenes SET
         aptitud=COALESCE($1,aptitud), dias_reposo=COALESCE($2,dias_reposo),
         derivacion=COALESCE($3,derivacion), indicaciones=COALESCE($4,indicaciones),
         paciente_dni=COALESCE($5,paciente_dni), edad=COALESCE($6,edad),
@@ -2097,8 +2146,12 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
          sin_aptitud === undefined ? null : !!sin_aptitud,
          req.params.id]);
     }
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    await db.query('DELETE FROM firmas_dictamen WHERE dictamen_id=$1',[req.params.id]);
+    await db.query('UPDATE dictamenes SET firma_doctor=NULL, pdf_firmado=NULL, pdf_firmado_nombre=NULL, pdf_firmado_fecha=NULL WHERE id=$1',[req.params.id]);
+    await db.query('COMMIT');
+    res.json({ ok: true, requiere_firma:true });
+  } catch (err) { await db.query('ROLLBACK'); res.status(500).json({ error: 'No se pudo actualizar el informe' }); }
+  finally { db.release(); }
 });
 
 // Traer un dictamen individual por id (para el modal de edición admin)
@@ -2308,11 +2361,11 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
 
     const firmasHtml = firmantesRender.map(m => {
       const firmaImg = m.img
-        ? `<img src="data:image/png;base64,${m.img}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
+        ? `<img src="data:image/png;base64,${escapeHtml(m.img)}" alt="firma" style="max-width:170px;max-height:52px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div style="width:170px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:30px;"></div>`;
       // break-inside: sin esto la impresión parte el bloque y el renglón de firma queda en una
       // hoja con el nombre y la matrícula en la siguiente
-      return `<div style="text-align:center;flex:1;min-width:180px;break-inside:avoid;page-break-inside:avoid;">${firmaImg}<div style="font-size:12px;font-weight:600;">${m.nombre}</div><div style="font-size:10px;color:#5a5750;">${m.especialidad}</div><div style="font-size:9.5px;color:#9a9790;">${rotuloMatricula(m.matricula)}</div></div>`;
+      return `<div style="text-align:center;flex:1;min-width:180px;break-inside:avoid;page-break-inside:avoid;">${firmaImg}<div style="font-size:12px;font-weight:600;">${escapeHtml(m.nombre)}</div><div style="font-size:10px;color:#5a5750;">${escapeHtml(m.especialidad)}</div><div style="font-size:9.5px;color:#9a9790;">${rotuloMatricula(m.matricula)}</div></div>`;
     }).join('');
 
     // Trazabilidad de firmas de junta para el pie del documento
@@ -2394,7 +2447,7 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
       // informe sale corto antes que relleno.
       const cuerpo = [d.metodologia, analisis, (d.hallazgos && !d.sin_semiologico) ? d.hallazgos : '', d.conclusion]
         .filter(x => x && String(x).trim())
-        .map(x => `<p style="white-space:pre-wrap;">${x}</p>`).join('');
+        .map(x => `<p style="white-space:pre-wrap;">${escapeHtml(x)}</p>`).join('');
 
       // Un control remoto vale tanto como lo que pueda probar. Esta constancia es lo que
       // sostiene que la evaluación fue a distancia pero sobre la persona correcta y en su
@@ -2415,7 +2468,7 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
 </div>` : '';
 
       const htmlAuditoria = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
-<title>Informe ${d.numero}</title>
+<title>Informe ${escapeHtml(d.numero)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
@@ -2444,12 +2497,12 @@ p{margin-bottom:9px;text-align:justify;}
     <img src="/logo.png" alt="MEDGRUP" class="logo-img"/>
     <div>
       <div style="font-size:17px;font-weight:700;color:#3a6ea8;letter-spacing:-0.3px;">MEDGRUP – SERVICIO MÉDICO</div>
-      <div style="font-size:11px;font-weight:600;color:#1a1916;">${d.empresa||'—'}</div>
+      <div style="font-size:11px;font-weight:600;color:#1a1916;">${escapeHtml(d.empresa||'—')}</div>
     </div>
   </div>
   <div style="display:flex;align-items:flex-start;gap:12px;">
     <div class="doc-ref">
-      <div class="doc-numero">${d.numero}</div>
+      <div class="doc-numero">${escapeHtml(d.numero)}</div>
       <div>Tierra del Fuego, ${fechaEmision}</div>
       <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
     </div>
@@ -2459,22 +2512,22 @@ p{margin-bottom:9px;text-align:justify;}
 
 <h1>Informe de auditoría médica laboral</h1>
 
-<div class="dato"><span class="dato-lbl">Empresa:</span> ${d.empresa||'—'}</div>
+<div class="dato"><span class="dato-lbl">Empresa:</span> ${escapeHtml(d.empresa||'—')}</div>
 <div class="dato"><span class="dato-lbl">Trabajador/a evaluado/a:</span> ${apellidoNombre}</div>
-${d.paciente_dni?`<div class="dato"><span class="dato-lbl">DNI:</span> ${d.paciente_dni}</div>`:''}
+${d.paciente_dni?`<div class="dato"><span class="dato-lbl">DNI:</span> ${escapeHtml(d.paciente_dni)}</div>`:''}
 <div class="dato"><span class="dato-lbl">Motivo del control:</span> ${turnoInfo?.tipo || 'Control de ausentismo'}</div>
 
 <h2>Fecha y hora del control</h2>
 <div class="dato"><span class="dato-lbl">Fecha:</span> ${fechaControl}</div>
 ${horaControl?`<div class="dato"><span class="dato-lbl">Hora de inicio del control:</span> ${horaControl} hs</div>`:''}
 <div class="dato"><span class="dato-lbl">Modalidad:</span> ${modalidad}</div>
-${casoControl.domicilio?`<div class="dato"><span class="dato-lbl">Domicilio informado:</span> ${casoControl.domicilio}</div>`:''}
+${casoControl.domicilio?`<div class="dato"><span class="dato-lbl">Domicilio informado:</span> ${escapeHtml(casoControl.domicilio)}</div>`:''}
 ${casoControl?.excepcion_geo ? '' : bloqueUbicacion}
 
 <h2>Informe</h2>
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
-${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
-${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${escapeHtml(diagCIE)}</p>`:''}
+${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${escapeHtml(d.indicaciones)}</p>`:''}
 ${casoControl?.excepcion_geo ? '' : constanciaGeo}
 
 <div class="bloque-firmas">
@@ -2484,8 +2537,8 @@ ${casoControl?.excepcion_geo ? '' : constanciaGeo}
   </div>
 </div>
 
-<div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
-<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero} · medgruplaboral.com.ar</div>
+<div class="hash">Cód. verificación: ${escapeHtml(d.numero)}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${escapeHtml(d.numero)} · medgruplaboral.com.ar</div>
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -2493,7 +2546,7 @@ ${casoControl?.excepcion_geo ? '' : constanciaGeo}
     }
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
-<title>Informe ${d.numero}</title>
+<title>Informe ${escapeHtml(d.numero)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:38px 46px;font-size:12.5px;line-height:1.7;}
@@ -2536,7 +2589,7 @@ li{margin-bottom:5px;}
   </div>
   <div style="display:flex;align-items:flex-start;gap:12px;">
     <div class="doc-ref">
-      <div class="doc-numero">${d.numero}</div>
+      <div class="doc-numero">${escapeHtml(d.numero)}</div>
       <div>Tierra del Fuego, ${fechaEmision}</div>
       <div style="margin-top:2px;">RESERVADO Y CONFIDENCIAL</div>
     </div>
@@ -2550,37 +2603,37 @@ li{margin-bottom:5px;}
 </div>
 
 <div class="destinatario">
-  <strong>A:</strong> Dirección de Recursos Humanos – ${d.empresa||'—'}<br/>
-  <strong>REFERENCIA:</strong> ${tipoConsulta} – ${d.paciente}<br/>
+  <strong>A:</strong> Dirección de Recursos Humanos – ${escapeHtml(d.empresa||'—')}<br/>
+  <strong>REFERENCIA:</strong> ${tipoConsulta} – ${escapeHtml(d.paciente)}<br/>
   <strong>FECHA DE EMISIÓN:</strong> ${fechaEmision.toUpperCase()}
 </div>
 
 <h2>${romano(n())}. Datos personales del evaluado</h2>
 <div style="padding:4px 0;">
   <div class="bullet-item">Apellidos y Nombres: <strong>${apellidoNombre}</strong></div>
-  <div class="bullet-item">Documento Nacional de Identidad: DNI ${d.paciente_dni||'—'}</div>
+  <div class="bullet-item">Documento Nacional de Identidad: DNI ${escapeHtml(d.paciente_dni||'—')}</div>
   ${fechaNac!=='—'?`<div class="bullet-item">Fecha de Nacimiento: ${fechaNac}</div>`:''}
   ${lugarNac!=='—'?`<div class="bullet-item">Lugar de Nacimiento: ${lugarNac}</div>`:''}
   ${estadoCivil!=='—'?`<div class="bullet-item">Estado Civil: ${estadoCivil}</div>`:''}
   ${estudios!=='—'?`<div class="bullet-item">Estudios cursados: ${estudios}</div>`:''}
-  <div class="bullet-item">Empresa: ${d.empresa||'—'}</div>
+  <div class="bullet-item">Empresa: ${escapeHtml(d.empresa||'—')}</div>
   ${puesto!=='—'?`<div class="bullet-item">Puesto de Trabajo: ${puesto}</div>`:''}
   ${antiguedad!=='—'?`<div class="bullet-item">Antigüedad: ${antiguedad}</div>`:''}
-  ${d.obra_social?`<div class="bullet-item">Obra Social: ${d.obra_social}</div>`:''}
+  ${d.obra_social?`<div class="bullet-item">Obra Social: ${escapeHtml(d.obra_social)}</div>`:''}
 </div>
-${sitLicencia!=='—'?`<p style="font-weight:600;margin-bottom:4px;">Situación de Licencia:</p><p style="white-space:pre-wrap;">${sitLicencia}</p>`:''}
+${sitLicencia!=='—'?`<p style="font-weight:600;margin-bottom:4px;">Situación de Licencia:</p><p style="white-space:pre-wrap;">${escapeHtml(sitLicencia)}</p>`:''}
 
-${metodologia?`<h2>${romano(n())}. Metodología adoptada</h2><p style="white-space:pre-wrap;">${metodologia}</p>${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}`:''}
+${metodologia?`<h2>${romano(n())}. Metodología adoptada</h2><p style="white-space:pre-wrap;">${escapeHtml(metodologia)}</p>${integrantesHtml ? `<ul>${integrantesHtml}</ul>` : ''}`:''}
 
-${d.antecedentes?`<h2>${romano(n())}. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${d.antecedentes}</p>`:''}
+${d.antecedentes?`<h2>${romano(n())}. Antecedentes médicos y clínicos generales</h2><p style="white-space:pre-wrap;">${escapeHtml(d.antecedentes)}</p>`:''}
 
-${(d.hallazgos && !d.sin_semiologico)?`<h2>${romano(n())}. Examen semiológico (estado actual)</h2><p style="white-space:pre-wrap;">${d.hallazgos}</p>`:''}
+${(d.hallazgos && !d.sin_semiologico)?`<h2>${romano(n())}. Examen semiológico (estado actual)</h2><p style="white-space:pre-wrap;">${escapeHtml(d.hallazgos)}</p>`:''}
 
-${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2><p style="white-space:pre-wrap;">${analisis}</p>`:''}
+${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2><p style="white-space:pre-wrap;">${escapeHtml(analisis)}</p>`:''}
 
 <h2>${romano(n())}. Conclusiones médico-legales</h2>
-${d.conclusion?`<p style="white-space:pre-wrap;">${d.conclusion}</p>`:''}
-${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${diagCIE}</p>`:''}
+${d.conclusion?`<p style="white-space:pre-wrap;">${escapeHtml(d.conclusion)}</p>`:''}
+${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${escapeHtml(diagCIE)}</p>`:''}
 ${!d.sin_aptitud ? (()=>{
   // "Sin reposo indicado" al lado de "No apto" queda contradictorio — si hay días, se
   // muestran igual; si no los hay, esa aclaración solo tiene sentido cuando SÍ está apto.
@@ -2594,7 +2647,7 @@ ${!d.sin_aptitud ? (()=>{
   ${partesSub.length ? `<div class="conc-sub">${partesSub.join(' · ')}</div>` : ''}
 </div>`;
 })() : ''}
-${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${d.indicaciones}</p>`:''}
+${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${escapeHtml(d.indicaciones)}</p>`:''}
 
 <p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
 
@@ -2602,9 +2655,9 @@ ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indic
   ${firmasHtml}
 </div>
 
-<div class="hash">Cód. verificación: ${d.numero}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
+<div class="hash">Cód. verificación: ${escapeHtml(d.numero)}-${Buffer.from(d.numero+d.paciente+d.creado_en).toString('base64').substring(0,28)}</div>
 ${trazaFirmasHtml}
-<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${d.numero} · medgruplaboral.com.ar</div>
+<div class="wm">MEDGRUP Servicio Médico Laboral · Documento oficial · ${escapeHtml(d.numero)} · medgruplaboral.com.ar</div>
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -2643,17 +2696,17 @@ app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
       const especialidad = perfil.especialidad || (f && f.especialidad) || 'Medicina Laboral';
       const matricula = perfil.matricula || (f && f.matricula) || '';
       const firmaImg = f
-        ? `<img src="data:image/png;base64,${f.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
+        ? `<img src="data:image/png;base64,${escapeHtml(f.firma_base64)}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
       // Mismo criterio que en el informe: si la matrícula ya trae el prefijo, no se repite
       const rotulo = !matricula ? '' : (/^(MN|MP|M\.N|M\.P)/i.test(String(matricula).trim()) ? matricula : 'MN/MP ' + matricula);
-      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${nombreMedico}</div><div class="firma-esp">${especialidad}</div><div class="firma-mat">${rotulo}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${escapeHtml(nombreMedico)}</div><div class="firma-esp">${escapeHtml(especialidad)}</div><div class="firma-mat">${escapeHtml(rotulo)}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
     }).join('') + (t.paciente_presencial && t.firma_paciente !== false ? (() => {
       const fp = firmasActa.find(x => x.es_paciente);
       const firmaImg = fp
         ? `<img src="data:image/png;base64,${fp.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
         : `<div class="firma-linea"></div>`;
-      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${t.paciente}</div>${fp?'<div class="firma-esp">Paciente evaluado/a</div>':'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
+      return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${escapeHtml(t.paciente)}</div>${fp?'<div class="firma-esp">Paciente evaluado/a</div>':'<div class="firma-esp" style="color:#c8a800;">Firma pendiente</div>'}</div>`;
     })() : '');
     // ===== ACTA DE INASISTENCIA (controles domiciliarios) =====
     // Si el trabajador nunca entró al control, el acta no puede decir que se realizó una
@@ -2677,7 +2730,9 @@ app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
       const ingreso = aceptados.length > 0 || intentos.some(i => i.resultado === "excepcion_geo");
       const sePresento = eventos.some(e => e.tipo === 'union_paciente');
 
-      if (!ingreso && !sePresento) {
+      const evidencia = controlEvidence(t, casoActaReal, eventos);
+      if (!sePresento && evidencia.resultado === 'pendiente') return res.status(409).json({error:'El control aún no tiene un cierre registrado. Finalizalo antes de emitir el acta.'});
+      if (evidencia.resultado === 'inasistencia') {
         const radioActa = casoActa.radio_metros || RADIO_POR_DEFECTO;
         const hs = f => new Date(f).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:ZONA_ARG });
         // Un control sorpresa no tiene "hora citada": tiene la hora en que se lo inició. Si el
@@ -2687,18 +2742,10 @@ app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
           ? inicioActa.toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG })
           : (t.hora || '');
         const etiquetaHora = inicioActa ? 'Control iniciado a las' : 'Hora citada';
-        const eventoInicio = eventos.find(e => e.tipo === 'union_medico' || e.tipo === 'inicio_medico');
-        const eventoFin = eventos.find(e => e.tipo === 'fin_consulta');
-        const esperaDesde = inicioActa || (eventoInicio ? new Date(eventoInicio.creado_en) : null);
-        const esperaHasta = eventoFin ? new Date(eventoFin.creado_en) : null;
-        const esperaSegundos = esperaDesde && esperaHasta
-          ? Math.max(0, Math.round((esperaHasta - esperaDesde) / 1000))
-          : 20 * 60;
-        const esperaMinutos = Math.floor(esperaSegundos / 60);
-        const esperaRestantes = esperaSegundos % 60;
-        const esperaTexto = esperaRestantes
-          ? `${esperaMinutos} minutos y ${esperaRestantes} segundos`
-          : `${esperaMinutos} minutos`;
+        const esperaTexto = evidencia.esperaTexto;
+        const esperaDetalle = evidencia.desde && evidencia.hasta
+          ? 'Desde las ' + hs(evidencia.desde) + ' hasta las ' + hs(evidencia.hasta) + ' hs. Tiempo transcurrido entre el primer ingreso médico registrado y el cierre: ' + esperaTexto + '.'
+          : 'No se dispone de ambos horarios para calcular la espera real.';
         // Cada rechazo se explica en castellano: "fuera_de_rango" no le dice nada a nadie
         const motivoIntento = i => ({
           fuera_de_rango:            `Rechazado — a ${Math.round(i.distancia_metros)} m del domicilio informado (máximo admitido: ${radioActa} m)`,
@@ -2713,8 +2760,8 @@ app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
           ? intentos.map(i => `<div class="ev-row"><div class="ev-hora">${hs(i.creado_en)}</div><div class="ev-icon">✕</div><div class="ev-desc">${motivoIntento(i)}</div></div>`).join('')
           : `<div style="color:#9a9790;font-size:12.5px;padding:12px 0;">No se registró ningún intento de ingreso al control.</div>`;
 
-        const tipoActa = 'Control de ausentismo';
-        const htmlInasistencia = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta de inasistencia - ${t.paciente}</title>
+        const tipoActa = t.tipo || 'Control de ausentismo';
+        const htmlInasistencia = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta de inasistencia - ${escapeHtml(t.paciente)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
@@ -2744,20 +2791,20 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
   </div>
   <div style="text-align:right;font-size:10.5px;color:#5a5750;">Tierra del Fuego<br>${fechaEmision}</div>
 </div>
-<h1>Acta de Inasistencia — ${tipoActa}</h1>
+<h1>Acta de Inasistencia — ${escapeHtml(tipoActa)}</h1>
 <div class="subt">Constancia de no comparecencia al control domiciliario</div>
-<p>Se deja constancia de que en el día de la fecha se ${inicioActa?'inició':'citó'}, a solicitud de <strong>${t.empresa||'—'}</strong>, un <strong>${tipoActa.toLowerCase()}</strong> de carácter domiciliario respecto del/de la Sr./Sra. <strong>${t.paciente}</strong>${horaActa?`, ${inicioActa?'a las':'a realizarse a las'} ${horaActa} hs`:''}, mediante videollamada a través de la plataforma MEDGRUP, y que el/la trabajador/a <strong>no compareció al mismo</strong>.</p>
+<p>Se deja constancia de que en el día de la fecha se ${inicioActa?'inició':'citó'}, a solicitud de <strong>${escapeHtml(t.empresa||'—')}</strong>, un <strong>${tipoActa.toLowerCase()}</strong> de carácter domiciliario respecto del/de la Sr./Sra. <strong>${escapeHtml(t.paciente)}</strong>${horaActa?`, ${inicioActa?'a las':'a realizarse a las'} ${escapeHtml(horaActa)} hs`:''}, mediante videollamada a través de la plataforma MEDGRUP, y que el/la trabajador/a <strong>no compareció al mismo</strong>.</p>
 <p>El ingreso al control requiere que el/la trabajador/a confirme su ubicación desde su propio dispositivo y que ésta se corresponda con el domicilio informado por la empresa. A continuación se detalla el registro de intentos de ingreso obrante en el sistema.</p>
 <div class="datos-box">
-  <div><div class="dato-label">Trabajador/a</div><div class="dato-value">${t.paciente}</div></div>
-  <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
+  <div><div class="dato-label">Trabajador/a</div><div class="dato-value">${escapeHtml(t.paciente)}</div></div>
+  <div><div class="dato-label">Empresa</div><div class="dato-value">${escapeHtml(t.empresa||'—')}</div></div>
   <div><div class="dato-label">Fecha del control</div><div class="dato-value">${fecha}</div></div>
   <div><div class="dato-label">${etiquetaHora}</div><div class="dato-value">${horaActa||'—'} hs</div></div>
-  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${casoActa.domicilio||'—'}</div></div>
+  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${escapeHtml(casoActa.domicilio||'—')}</div></div>
   <div><div class="dato-label">Radio admitido</div><div class="dato-value">${radioActa} m</div></div>
   <div><div class="dato-label">Tiempo de espera</div><div class="dato-value">${esperaTexto}</div></div>
 </div>
-<p>La profesional interviniente permaneció en la sala de videollamada durante <strong>${esperaTexto}</strong>, dentro del plazo de tolerancia previsto de 20 minutos, sin que se registrara el ingreso del/de la trabajador/a.</p>
+<p>${esperaDetalle} Tolerancia prevista: 20 minutos. No se registró el ingreso del/de la trabajador/a.</p>
 <h2>Registro de intentos de ingreso</h2>
 <div class="eventos-box">${intentosHtml}</div>
 ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
@@ -2791,8 +2838,8 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
       ? 'cuya identidad y firma constan al pie del presente documento.'
       : 'quedando la presente suscripta por los profesionales actuantes, cuya identidad y firma constan al pie del presente documento.';
     const introParrafo = esDeclaracionJurada
-      ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>, ${comparecencia}, ${cierreIntro}`
-      : `Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${t.empresa||'—'}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${t.paciente}</strong>.`;
+      ? `Se deja constancia, en carácter de declaración jurada, de que en el día de la fecha se realizó, a solicitud de <strong>${escapeHtml(t.empresa||'—')}</strong>, una evaluación médica correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${escapeHtml(t.paciente)}</strong>, ${comparecencia}, ${cierreIntro}`
+      : `Se deja constancia de que en el día de la fecha se realizó, a solicitud de <strong>${escapeHtml(t.empresa||'—')}</strong>, una evaluación médica en modalidad de telemedicina a través de la plataforma MEDGRUP, correspondiente a la categoría <strong>${t.tipo||'Consulta médica'}</strong>. El/la evaluado/a fue el/la Sr./Sra. <strong>${escapeHtml(t.paciente)}</strong>.`;
     const seccionEventosHtml = esDeclaracionJurada ? '' : `<h2>Registro cronológico de asistencia</h2><div class="eventos-box">${eventosHtml}</div>`;
 
     // En un control domiciliario la asistencia sola no alcanza: lo que hay que poder afirmar
@@ -2803,7 +2850,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
       const horaVerif = new Date(verificacionActa.creado_en).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG });
       return `<h2>Verificación de domicilio por geolocalización</h2>
 <div class="datos-box">
-  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${casoActa.domicilio||'—'}</div></div>
+  <div><div class="dato-label">Domicilio informado</div><div class="dato-value">${escapeHtml(casoActa.domicilio||'—')}</div></div>
   <div><div class="dato-label">Hora de la verificación</div><div class="dato-value">${horaVerif} hs</div></div>
   <div><div class="dato-label">Distancia al domicilio</div><div class="dato-value">${Math.round(verificacionActa.distancia_metros)} m</div></div>
   <div><div class="dato-label">Radio admitido</div><div class="dato-value">${radioActa2} m</div></div>
@@ -2815,7 +2862,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
       ? `Este documento certifica la asistencia en carácter de declaración jurada, suscripta mediante firma digital por los profesionales intervinientes${firmaDeLaPaciente?' y por la persona evaluada':''}.`
       : 'Este documento certifica la asistencia mediante el registro automático de eventos del sistema MEDGRUP, generado por la plataforma sin intervención manual.';
 
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${t.paciente}</title>
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Acta - ${escapeHtml(t.paciente)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;background:white;padding:46px 52px;font-size:13px;line-height:1.7;}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px;}
@@ -2849,8 +2896,8 @@ h2{font-size:12.5px;font-weight:700;color:#2a5080;margin:18px 0 10px;}
 <div class="subt">${subtitulo}</div>
 <p>${introParrafo}</p>
 <div class="datos-box">
-  <div><div class="dato-label">Paciente</div><div class="dato-value">${t.paciente}</div></div>
-  <div><div class="dato-label">Empresa</div><div class="dato-value">${t.empresa||'—'}</div></div>
+  <div><div class="dato-label">Paciente</div><div class="dato-value">${escapeHtml(t.paciente)}</div></div>
+  <div><div class="dato-label">Empresa</div><div class="dato-value">${escapeHtml(t.empresa||'—')}</div></div>
   <div><div class="dato-label">Fecha del turno</div><div class="dato-value">${fecha}</div></div>
   <div><div class="dato-label">Tipo de consulta</div><div class="dato-value">${t.tipo||'—'}${t.modalidad==='presencial'?' (Presencial)':(t.paciente_presencial?' (Paciente presente)':'')}</div></div>
 </div>
@@ -2894,7 +2941,8 @@ async function presenteEnSalaDaily(sala, nombre) {
         { headers: { 'Authorization': `Bearer ${DAILY_API_KEY}` } });
       if (r.ok) {
         const d = await r.json();
-        if ((d.data || []).some(p => normal(p.userName) === normal(nombre))) return true;
+        const participant=(d.data || []).find(p => normal(p.userName || p.user_name) === normal(nombre));
+        if (participant) return participant;
       }
     } catch {}
     await new Promise(ok => setTimeout(ok, 2000));
@@ -2910,24 +2958,21 @@ app.post('/api/webhooks/daily', async (req, res) => {
     const nombre = decodeURIComponent(nombreRaw).replace(/\+/g,' ').trim();
 
     if (type==='participant.joined' && sala) {
-      if (!firmaDailyValida(req) && !(await presenteEnSalaDaily(sala, nombre))) {
+      const datos = firmaDailyValida(req) ? payload : await presenteEnSalaDaily(sala,nombre);
+      if (!datos) {
         console.warn(`Webhook Daily descartado: sin firma válida y ${nombre} no figura en la sala ${sala}`);
         return res.json({ ok: true });
       }
-      const t = await pool.query('SELECT id FROM turnos WHERE sala=$1 LIMIT 1', [sala]);
+      const t = await pool.query('SELECT id,paciente FROM turnos WHERE sala=$1 LIMIT 1', [sala]);
       if (t.rows.length) {
         const turnoId = t.rows[0].id;
-        // Determinar si es médico: por flag owner O por coincidencia de nombre con turno_medicos
-        let esMedico = payload.owner === true;
-        if (!esMedico) {
-          const medicos = await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1', [turnoId]);
-          esMedico = medicos.rows.some(m => {
-            const apellido = m.medico_nombre.toLowerCase().split(',')[0].trim();
-            return nombre.toLowerCase().includes(apellido) || apellido.includes(nombre.toLowerCase().split(/[\s%]+/)[0]);
-          });
-        }
-        const tipo = esMedico ? 'union_medico' : 'union_paciente';
-        await pool.query('INSERT INTO eventos_turno (turno_id,tipo,participante) VALUES ($1,$2,$3)', [turnoId, tipo, nombre]);
+        const normal = x => String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+        const medicos = (await pool.query('SELECT medico_nombre FROM turno_medicos WHERE turno_id=$1',[turnoId])).rows;
+        const userId = String(datos.user_id || datos.userId || '');
+        const esMedico = datos.owner === true || userId.startsWith('medico:') || medicos.some(m => normal(m.medico_nombre) === normal(nombre));
+        const esPaciente = !esMedico && !userId.startsWith('invitado:') && (userId.startsWith('paciente:') || normal(nombre) === normal(t.rows[0].paciente));
+        const tipo = esMedico ? 'union_medico' : esPaciente ? 'union_paciente' : 'union_invitado';
+        await insertEvent(pool,turnoId,tipo,nombre);
       }
     }
     res.json({ ok: true });
@@ -3095,7 +3140,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC
 // cambia la huella y no molesta a nadie.
 const VERSION_PORTAL = (() => {
   const h = crypto.createHash('sha256');
-  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js']) {
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css']) {
     try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
   }
   return h.digest('hex').slice(0, 16);
@@ -3166,7 +3211,7 @@ const SELECT_CASO = `
          t.fecha AS turno_fecha, t.hora AS turno_hora, t.estado AS turno_estado,
          (SELECT COUNT(*) FROM certificados_ausentismo ce WHERE ce.caso_id = c.id) AS certificados,
          (SELECT COUNT(*) FROM informes_ausentismo i WHERE i.caso_id = c.id) AS informes_adjuntos,
-         (c.estado = 'resuelto' AND c.turno_id IS NOT NULL AND NOT EXISTS
+         (c.estado = 'resuelto' AND c.turno_id IS NOT NULL AND NOT COALESCE(t.paciente_presencial,false) AND EXISTS (SELECT 1 FROM eventos_turno ef WHERE ef.turno_id=c.turno_id AND ef.tipo IN ('fin_consulta','cierre_inasistencia')) AND NOT EXISTS
               (SELECT 1 FROM eventos_turno et WHERE et.turno_id = c.turno_id AND et.tipo = 'union_paciente')) AS no_comparecio
   FROM casos_ausentismo c
   LEFT JOIN medicos m ON m.id = c.profesional_id
@@ -3228,88 +3273,15 @@ app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- Alta desde MEDGRUP (la empresa tiene su propio endpoint más abajo) ---
-app.post('/api/ausentismo/casos', adminMiddleware, async (req, res) => {
-  const { empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
-          domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control } = req.body;
-  if (!empresa_nombre) return res.status(400).json({ error: 'Falta la empresa' });
-  if (!trabajador_nombre) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
-  if (tipo_control && !TIPOS_CONTROL[tipo_control]) return res.status(400).json({ error: 'Tipo de control desconocido' });
-  try {
-    const emp = await pool.query('SELECT id FROM empresas_clientes WHERE nombre=$1 LIMIT 1', [empresa_nombre]);
-    // Si mandaron la dirección sin coordenadas, se resuelve acá para que el control quede listo
-    let lat = domicilio_lat ?? null, lng = domicilio_lng ?? null, motivoGeo = null;
-    if (domicilio && lat == null) {
-      const g = await geocodificar(domicilio);
-      if (g.punto) { lat = g.punto.lat; lng = g.punto.lng; } else { motivoGeo = g.motivo; }
-    }
-    const r = await pool.query(
-      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin,
-                                     domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
-      [emp.rows[0]?.id || null, empresa_nombre, trabajador_nombre.trim(), trabajador_dni || '', trabajador_telefono || '',
-       motivo || '', documentacion || '', notas_admin || '',
-       domicilio || '', lat, lng, radio_metros || RADIO_POR_DEFECTO, tipo_control || TIPO_CONTROL_DEFECTO]);
-    await vincularASeguimientosAbiertos({ casoId: r.rows[0].id, nombre: trabajador_nombre, dni: trabajador_dni });
-    res.json({ ok: true, id: r.rows[0].id, domicilio_ubicado: lat != null, motivo_geocode: motivoGeo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// --- Nuevo control de un trabajador ya visitado ---
-// Antes, cada control era un caso nuevo que había que cargar desde cero (datos, domicilio,
-// ubicación en el mapa, profesional). Ahora el siguiente control sale del anterior con todo
-// copiado y enlazado a él; se sigue facturando por control. Si ya hay uno abierto para ese
-// caso (doble clic, o lo abrió otro), se devuelve ese en vez de duplicarlo.
-app.post('/api/ausentismo/casos/:id/nuevo-control', adminMiddleware, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
-    const c = r.rows[0];
-    if (!['resuelto', 'cancelado'].includes(c.estado)) {
-      return res.status(400).json({ error: 'Este control todavía está en curso: programalo o cerralo antes de abrir otro.' });
-    }
-    const abierto = await pool.query(
-      `SELECT id FROM casos_ausentismo WHERE caso_anterior_id=$1 AND estado NOT IN ('resuelto','cancelado') LIMIT 1`, [c.id]);
-    if (abierto.rows.length) return res.json({ ok: true, id: abierto.rows[0].id, ya_existia: true });
-
-    // Si el último caso quedó incompleto (por ejemplo, un duplicado cargado a mano sin
-    // domicilio), los datos que falten se toman del control anterior más reciente que los tenga:
-    // los enlazados, o los del mismo DNI en la misma empresa.
-    const dni = String(c.trabajador_dni || '').replace(/\D/g, '');
-    const previos = (await pool.query(
-      `SELECT * FROM casos_ausentismo WHERE id <> $1 AND empresa_nombre = $2
-         AND (id = $3::int OR ($4::varchar <> '' AND regexp_replace(COALESCE(trabajador_dni,''), '[^0-9]', '', 'g') = $4::varchar))
-       ORDER BY creado_en DESC`, [c.id, c.empresa_nombre, c.caso_anterior_id, dni.length >= 6 ? dni : ''])).rows;
-    const completar = campo => c[campo] || previos.find(x => x[campo])?.[campo] || null;
-    if (c.domicilio_lat == null) {
-      const conMapa = previos.find(x => x.domicilio_lat != null);
-      if (conMapa) Object.assign(c, { domicilio: conMapa.domicilio, domicilio_lat: conMapa.domicilio_lat,
-        domicilio_lng: conMapa.domicilio_lng, radio_metros: conMapa.radio_metros, excepcion_geo: conMapa.excepcion_geo });
-    }
-    c.trabajador_dni = completar('trabajador_dni');
-    c.trabajador_telefono = completar('trabajador_telefono');
-    c.profesional_id = completar('profesional_id');
-
-    // El profesional se mantiene si sigue activo; si no, el caso queda para asignar
-    const prof = c.profesional_id
-      ? (await pool.query('SELECT id FROM medicos WHERE id=$1 AND activo=true', [c.profesional_id])).rows[0]?.id || null
-      : null;
-    const motivo = (req.body?.motivo || '').trim() || c.motivo || '';
-    const n = await pool.query(
-      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono,
-         motivo, documentacion, notas_admin, domicilio, domicilio_lat, domicilio_lng, radio_metros, excepcion_geo,
-         tipo_control, profesional_id, estado, caso_anterior_id)
-       VALUES ($1,$2,$3,$4,$5,$6,'','',$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
-      [c.empresa_id, c.empresa_nombre, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono,
-       motivo, c.domicilio, c.domicilio_lat, c.domicilio_lng, c.radio_metros, c.excepcion_geo,
-       c.tipo_control, prof, prof ? 'asignado' : 'nuevo', c.id]);
-    await vincularASeguimientosAbiertos({ casoId: n.rows[0].id, nombre: c.trabajador_nombre, dni: c.trabajador_dni });
-    res.json({ ok: true, id: n.rows[0].id, profesional_asignado: !!prof });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+require('./lib/ausentismo-workflow').registerWorkflow({app,pool,adminMiddleware,geocodificar,
+  vincular:vincularASeguimientosAbiertos,TIPOS_CONTROL});
 
 // --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
 app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
+  if (req.body.domicilio_lat != null || req.body.domicilio_lng != null) {
+    if(!validCoordinates(req.body.domicilio_lat,req.body.domicilio_lng,0)) return res.status(400).json({error:'Coordenadas inválidas'});
+  }
+  if(req.body.radio_metros != null && (!Number.isInteger(req.body.radio_metros)||req.body.radio_metros<50||req.body.radio_metros>5000)) return res.status(400).json({error:'El radio debe estar entre 50 y 5000 metros'});
   if (req.body.excepcion_geo !== undefined && typeof req.body.excepcion_geo !== 'boolean') return res.status(400).json({error:'Excepción inválida'});
   const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, notas_admin, empresa_nombre,
           domicilio, domicilio_lat, domicilio_lng, radio_metros, tipo_control } = req.body;
@@ -3357,6 +3329,9 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
     // informe se nombran desde el turno, no desde acá.
     if (tipo_control && chk.rows[0].turno_id) {
       await pool.query('UPDATE turnos SET tipo=$1 WHERE id=$2', [etiquetaControl(tipo_control), chk.rows[0].turno_id]);
+    }
+    if (chk.rows[0].turno_id && (tocaCoords || radio_metros !== undefined || req.body.excepcion_geo !== undefined)) {
+      await turnoChat.resetVerification(chk.rows[0].turno_id);
     }
     res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined, motivo_geocode: motivoGeo });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -3572,7 +3547,8 @@ app.post('/api/ingreso/:token/verificar', async (req, res) => {
       await registrar('sin_ubicacion', null);
       return res.status(403).json({ code:'SIN_UBICACION', error: 'No pudimos obtener tu ubicación. Activá el GPS y permití el acceso a la ubicación para poder ingresar.' });
     }
-    if (precision != null && precision > PRECISION_MAXIMA) {
+    if (!validCoordinates(lat,lng,precision)) return res.status(400).json({code:'UBICACION_INVALIDA',error:'La ubicación recibida no es válida. Volvé a obtenerla desde tu dispositivo.'});
+    if (precision > PRECISION_MAXIMA) {
       await registrar('precision_baja', null);
       return res.status(403).json({ code:'PRECISION_BAJA', precision: Math.round(precision),
         error: `La señal de ubicación es muy débil (margen de ${Math.round(precision)} m). Salí al exterior o acercate a una ventana y volvé a intentar.` });
@@ -3888,6 +3864,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
 
     // Reprogramar: si ya tenía entrevista se mueve la fecha, no se crea otra sala
     if (caso.turno_id) {
+      await turnoChat.resetVerification(caso.turno_id);
       await pool.query('UPDATE turnos SET fecha=$1, hora=$2, tipo=$3 WHERE id=$4',
         [fecha, hora, etiquetaControl(tipoCaso), caso.turno_id]);
       return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: new URL(await turnoChat.invitationLink(caso.turno_id,linkIngreso), linkIngreso).href, reprogramado: true, hora, fecha });
@@ -3913,38 +3890,38 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
 // --- Informe de inasistencia ---
 // Se emite junto con el acta cuando el trabajador no comparece. No contiene una evaluación
 // clínica: deja constancia del turno, la tolerancia de 20 minutos y la falta de ingreso.
-app.get('/api/turnos/:id/informe-inasistencia', authMiddleware, async (req, res) => {
+app.get('/api/turnos/:id/informe-inasistencia', authMedgrupOEmpresa, async (req, res) => {
   try {
+    if (!await turnoVisiblePara(req.params.id,req)) return res.status(403).json({error:'No tenés acceso a este informe'});
     const turno = (await pool.query('SELECT * FROM turnos WHERE id=$1', [req.params.id])).rows[0];
     if (!turno) return res.status(404).json({ error: 'No encontrado' });
     const caso = (await pool.query('SELECT * FROM casos_ausentismo WHERE turno_id=$1 LIMIT 1', [req.params.id])).rows[0] || null;
+    const eventos = (await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC',[turno.id])).rows;
+    const evidencia = controlEvidence(turno,caso,eventos);
+    if (evidencia.resultado !== 'inasistencia') return res.status(409).json({error:'No hay una inasistencia cerrada con registro de finalización'});
     const esLegacyAusentismo = /control\s+de\s+(ausentismo|licencia)/i.test(turno.tipo || '');
     if ((!caso && !esLegacyAusentismo) || (caso && caso.estado !== 'resuelto')) return res.status(400).json({ error: 'El informe se habilita al registrar la inasistencia' });
-    const entro = caso
-      ? await pool.query(`SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado IN ('aceptado','excepcion_geo') LIMIT 1`, [caso.id])
-      : { rows: [] };
     const seSumo = await pool.query(`SELECT 1 FROM eventos_turno WHERE turno_id=$1 AND tipo='union_paciente' LIMIT 1`, [turno.id]);
-    if (entro.rows.length || seSumo.rows.length) return res.status(409).json({ error: 'El trabajador sí compareció al control' });
+    if (seSumo.rows.length) return res.status(409).json({ error: 'El trabajador sí compareció al control' });
 
     const fechaISO = turno.fecha instanceof Date
       ? `${turno.fecha.getFullYear()}-${String(turno.fecha.getMonth()+1).padStart(2,'0')}-${String(turno.fecha.getDate()).padStart(2,'0')}`
       : String(turno.fecha).split('T')[0];
     const fecha = new Date(fechaISO + 'T12:00:00Z').toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric',timeZone:'UTC'});
     const fechaEmision = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric',timeZone:ZONA_ARG});
-    const inicio = caso && caso.control_iniciado_en ? new Date(caso.control_iniciado_en) : null;
     const horaPactada = turno.hora || '—';
-    const horaInicio = inicio ? inicio.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG}) : horaPactada;
-    const cierre = inicio ? new Date(inicio.getTime()+20*60*1000) : null;
+    const horaInicio = evidencia.desde ? evidencia.desde.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:ZONA_ARG}) : 'No registrada';
+    const cierre = evidencia.hasta;
     const horaCierre = cierre ? cierre.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:ZONA_ARG}) : '—';
-    const control = 'Control de ausentismo';
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Informe de inasistencia - ${turno.paciente}</title>
+    const control = turno.tipo || 'Control de ausentismo';
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Informe de inasistencia - ${escapeHtml(turno.paciente)}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;color:#1a1916;padding:46px 52px;font-size:13px;line-height:1.7}.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid #3a6ea8;margin-bottom:18px}.logo-img{height:42px}h1{font-size:17px;margin-bottom:6px}.subt{font-size:11px;color:#5a5750;margin-bottom:18px}p{text-align:justify;margin-bottom:12px}.datos-box{background:#f4f7fb;border:1px solid #e6edf5;border-radius:9px;padding:14px 16px;margin:18px 0 22px;display:grid;grid-template-columns:1fr 1fr;gap:9px 20px}.label{color:#777;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px}.value{font-weight:600}h2{font-size:12.5px;color:#2a5080;margin:18px 0 10px}.conclusion{background:#faedf1;border:1px solid #f0b8c8;border-radius:9px;padding:13px 16px;color:#7e2944}.firmas{margin-top:46px;border-top:1px solid #e8e4de;padding-top:20px;width:270px;text-align:center}.linea{height:28px;border-bottom:1px solid #222}.wm{margin-top:30px;text-align:center;color:#aaa;font-size:9px}@media print{body{padding:26px 32px}}</style></head><body>
 <div class="header"><div style="display:flex;align-items:center;gap:11px"><img src="/logo.png" class="logo-img"/><div><div style="font-size:18px;font-weight:700;color:#3a6ea8">MEDGRUP</div><div style="font-size:9.5px;color:#c0365a;letter-spacing:1px;text-transform:uppercase">Servicio Médico Laboral</div></div></div><div style="text-align:right;font-size:10.5px;color:#5a5750">Tierra del Fuego<br>${fechaEmision}</div></div>
 <h1>INFORME DE INASISTENCIA AL CONTROL</h1><div class="subt">Constancia de no comparecencia al control médico laboral</div>
-<p>Se deja constancia de que el/la Sr./Sra. <strong>${turno.paciente}</strong>, perteneciente a <strong>${turno.empresa||'—'}</strong>, se encontraba citado/a a un <strong>${control}</strong> mediante videollamada a través de la plataforma MEDGRUP.</p>
-<div class="datos-box"><div><div class="label">Trabajador/a</div><div class="value">${turno.paciente}</div></div><div><div class="label">Empresa</div><div class="value">${turno.empresa||'—'}</div></div><div><div class="label">Fecha del control</div><div class="value">${fecha}</div></div><div><div class="label">Hora pactada</div><div class="value">${horaPactada} hs</div></div><div><div class="label">Inicio del control</div><div class="value">${horaInicio} hs</div></div><div><div class="label">Tolerancia otorgada</div><div class="value">20 minutos</div></div></div>
-<h2>Constancia</h2><p>Iniciado el control a las <strong>${horaInicio} hs</strong>, se aguardó la incorporación del/de la trabajador/a durante el plazo de tolerancia de <strong>20 minutos</strong>, hasta las <strong>${horaCierre} hs</strong>. Durante dicho período no se registró su ingreso a la videollamada ni comparecencia al control.</p>
-<div class="conclusion"><strong>Conclusión:</strong> el/la trabajador/a ${turno.paciente} no se presentó al control médico laboral en la fecha y horario indicados. En consecuencia, no fue posible realizar la evaluación médica.</div>
+<p>Se deja constancia de que el/la Sr./Sra. <strong>${escapeHtml(turno.paciente)}</strong>, perteneciente a <strong>${escapeHtml(turno.empresa||'—')}</strong>, se encontraba citado/a a un <strong>${control}</strong> mediante videollamada a través de la plataforma MEDGRUP.</p>
+<div class="datos-box"><div><div class="label">Trabajador/a</div><div class="value">${escapeHtml(turno.paciente)}</div></div><div><div class="label">Empresa</div><div class="value">${escapeHtml(turno.empresa||'—')}</div></div><div><div class="label">Fecha del control</div><div class="value">${fecha}</div></div><div><div class="label">Hora pactada</div><div class="value">${horaPactada} hs</div></div><div><div class="label">Inicio del control</div><div class="value">${horaInicio} hs</div></div><div><div class="label">Tolerancia prevista</div><div class="value">20 minutos</div></div></div>
+<h2>Constancia</h2><p>Primer ingreso médico registrado: <strong>${horaInicio}</strong>. Cierre registrado: <strong>${horaCierre} hs</strong>. Tiempo transcurrido entre ambos registros: <strong>${evidencia.esperaTexto}</strong>. La tolerancia prevista es de 20 minutos. No se registró la incorporación del/de la trabajador/a a la videollamada.</p>
+<div class="conclusion"><strong>Conclusión:</strong> el/la trabajador/a ${escapeHtml(turno.paciente)} no se presentó al control médico laboral en la fecha y horario indicados. En consecuencia, no fue posible realizar la evaluación médica.</div>
 <div class="firmas"><div class="linea"></div><strong>Profesional interviniente</strong><br><span style="font-size:11px;color:#666">MEDGRUP Servicio Médico Laboral</span></div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Informe de inasistencia · ${turno.id}</div><script>window.onload=function(){window.print()}</script></body></html>`;
     return await sendDocument(req, res, html, 'informe-inasistencia-'+req.params.id+'.pdf');
@@ -3952,33 +3929,9 @@ app.get('/api/turnos/:id/informe-inasistencia', authMiddleware, async (req, res)
 });
 
 // --- Cierre por inasistencia ---
-app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1', [req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
-    const caso = r.rows[0];
-    if (!(await puedeVerCaso(caso, req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
-    if (!caso.turno_id) return res.status(400).json({ error: 'Todavía no se inició el control, así que no hay inasistencia que registrar' });
-    if (['resuelto', 'cancelado'].includes(caso.estado)) return res.status(400).json({ error: 'El caso ya está cerrado' });
-
-    // Contra el registro no se discute: si el trabajador entró, no hay inasistencia que
-    // declarar. El acta saldría contradiciendo sus propios datos.
-    const entro = await pool.query(
-      `SELECT 1 FROM ingresos_ubicacion WHERE caso_id=$1 AND resultado IN ('aceptado','excepcion_geo') LIMIT 1`, [caso.id]);
-    if (entro.rows.length) return res.status(409).json({
-      error: 'El trabajador confirmó su ubicación e ingresó al control, así que no se puede registrar inasistencia.' });
-    const seSumo = await pool.query(
-      `SELECT 1 FROM eventos_turno WHERE turno_id=$1 AND tipo='union_paciente' LIMIT 1`, [caso.turno_id]);
-    if (seSumo.rows.length) return res.status(409).json({
-      error: 'El trabajador se sumó a la videollamada, así que no se puede registrar inasistencia.' });
-
-    await pool.query(`UPDATE turnos SET estado='completado' WHERE id=$1`, [caso.turno_id]);
-    await pool.query(
-      `UPDATE casos_ausentismo
-       SET estado='resuelto', resuelto_en=NOW(), control_iniciado_en = COALESCE(control_iniciado_en, NOW())
-       WHERE id=$1`, [req.params.id]);
-    res.json({ ok: true, acta: `/api/turnos/${caso.turno_id}/acta`, informe: `/api/turnos/${caso.turno_id}/informe-inasistencia` });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+app.post('/api/ausentismo/casos/:id/inasistencia', authMiddleware, async (req,res) => {
+  try { res.json(await closeNoShow(pool,req.params.id,req.usuario,caso=>puedeVerCaso(caso,req))); }
+  catch(e){res.status(e.status||500).json({error:e.status?e.message:'No se pudo cerrar el control'});}
 });
 
 // ===== SEGUIMIENTOS (pacientes crónicos / casos largos camino a junta) =====
@@ -4769,13 +4722,14 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
 });
 
 const turnoChat = require('./lib/turno-chat').createTurnoChat({
-  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false'
+  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.SESSION_SECRET
 });
 
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 initDB().then(async () => {
+  await sessionStore.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
   app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));

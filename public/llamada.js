@@ -31,8 +31,12 @@
   function actualizarPresencia(){
     if(!enSala) return;
     const n = otrosEnSala();
-    if(n > 0) estado('en-consulta', n > 1 ? `En consulta · ${n + 1} personas` : 'En consulta');
-    else estado('esperando', turno?.paciente ? `Esperando a ${turno.paciente}` : 'Esperando al paciente');
+    const normal = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    const present = Object.entries(call.participants()).some(([key,p]) => key !== 'local' && !p.owner &&
+      !String(p.user_id||'').startsWith('invitado:') &&
+      (String(p.user_id||'').startsWith('paciente:') || normal(p.user_name) === normal(turno?.paciente)));
+    if(present) estado('en-consulta', `Paciente en la sala · ${n + 1} personas`);
+    else estado('esperando', (turno?.paciente ? `Esperando a ${turno.paciente}` : 'Esperando al paciente') + (n ? ` · ${n + 1} personas en sala` : ''));
   }
 
   function crearCall(){

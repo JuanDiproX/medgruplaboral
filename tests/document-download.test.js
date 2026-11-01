@@ -45,3 +45,8 @@ test('Descarga el blob y restablece el botón; rechaza HTML y errores HTTP', asy
   mode='error'; await context.descargarPDF('/api/prueba',button);
   assert.equal(error,'Reintentar'); assert.equal(button.disabled,false); assert.equal(attributes['aria-busy'],undefined);
 });
+
+test('dos descargas simultáneas se encolan en lugar de fallar',async()=>{
+  const documents=await Promise.all([renderPdf('<h1>Primero</h1>'),renderPdf('<h1>Segundo</h1>')]);
+  for(const pdf of documents)assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
+});
