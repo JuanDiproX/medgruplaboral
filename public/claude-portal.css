@@ -1,0 +1,152 @@
+/* MEDGRUP · Portal de empresas — mismo mundo visual que el portal de trabajo y el sitio público
+   ─────────────────────────────────────────────────────────────────────────────
+   Se carga después del <style> de empresa.html. Solo presentación: no cambia IDs, eventos,
+   textos ni pedidos. Reemplaza el kit genérico (tarjetas con filete de color, etiquetas en
+   mayúsculas monoespaciadas, botones con degradé) por el sistema de MEDGRUP:
+   papel cálido, tinta marino, Libre Caslon para títulos, Schibsted Grotesk para la interfaz,
+   magenta solo para lo que urge, radios discretos. */
+
+:root{
+  --ink:#13233a;--ink-2:#4a586b;--ink-3:#5f6b7b;
+  --paper:#fbfaf6;--paper-2:#f3f2ec;--rule:#e4e3da;--rule-2:#d2d1c7;
+  --blue-ink:#2c5d92;--wash:#e6f1f5;--magenta:#b5185b;--magenta-ink:#95124a;
+  --sans:"Schibsted Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Libre Caslon Display","Libre Caslon Text",Georgia,"Times New Roman",serif;
+
+  /* Los nombres del portal, con los valores del sistema */
+  --azul:#2c5d92;--azul-dark:#13233a;--azul-deep:#13233a;--azul-light:#e6f1f5;--azul-mid:#bcd6e2;
+  --rosa:#b5185b;--rosa-dark:#95124a;--rosa-light:#f9ebf1;--rosa-mid:#ebbdd0;
+  --celeste:#acdcec;--celeste-light:#eef6f9;
+  --verde:#1e6640;--verde-light:#e5f1e9;--amber:#8a5300;--amber-light:#f8eedb;
+  --bg:#fbfaf6;--surface:#fff;--surface2:#f6f5f0;--surface3:#ecebe3;
+  --border:#e4e3da;--border2:#d2d1c7;
+  --text:#13233a;--text2:#4a586b;--text3:#5f6b7b;
+  --r:6px;--r-sm:4px;--r-xs:3px;
+  --shadow-sm:none;--shadow:0 1px 2px rgba(19,35,58,.06),0 14px 30px -20px rgba(19,35,58,.3);
+  --shadow-lg:0 2px 6px rgba(19,35,58,.07),0 32px 64px -28px rgba(19,35,58,.42);
+}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);}
+::selection{background:var(--celeste);color:var(--ink);}
+:focus-visible{outline:2px solid var(--blue-ink);outline-offset:2px;}
+button,input,select,textarea{font-family:inherit;}
+/* Sin rebotes ni levitaciones: la interfaz responde, no actúa */
+/* Cambiar de pestaña muestra el contenido de inmediato, sin fundido de entrada */
+.card,.page-header,.topbar,.stats-row{animation:none!important;}
+.stat-card:hover,.btn:hover,.btn-logout-top:hover,.login-btn:hover,.login-input:focus,.topbar-logo:hover img,tbody tr:hover .avatar,.medico-tag:hover,.informe-card:hover{transform:none!important;}
+
+/* ── Login ── */
+.login-left{background:var(--ink);}
+.login-left::before{display:none;}
+.login-right{background:var(--paper);box-shadow:none;}
+.login-lbl{font-family:var(--sans);font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);}
+.login-input{font-family:var(--sans);border:1px solid var(--rule-2);border-radius:var(--r-sm);background:#fff;}
+.login-input:focus{border-color:var(--blue-ink);box-shadow:0 0 0 3px rgba(44,93,146,.16);}
+.login-btn{background:var(--ink);box-shadow:none;border-radius:var(--r-sm);font-family:var(--sans);min-height:48px;}
+.login-btn:hover{background:#0b1626;box-shadow:none;}
+.login-error{color:var(--magenta-ink);border-width:1px;}
+
+/* ── Barra superior ── */
+.topbar{background:var(--paper);border-bottom:1px solid var(--rule);box-shadow:none;height:72px;}
+.topbar-logo{border-right-color:var(--rule);}
+.topbar-brand{font-family:var(--display);font-weight:400;font-size:1.3rem;letter-spacing:0;}
+.topbar-tag{font-family:var(--sans);font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-3);font-weight:500;}
+.empresa-label{font-family:var(--sans);font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-3);}
+.empresa-name{font-family:var(--sans);font-size:15.5px;}
+.top-badge{background:transparent;padding:0;color:var(--ink-3);font-weight:500;font-size:13px;}
+.top-badge-dot{animation:none;}
+.btn-logout-top{border-color:var(--rule-2);border-radius:var(--r-sm);font-family:var(--sans);font-size:13.5px;color:var(--ink);}
+.btn-logout-top:hover{background:var(--paper-2);color:var(--ink);border-color:#bdbcb1;}
+
+/* ── Encabezado de página ── */
+.main{padding-top:2.5rem;}
+.page-header{padding-bottom:1.25rem;border-bottom:1px solid var(--rule);margin-bottom:1.5rem;}
+.page-title{font-family:var(--display);font-weight:400;font-size:2.6rem;line-height:1.05;letter-spacing:-.01em;}
+.page-title::before{display:none;}
+.page-sub{margin-left:0;font-size:14.5px;color:var(--ink-2);margin-top:8px;max-width:60ch;}
+.today-chip{font-family:var(--sans);background:transparent;border:0;box-shadow:none;padding:0;font-size:13.5px;color:var(--ink-2);}
+.today-chip::first-letter{text-transform:uppercase;}
+
+/* Pestañas Evaluaciones / Ausentismo: un selector segmentado, no dos botones */
+.main > div:has(> #tab-evaluaciones){display:inline-flex!important;gap:3px!important;padding:3px;background:var(--paper-2);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:1.75rem!important;}
+#tab-evaluaciones,#tab-ausentismo{min-height:40px;padding:0 18px;border:0!important;border-radius:var(--r-sm)!important;background:transparent!important;color:var(--ink-2)!important;box-shadow:none!important;font-size:14px;font-weight:500;}
+#tab-evaluaciones.btn-primary,#tab-ausentismo.btn-primary{background:#fff!important;color:var(--ink)!important;font-weight:600;box-shadow:0 1px 2px rgba(19,35,58,.12),inset 0 0 0 1px var(--rule)!important;}
+
+/* ── Cifras: una franja sobria, el número en Caslon; sin íconos ni filetes de color ── */
+.stats-row{gap:0;background:#fff;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;margin-bottom:1.5rem;}
+.stat-card{border:0;border-radius:0;box-shadow:none;padding:1.15rem 1.5rem 1.25rem;animation:none!important;}
+.stat-card + .stat-card{border-left:1px solid var(--rule);}
+.stat-card::before{display:none;}
+.stat-icon{display:none;}
+.stat-lbl{font-family:var(--sans);font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-2);}
+.stat-val{font-family:var(--display);font-weight:400;font-size:2.6rem;line-height:1.05;letter-spacing:-.01em;color:var(--ink);margin-top:4px;font-variant-numeric:lining-nums tabular-nums;}
+.stat-amber .stat-val{color:var(--amber);}
+.stat-hint{font-size:12.5px;color:var(--ink-3);}
+
+/* ── Tarjeta de lista ── */
+.card{border:1px solid var(--rule);border-radius:var(--r);box-shadow:none;}
+.card-hdr{background:#fff;border-bottom:1px solid var(--rule);}
+.card-title{font-family:var(--display);font-weight:400;font-size:1.55rem;letter-spacing:-.005em;color:var(--ink);}
+.card-title svg{display:none;}
+.card-count{background:var(--paper-2);color:var(--ink-2);border-radius:999px;font-variant-numeric:tabular-nums;}
+.search-bar{background:#fff;border-bottom:1px solid var(--rule);}
+.search-input,.filter{font-family:var(--sans);border:1px solid var(--rule-2);border-radius:var(--r-sm);background:#fff;color:var(--ink);font-size:14px;}
+.search-input:focus,.filter:focus{border-color:var(--blue-ink);box-shadow:0 0 0 3px rgba(44,93,146,.16);}
+
+/* Tabla: encabezados en la voz de la interfaz, no en mayúsculas de máquina */
+thead th{font-family:var(--sans);font-size:12.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink-3);background:var(--paper);border-bottom:1px solid var(--rule);}
+tbody td{border-bottom:1px solid var(--rule);}
+tbody tr{animation:none!important;}
+tbody tr:hover{background:var(--paper);}
+.avatar{background:var(--paper-2);color:var(--ink);border-radius:50%;font-weight:600;}
+.paciente-nombre{font-size:15px;color:var(--ink);}
+.paciente-sub,.fecha-time{font-family:var(--sans);color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.fecha-day{font-family:var(--sans);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.tipo-badge{background:transparent;padding:0;color:var(--ink);font-size:13.5px;border-radius:0;}
+.medico-tag{background:transparent;padding:0;color:var(--ink-2);font-size:13px;border:0;}
+.badge{border-radius:999px;font-weight:600;}
+.b-verde{background:var(--verde-light);color:var(--verde);}
+.b-amber{background:var(--amber-light);color:var(--amber);}
+.b-rosa{background:var(--rosa-light);color:var(--magenta-ink);}
+.b-gris{background:var(--paper-2);color:var(--ink-2);}
+.sin-info{font-style:normal;color:var(--ink-3);}
+
+/* Botones: tinta, sin degradé ni sombra */
+.btn{border-radius:var(--r-sm);font-family:var(--sans);box-shadow:none!important;}
+.btn-primary{background:var(--ink)!important;color:#fff;border:1px solid var(--ink);}
+.btn-primary:hover{background:#0b1626!important;}
+.btn-ghost,.btn-outline{background:#fff;border:1px solid var(--rule-2);color:var(--ink);}
+.btn-ghost:hover,.btn-outline:hover{background:var(--paper-2);border-color:#bdbcb1;color:var(--ink);}
+
+/* Vacío */
+.empty-icon{background:var(--paper-2);}
+.empty-title{font-family:var(--display);font-weight:400;font-size:1.5rem;}
+
+/* ── Modales ── */
+.modal{border-radius:8px;}
+.modal-title{font-family:var(--display);font-weight:400;font-size:1.75rem;letter-spacing:-.005em;}
+.modal-avatar{background:var(--paper-2);color:var(--ink);border-radius:50%;}
+.info-label{font-family:var(--sans);font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink-3);}
+.informe-card{border-radius:var(--r);box-shadow:none;}
+.informe-numero{font-family:var(--sans);}
+
+/* ── Ausentismo (empresa) ── */
+#vista-ausentismo .login-input{font-size:14px;min-height:42px;}
+#vista-ausentismo .login-lbl{display:block;margin-bottom:2px;}
+#ca-certificados,#ce-nuevo{padding:14px!important;border:1.5px dashed var(--rule-2);border-radius:var(--r);background:var(--paper);font-size:13px!important;}
+#ca-certificados::file-selector-button,#ce-nuevo::file-selector-button{font:inherit;font-weight:600;margin-right:12px;padding:8px 14px;background:#fff;color:var(--ink);border:1px solid var(--rule-2);border-radius:var(--r-sm);cursor:pointer;}
+#ca-error{border-left:3px solid var(--magenta)!important;color:var(--magenta-ink)!important;font-weight:500;}
+
+@media (max-width:900px){
+  .page-title{font-size:2rem;}
+  .stats-row{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .stat-card{padding:.9rem 1rem 1rem;}
+  .stat-val{font-size:2rem;}
+  .stat-hint{display:none;}
+  .main > div:has(> #tab-evaluaciones){display:flex!important;}
+  #tab-evaluaciones,#tab-ausentismo{flex:1;}
+  thead{background:transparent;}
+  tbody td::before{font-family:var(--sans)!important;font-size:12px!important;font-weight:500!important;text-transform:none!important;letter-spacing:0!important;color:var(--ink-3)!important;}
+  tbody tr{border:1px solid var(--rule)!important;border-radius:var(--r)!important;box-shadow:none!important;}
+  .search-wrap{width:100%;flex:1 1 100%;}
+  .search-input{width:100%;}
+}

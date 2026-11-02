@@ -25,7 +25,7 @@
 .au-buscar input{width:280px;max-width:100%;min-height:40px;padding-left:34px;}
 
 /* Circuito: Todos, y las etapas en el orden en que avanza un caso */
-.au-circuito{display:flex;align-items:stretch;gap:10px;padding:0 1.5rem 1.1rem;border-bottom:1px solid var(--rule);}
+.au-circuito{display:flex;flex-wrap:nowrap;align-items:stretch;gap:10px;padding:0 1.5rem 1.1rem;border-bottom:1px solid var(--rule);}
 .au-circuito-pasos{display:flex;flex:1;min-width:0;background:var(--paper-2);border-radius:var(--r);padding:3px;gap:0;}
 .au-etapa{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -199,10 +199,10 @@ body.au-alta-activa{overflow:hidden;}
   .au-buscar{flex:1 1 200px;}
   .au-buscar input{width:100%;}
   .au-registro-herr .btn{flex:0 0 auto;min-height:44px;}
-  .au-circuito{padding:0 1rem .9rem;flex-direction:row;}
-  /* El circuito se desliza en vez de apretarse */
-  .au-circuito-pasos{overflow-x:auto;scrollbar-width:none;}
-  .au-circuito-pasos::-webkit-scrollbar{display:none;}
+  .au-circuito{padding:0 1rem .9rem;flex-direction:row;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  /* El circuito completo se desliza en vez de apretarse o recortarse */
+  .au-circuito::-webkit-scrollbar{display:none;}
+  .au-circuito > .au-etapa,.au-circuito-pasos{flex:0 0 auto;}
   .au-circuito-pasos .au-etapa{flex:0 0 auto;}
   .au-caso{padding:1.1rem 1rem 1rem;}
   .au-caso-nombre{font-size:1.3rem;}
@@ -227,4 +227,120 @@ body.au-alta-activa{overflow:hidden;}
 @media (max-width:600px){
   #au-panel-alta .au-flow-actions{flex-direction:column;}
   #au-panel-alta .au-flow-actions .btn{width:100%;flex:none!important;}
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   AGENDA — mismo lenguaje, sin tocar el flujo de turnos ni la videollamada.
+   La hora manda (Caslon), el magenta queda para lo inminente, el ámbar solo en el
+   aviso "en 3 h" y ya no tiñe filas enteras. Las acciones de documentos bajan de peso.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.fp-meta{display:flex;flex-wrap:wrap;gap:2px 14px;}
+.foco-proximo.proximo{background:#fff;border-color:var(--rule);}
+#agenda-lista .turno-hora,#reuniones-lista .turno-hora{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1;letter-spacing:-.01em;color:var(--ink);font-variant-numeric:lining-nums;}
+#agenda-lista .turno-item.proximo{background:transparent;}
+#agenda-lista .turno-item.proximo:hover{background:var(--surface2);}
+#agenda-lista .turno-item.proximo .turno-hora{color:var(--ink);}
+#agenda-lista .turno-paciente{font-size:15.5px;gap:6px;}
+#agenda-lista .badge-en-curso::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+#agenda-lista .badge-modalidad{font-size:12px;}
+.turno-meta-datos{gap:4px 14px!important;}
+.turno-meta-datos .turno-medicos{color:var(--ink-3);}
+.turno-dx{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--ink);max-width:72ch;}
+.turno-dx-lbl{font-size:12px;font-weight:600;color:var(--ink-3);margin-right:4px;}
+/* Acciones: la principal (Iniciar / Unirse / Cargar informe) queda llena; el resto, discreto */
+#agenda-lista .turno-actions{gap:2px 4px;}
+#agenda-lista .turno-actions > .btn-ghost,
+#agenda-lista .turno-actions > a.btn-ghost{background:transparent;border-color:transparent;color:var(--ink-2);font-weight:500;padding:0 10px!important;}
+#agenda-lista .turno-actions > .btn-ghost:hover,
+#agenda-lista .turno-actions > a.btn-ghost:hover{background:var(--paper-2);color:var(--ink);}
+#agenda-lista .turno-actions > .btn-ghost svg{stroke:var(--ink-3);}
+#agenda-lista .turno-actions > .btn-rosa{margin-right:8px;}
+/* Magenta solo para lo inminente o en curso; los turnos que esperan, en tinta */
+#agenda-lista .turno-item:not(.inminente):not(:has([onclick^="unirseTurno"])) .turno-actions > .btn-rosa{background:#fff;color:var(--ink);border-color:var(--ink);}
+#agenda-lista .turno-item:not(.inminente):not(:has([onclick^="unirseTurno"])) .turno-actions > .btn-rosa:hover{background:var(--paper-2);}
+#agenda-lista .turno-actions .actions-menu-btn{border-color:var(--rule)!important;background:#fff!important;}
+/* Separador de día: el día en Caslon, como en el bloque de próximo turno */
+#agenda-lista .dia-sep strong{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:-.005em;}
+@media (max-width:900px){
+  #agenda-lista .turno-hora{font-size:1.35rem;}
+  #agenda-lista .turno-actions > .btn-ghost,
+  #agenda-lista .turno-actions > a.btn-ghost{flex:0 0 auto!important;min-width:0!important;}
+  #agenda-lista .turno-actions > .btn-rosa{flex:1 1 100%!important;margin-right:0;}
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SEGUIMIENTOS — la lista usa el mismo registro que Ausentismo; el legajo ya tenía
+   este lenguaje (nombre en Caslon, ficha y línea de tiempo) y queda como estaba.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.sg-registro .sg-filtros{padding:0 1.5rem 1.1rem;}
+.sg-registro .au-circuito > .au-etapa:last-child{margin-left:0;}
+.sg-caso{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,42%);gap:14px 28px;align-items:center;padding:1.3rem 1.5rem;border-bottom:0;border-top:1px solid var(--rule);}
+.sg-caso:first-child{border-top:0;}
+.sg-caso:hover{background:var(--paper);}
+.sg-caso .sg-fila-nombre{gap:10px;}
+.sg-caso .sg-fila-dx{margin-top:8px;font-size:14px;color:var(--ink);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:62ch;}
+.sg-ficha-lista{margin-top:0;}
+.sg-ficha-lista .au-ficha-item{padding:9px 12px 10px;}
+.sg-ficha-lista{grid-template-columns:repeat(3,minmax(0,1fr));}
+.sg-caso[data-urgente] {box-shadow:inset 3px 0 0 var(--magenta);}
+@media (max-width:900px){
+  .sg-caso{grid-template-columns:1fr;padding:1.1rem 1rem;}
+  .sg-registro .sg-filtros{padding:0 1rem .9rem;}
+}
+@media (max-width:760px){
+  .sg-ficha-lista{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .sg-ficha-lista .au-ficha-item{flex-direction:column;padding:8px 10px;}
+  .sg-ficha-lista .au-ficha-lbl{width:auto;}
+  .sg-ficha-lista .au-ficha-val,.sg-ficha-lista .au-ficha-det{flex:none;padding-left:0;}
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   PANEL LATERAL COMÚN — Médicos, Empresas, Presupuestos y Reuniones.
+   Mismo comportamiento que el alta de Ausentismo: la lista ocupa todo el ancho y los
+   formularios se abren aparte. Cerrar no borra lo cargado; los mensajes de éxito/error
+   quedan visibles dentro del panel hasta que se cierra.
+   ═════════════════════════════════════════════════════════════════════════════ */
+/* Entrada de sección solo con opacidad: un transform atraparía a los paneles fijos */
+.sec-anim{animation-name:auSecIn;}
+
+.two-col.con-panel{grid-template-columns:minmax(0,1fr);}
+.two-col.con-panel > div:empty{display:none;}
+.pl-cab-acciones{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.pl-cab-acciones .btn{min-height:36px;}
+.card-hdr:has(.pl-cab-acciones){flex-wrap:wrap;}
+
+.panel-lateral{position:fixed;inset:0;z-index:250;visibility:hidden;pointer-events:none;}
+.panel-lateral.abierto{visibility:visible;pointer-events:auto;}
+.pl-fondo{position:absolute;inset:0;background:rgba(19,35,58,.42);opacity:0;transition:opacity .25s var(--ease-out);}
+.panel-lateral.abierto .pl-fondo{opacity:1;}
+.pl-hoja{position:absolute;top:0;right:0;bottom:0;width:min(600px,100%);display:flex;flex-direction:column;background:var(--paper);box-shadow:var(--shadow-lg);transform:translateX(100%);transition:transform .32s var(--ease-out);}
+.panel-lateral.abierto .pl-hoja{transform:none;}
+@media (prefers-reduced-motion:reduce){.pl-fondo,.pl-hoja{transition:none;}}
+body.pl-activo{overflow:hidden;}
+.pl-hoja > .card{flex:1;min-height:0;display:flex;flex-direction:column;margin:0;border:0;border-radius:0;background:var(--paper);overflow:hidden;}
+.pl-hoja > .card > .card-hdr{flex-shrink:0;min-height:68px;padding:.9rem 1rem .9rem 1.75rem;background:var(--paper);}
+.pl-hoja > .card > .card-hdr .card-title{font-family:var(--display);font-weight:400;font-size:1.75rem;letter-spacing:-.01em;}
+.pl-hoja > .card > .card-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.25rem 1.75rem 2rem;}
+.pl-hoja input[type=text],.pl-hoja input[type=date],.pl-hoja input[type=email],.pl-hoja select,.pl-hoja textarea{background:#fff;}
+.pl-cerrar{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);cursor:pointer;flex-shrink:0;}
+.pl-cerrar:hover{background:var(--paper-2);color:var(--ink);}
+.pl-cerrar svg{width:20px;height:20px;}
+/* Los separadores "divider" del formulario se leen como subtítulos de bloque */
+.pl-hoja .divider{margin:22px 0 12px;padding-top:18px;border-top:1px solid var(--rule);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;}
+.pl-hoja .divider::before,.pl-hoja .divider::after{display:none;}
+.pl-hoja .btn-full{min-height:46px;margin-top:18px;}
+.pr-total-wrap{text-align:right;}
+.pr-total-lbl{font-size:12.5px;font-weight:500;color:var(--ink-3);}
+.pr-total{font-family:var(--display);font-size:2rem;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums lining-nums;}
+@media (max-width:760px){
+  .pl-hoja > .card > .card-hdr{padding-left:1rem;}
+  .pl-hoja > .card > .card-body{padding:1rem 1rem 2rem;}
+  .card-hdr:has(.pl-cab-acciones) .pl-cab-acciones{width:100%;justify-content:flex-start;}
+  .pl-cab-acciones .pl-abrir{flex:1 1 auto;min-height:44px;}
+}
+/* Tablas de Médicos / Empresas / Presupuestos: la celda de acciones venía con display:flex
+   inline y se descuadraba de la fila. En escritorio vuelve a ser celda, alineada a la derecha. */
+@media (min-width:761px){
+  #medicos-lista td[style*="display:flex"],#empresas-lista td[style*="display:flex"],#presupuestos-lista td[style*="display:flex"]{display:table-cell!important;text-align:right;white-space:nowrap;vertical-align:middle;}
+  #medicos-lista td[style*="display:flex"] > * + *,#empresas-lista td[style*="display:flex"] > * + *,#presupuestos-lista td[style*="display:flex"] > * + *{margin-left:6px;}
 }

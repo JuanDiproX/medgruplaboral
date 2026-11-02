@@ -1205,12 +1205,12 @@ td.no-label::before{display:none;}
 
   <!-- ═══ REUNIONES (empresa/negocios — sin informes ni actas) ═══ -->
   <div id="sec-reuniones" style="display:none;">
-    <div class="two-col">
+    <div class="two-col con-panel">
       <div>
         <div class="card">
           <div class="card-hdr">
             <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Reuniones</div>
-            <span class="badge b-blue" id="badge-reuniones">0</span>
+            <div class="pl-cab-acciones"><span class="badge b-blue" id="badge-reuniones">0</span><button type="button" class="btn btn-primary pl-abrir" onclick="abrirPanelLateral('pl-reunion')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Programar reunión</button></div>
           </div>
           <div id="reuniones-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
         </div>
@@ -1232,8 +1232,8 @@ td.no-label::before{display:none;}
         </div>
       </div>
       <div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Programar reunión</div></div>
+        <div class="panel-lateral" id="pl-reunion"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Programar reunión"><div class="card">
+          <div class="card-hdr"><div class="card-title">Programar reunión</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5;">Videollamada de empresa o negocios — sin informe ni acta, solo la reunión y la invitación a los participantes.</div>
             <div class="form-grid">
@@ -1252,18 +1252,18 @@ td.no-label::before{display:none;}
             <div id="reunion-resultado" style="display:none;margin-top:14px;"></div>
             <div id="reunion-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
           </div>
-        </div>
+        </div></div></div>
       </div>
     </div>
   </div>
 
   <div id="sec-medicos" style="display:none;">
     <div id="medicos-desincronizados" style="display:none;margin-bottom:1rem;background:#fdf6e3;border:1px solid #e8d59a;border-radius:var(--r);padding:14px 16px;font-size:13px;color:#8a6d1f;line-height:1.55;"></div>
-    <div class="two-col">
-      <div><div class="card"><div class="card-hdr"><div class="card-title">Médicos activos</div></div><div id="medicos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div></div></div>
+    <div class="two-col con-panel">
+      <div><div class="card"><div class="card-hdr"><div class="card-title">Médicos activos</div><div class="pl-cab-acciones"><button type="button" class="btn btn-ghost pl-abrir" onclick="abrirPanelLateral('pl-admin')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Acceso de administrador</button><button type="button" class="btn btn-primary pl-abrir" onclick="abrirPanelLateral('pl-medico')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo médico</button></div></div><div id="medicos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div></div></div>
       <div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Nuevo médico</div></div>
+        <div class="panel-lateral" id="pl-medico"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Nuevo médico"><div class="card">
+          <div class="card-hdr"><div class="card-title">Nuevo médico</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre completo</label><input type="text" id="new-nombre" placeholder="Dr. Apellido, Nombre"/></div>
@@ -1281,9 +1281,9 @@ td.no-label::before{display:none;}
             <div id="medico-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--azul);">✓ Médico agregado</div>
             <div id="medico-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
           </div>
-        </div>
-        <div class="card" style="margin-top:1.25rem;">
-          <div class="card-hdr"><div class="card-title">Otro acceso de administrador</div></div>
+        </div></div></div>
+        <div class="panel-lateral" id="pl-admin"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Otro acceso de administrador"><div class="card">
+          <div class="card-hdr"><div class="card-title">Otro acceso de administrador</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5;">Para una demo o un segundo admin — ve todo lo mismo que esta cuenta, no es un médico y no tiene turnos propios.</div>
             <div class="form-grid">
@@ -1295,7 +1295,7 @@ td.no-label::before{display:none;}
             <div id="admin-nuevo-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--azul);">✓ Acceso creado</div>
             <div id="admin-nuevo-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
           </div>
-        </div>
+        </div></div></div>
       </div>
     </div>
   </div>
@@ -1358,23 +1358,23 @@ td.no-label::before{display:none;}
   </div>
 
   <div id="sec-empresas" style="display:none;">
-    <div class="two-col">
+    <div class="two-col con-panel">
       <div>
         <div class="card">
           <div class="card-hdr">
             <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Empresas con acceso al portal</div>
-            <a href="/empresa" target="_blank" class="btn btn-ghost" style="padding:5px 11px;font-size:11.5px;text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Ver portal empresa</a>
+            <div class="pl-cab-acciones"><a href="/empresa" target="_blank" class="btn btn-ghost" style="text-decoration:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Ver portal empresa</a><button type="button" class="btn btn-primary pl-abrir" onclick="abrirPanelLateral('pl-empresa')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva empresa</button></div>
           </div>
           <div id="empresas-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
         </div>
       </div>
       <div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Nueva cuenta de empresa</div></div>
+        <div class="panel-lateral" id="pl-empresa"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Nueva cuenta de empresa"><div class="card">
+          <div class="card-hdr"><div class="card-title">Nueva cuenta de empresa</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:1rem;font-size:13px;color:var(--azul);">La empresa podrá acceder al portal con estas credenciales y ver todos sus turnos e informes automáticamente.</div>
             <div class="form-grid">
-              <div class="form-group full"><label class="form-lbl">Nombre de la empresa</label><input type="text" id="emp-nombre" placeholder="Ej: LOGANT S.A." /><div style="font-size:10.5px;color:var(--text3);margin-top:3px;">⚠ Debe coincidir exactamente con el nombre en los turnos</div></div>
+              <div class="form-group full"><label class="form-lbl">Nombre de la empresa</label><input type="text" id="emp-nombre" placeholder="Ej: LOGANT S.A." /><div class="au-ayuda">Tiene que coincidir exactamente con el nombre que figura en los turnos.</div></div>
               <div class="form-group full"><label class="form-lbl">Email de acceso</label><input type="text" id="emp-email-new" placeholder="rrhh@empresa.com"/></div>
               <div class="form-group"><label class="form-lbl">Contraseña inicial</label><input type="text" id="emp-pass-new" placeholder="Mín. 6 caracteres"/></div>
               <div class="form-group"><label class="form-lbl">Contacto (opcional)</label><input type="text" id="emp-contacto-new" placeholder="Nombre del responsable"/></div>
@@ -1383,7 +1383,7 @@ td.no-label::before{display:none;}
             <div id="emp-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);"></div>
             <div id="emp-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
           </div>
-        </div>
+        </div></div></div>
       </div>
     </div>
 
@@ -1488,34 +1488,41 @@ td.no-label::before{display:none;}
   </div>
   <div id="sec-seguimientos" style="display:none;">
     <div id="sg-vista-lista">
-      <div class="card">
-        <div class="card-hdr sg-hdr">
-          <div class="card-title">Pacientes en seguimiento <span class="badge b-blue" id="sg-cuenta">0</span></div>
-          <div class="sg-hdr-acciones">
-            <input type="search" id="sg-buscar" placeholder="Buscar paciente o empresa..." oninput="renderSeguimientos()" aria-label="Buscar seguimiento"/>
+      <section class="au-registro sg-registro" aria-labelledby="sg-registro-titulo">
+        <div class="au-registro-cab">
+          <div class="au-registro-titulo-wrap">
+            <h2 class="au-registro-titulo" id="sg-registro-titulo">Pacientes</h2>
+            <span class="au-registro-total"><span id="sg-cuenta">0</span> en seguimiento</span>
+          </div>
+          <div class="au-registro-herr sg-hdr-acciones">
+            <label class="au-buscar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <span class="sr-only">Buscar seguimiento</span>
+              <input type="search" id="sg-buscar" placeholder="Paciente, DNI o empresa" oninput="renderSeguimientos()" autocomplete="off"/>
+            </label>
             <button class="btn btn-primary" id="sg-btn-nuevo" onclick="abrirModalSeguimiento()" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo seguimiento
             </button>
           </div>
         </div>
-        <div class="sg-filtros" id="sg-filtros"></div>
-        <div id="sg-lista"><div class="sg-vacio">Cargando...</div></div>
-      </div>
+        <nav class="au-circuito sg-filtros" id="sg-filtros" aria-label="Filtrar por estado del seguimiento"></nav>
+        <div id="sg-lista" class="au-lista"><div class="au-esqueleto" aria-hidden="true"><span></span><span></span></div><span class="sr-only">Cargando seguimientos…</span></div>
+      </section>
     </div>
     <div id="sg-vista-detalle" style="display:none;"></div>
   </div>
 
   <div id="sec-presupuestos" style="display:none;">
-    <div class="two-col">
+    <div class="two-col con-panel">
       <div>
         <div class="card">
-          <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Presupuestos emitidos</div><span class="badge b-blue" id="badge-presupuestos">0</span></div>
+          <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Presupuestos emitidos</div><div class="pl-cab-acciones"><span class="badge b-blue" id="badge-presupuestos">0</span><button type="button" class="btn btn-ghost pl-abrir" onclick="abrirPanelLateral('pl-catalogo')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Catálogo de servicios</button><button type="button" class="btn btn-primary pl-abrir" onclick="abrirPanelLateral('pl-presupuesto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo presupuesto</button></div></div>
           <div id="presupuestos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
         </div>
       </div>
       <div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Nuevo presupuesto</div></div>
+        <div class="panel-lateral" id="pl-presupuesto"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Nuevo presupuesto"><div class="card">
+          <div class="card-hdr"><div class="card-title">Nuevo presupuesto</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Empresa</label>
@@ -1530,17 +1537,17 @@ td.no-label::before{display:none;}
             <div id="pr-items"></div>
             <button class="btn btn-ghost" style="margin-top:8px;" onclick="agregarItemPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar ítem</button>
             <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-              <div style="text-align:right;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;">Total</div><div style="font-size:20px;font-weight:700;color:var(--azul);" id="pr-total">$ 0,00</div></div>
+              <div class="pr-total-wrap"><div class="pr-total-lbl">Total</div><div class="pr-total" id="pr-total">$ 0,00</div></div>
             </div>
             <div class="form-group full" style="margin-top:10px;"><label class="form-lbl">Notas (opcional)</label><textarea id="pr-notas" placeholder="Condiciones, forma de pago, etc."></textarea></div>
             <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="guardarPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Generar presupuesto</button>
             <div id="pr-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
             <div id="pr-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);"></div>
           </div>
-        </div>
+        </div></div></div>
 
-        <div class="card" style="margin-top:1rem;">
-          <div class="card-hdr"><div class="card-title">Catálogo de servicios</div></div>
+        <div class="panel-lateral" id="pl-catalogo"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Catálogo de servicios"><div class="card">
+          <div class="card-hdr"><div class="card-title">Catálogo de servicios</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
           <div class="card-body">
             <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">Los servicios cargados acá aparecen como sugerencia al escribir el concepto de un ítem.</div>
             <div id="catalogo-lista" style="margin-bottom:10px;"></div>
@@ -1550,7 +1557,7 @@ td.no-label::before{display:none;}
             </div>
             <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="agregarServicioCatalogo()">Agregar al catálogo</button>
           </div>
-        </div>
+        </div></div></div>
       </div>
     </div>
   </div>
@@ -3349,7 +3356,43 @@ function actualizarBotonMenu(){
 }
 window.addEventListener('resize', actualizarBotonMenu);
 
+// Paneles laterales: las altas y la configuración se abren aparte, sobre la vista de trabajo.
+// Cerrar no borra lo cargado. Solo uno abierto a la vez.
+let panelLateralAbierto = null, panelLateralOrigen = null;
+function abrirPanelLateral(id){
+  const p = document.getElementById(id);
+  if(!p) return;
+  if(panelLateralAbierto === p) return;
+  if(panelLateralAbierto && panelLateralAbierto !== p) cerrarPanelLateral();
+  panelLateralOrigen = document.activeElement;
+  panelLateralAbierto = p;
+  p.classList.add('abierto');
+  document.body.classList.add('pl-activo');
+  const campo = p.querySelector('.card-body input:not([type=hidden]):not([disabled]), .card-body select, .card-body textarea');
+  requestAnimationFrame(() => panelLateralAbierto === p && campo && campo.focus({preventScroll:true}));
+}
+function cerrarPanelLateral(){
+  if(!panelLateralAbierto) return;
+  panelLateralAbierto.classList.remove('abierto');
+  panelLateralAbierto = null;
+  document.body.classList.remove('pl-activo');
+  if(panelLateralOrigen && document.contains(panelLateralOrigen)) panelLateralOrigen.focus({preventScroll:true});
+  panelLateralOrigen = null;
+}
+document.addEventListener('keydown', e => {
+  if(!panelLateralAbierto || document.querySelector('.modal-bg.open')) return;
+  if(e.key === 'Escape'){e.preventDefault();cerrarPanelLateral();return;}
+  if(e.key !== 'Tab') return;
+  const campos = [...panelLateralAbierto.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]')].filter(el=>el.getClientRects().length);
+  const primero=campos[0],ultimo=campos[campos.length-1];
+  if(!primero) return;
+  if(!panelLateralAbierto.contains(document.activeElement) || (e.shiftKey && document.activeElement===primero) || (!e.shiftKey && document.activeElement===ultimo)){
+    e.preventDefault();(e.shiftKey?ultimo:primero).focus();
+  }
+});
+
 function showSection(id,el){
+  cerrarPanelLateral();
   ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo','seguimientos'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
@@ -3706,7 +3749,7 @@ function renderFocoProximo(fut, ord){
         <div class="fp-hora">${t.hora}<span class="fp-fecha">${dia==='Hoy'?'hoy':(dia==='Mañana'?'mañana':largo||dia)}</span></div>
         <div class="fp-datos">
           <div class="fp-paciente">${escaparHtml(t.paciente)} ${tagSeguimientoTurno(t.id)}</div>
-          <div class="fp-meta">${[t.tipo, t.empresa, presencial?'Presencial':'Videoconsulta'].filter(Boolean).map(escaparHtml).join(' · ')}</div>
+          <div class="fp-meta">${[t.tipo, t.empresa, presencial?'Presencial':'Videoconsulta'].filter(Boolean).map(x=>`<span>${escaparHtml(x)}</span>`).join('')}</div>
         </div>
         ${accion}
       </div>`;
@@ -3804,7 +3847,7 @@ function renderAgenda(){
     const prox = estadoProximidad(t);
     // "Pendiente" no suma nada al lado del badge de urgencia (⏰ en 10 min ya implica que está
     // pendiente): se muestra el uno o el otro, nunca los dos juntos.
-    const eb=t.estado==='completado'?'<span class="badge b-green">✓ Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa">● En curso</span>':(prox?'':'<span class="badge b-gray">Pendiente</span>');
+    const eb=t.estado==='completado'?'<span class="badge b-green">Completado</span>':t.estado==='en-curso'?'<span class="badge b-rosa badge-en-curso">En curso</span>':(prox?'':'<span class="badge b-gray">Pendiente</span>');
     const claseFila = prox==='inminente'?'turno-item inminente':prox==='proximo'?'turno-item proximo':'turno-item';
     let badgeUrg='';
     if(prox==='inminente'){
@@ -3813,7 +3856,7 @@ function renderAgenda(){
       badgeUrg = `<span class="badge-urgente badge-inminente"><span class="badge-dot-pulse"></span>${txt}</span>`;
     } else if(prox==='proximo'){
       const mins = minutosHastaTurno(t);
-      badgeUrg = `<span class="badge-urgente badge-proximo">⏰ ${textoTiempoRestante(mins)}</span>`;
+      badgeUrg = `<span class="badge-urgente badge-proximo">${textoTiempoRestante(mins)}</span>`;
     }
     const esPresencial = t.modalidad==='presencial';
     const bi = t.estado==='pendiente'
@@ -3862,7 +3905,7 @@ function renderAgenda(){
     }
     const bmenu = menuItems ? `<div class="actions-menu"><button class="btn btn-ghost actions-menu-btn" onclick="toggleMenuAcciones('${t.id}',event)" title="Más acciones"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;pointer-events:none;"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button><div class="actions-menu-list" id="menu-list-${t.id}">${menuItems}</div></div>` : '';
 
-    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${escaparHtml(t.paciente)}</span>${tagSeguimientoTurno(t.id)}${eb}${esPresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Presencial</span>':(t.pacientePresencial?'<span class="badge b-amber" style="font-size:10px;">🏥 Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta">${empresaTag(t.empresa)}<span>·</span><span>${escaparHtml(t.tipo)}</span><span>·</span><span>${escaparHtml(Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos)}</span></div>${t.diagnosticoPrevio?`<div class="turno-meta" style="margin-top:3px;"><span class="badge b-amber" style="font-size:10px;">Dx: ${escaparHtml(t.diagnosticoPrevio)}${t.diasReposoPrevio>0?' · '+t.diasReposoPrevio+' días reposo':''}${t.medicoTratante?' · '+escaparHtml(t.medicoTratante):''}</span></div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
+    return`<div class="${claseFila}" style="animation:slideInRow 0.35s ease both;animation-delay:${Math.min(idx*0.04,0.4)}s;"><div class="turno-time"><div class="turno-hora">${t.hora}</div><div class="turno-fecha">${fl}</div></div><div class="turno-info"><div class="turno-paciente"><span>${escaparHtml(t.paciente)}</span>${tagSeguimientoTurno(t.id)}${eb}${esPresencial?'<span class="badge b-gray badge-modalidad">Presencial</span>':(t.pacientePresencial?'<span class="badge b-gray badge-modalidad">Paciente presente</span>':'')}${badgeUrg}</div><div class="turno-meta turno-meta-datos">${empresaTag(t.empresa)}<span>${escaparHtml(t.tipo)}</span><span class="turno-medicos">${escaparHtml(Array.isArray(t.medicos)?t.medicos.join(', '):t.medicos)}</span></div>${t.diagnosticoPrevio?`<div class="turno-dx"><span class="turno-dx-lbl">Diagnóstico previo</span> ${escaparHtml(t.diagnosticoPrevio)}${t.diasReposoPrevio>0?`, ${t.diasReposoPrevio} días de reposo`:''}${t.medicoTratante?`, indicado por ${escaparHtml(t.medicoTratante)}`:''}</div>`:''}</div><div class="turno-actions">${botonChatTurno(t.id)}${bi}${bj}${bfin}${brecordar}${bLinks}${bfp}${bp}${binas}${binf}${ba}${bd}${bmenu}</div></div>`;
   }).join('');
   agruparAgendaPorDia(lista);
  }catch(err){
@@ -7997,8 +8040,10 @@ function renderSeguimientos(){
   const filtros = document.getElementById('sg-filtros');
   const cuenta = f => seguimientos.filter(s => f === 'abiertos' ? s.estado !== 'cerrado' : f === 'todos' || s.estado === f).length;
   document.getElementById('sg-cuenta').textContent = cuenta('abiertos');
-  filtros.innerHTML = seguimientos.length ? [['abiertos','Abiertos'],['derivado_junta','Derivados a junta'],['cerrado','Cerrados'],['todos','Todos']]
-    .map(([v,t]) => `<button class="btn ${filtroSeguimientos===v?'btn-primary':'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="filtrarSeguimientos('${v}')">${t} (${cuenta(v)})</button>`).join('') : '';
+  const etapa = (v, t) => `<button type="button" class="au-etapa" aria-pressed="${filtroSeguimientos===v}" onclick="filtrarSeguimientos('${v}')"><span class="au-etapa-t">${t}</span><span class="au-etapa-n">${cuenta(v)}</span></button>`;
+  filtros.innerHTML = seguimientos.length ? etapa('abiertos','Abiertos') + '<span class="au-circuito-pasos">' +
+    [['en_seguimiento','En seguimiento'],['derivado_junta','Derivados a junta'],['cerrado','Cerrados']].map(([v,t]) => etapa(v,t)).join('') +
+    '</span>' + etapa('todos','Todos') : '';
 
   const q = (document.getElementById('sg-buscar')?.value || '').trim().toLowerCase();
   const visibles = seguimientos.filter(s =>
@@ -8013,19 +8058,21 @@ function renderSeguimientos(){
                 : 'Todavía no tenés pacientes en seguimiento. Aparecen acá cuando atendés a alguien que tiene legajo abierto.'}</div>`;
     return;
   }
+  // Cada paciente: quién es y, al costado, el pulso del seguimiento (consultas, última, próxima)
   lista.innerHTML = visibles.map(s => {
-    const lado = [];
-    lado.push(`<strong>${s.consultas}</strong> ${s.consultas===1?'consulta':'consultas'}${s.casos?` · ${s.casos} ${s.casos===1?'caso':'casos'} de ausentismo`:''}`);
-    if(s.ultima_consulta) lado.push(`Última: ${sgFecha(s.ultima_consulta.fecha)}`);
-    if(s.proximo_turno) lado.push(`<strong>Próximo: ${sgFecha(s.proximo_turno.fecha,false)} · ${escaparHtml(s.proximo_turno.hora||'')}</strong>`);
-    return `<div class="sg-fila" role="button" tabindex="0" onclick="verDetalleSeguimiento(${s.id})" onkeydown="if(event.key==='Enter')verDetalleSeguimiento(${s.id})">
-      <div style="min-width:0;">
-        <div class="sg-fila-nombre">${escaparHtml(s.paciente_nombre)} ${badgeEstadoSeguimiento(s.estado)}</div>
-        <div class="turno-meta">${s.empresa?empresaTag(s.empresa):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>Desde ${sgFecha(s.creado_en)}</span></div>
-        ${s.diagnostico?`<div class="sg-fila-dx">${escaparHtml(s.diagnostico)}</div>`:''}
+    const celda = (lbl, val, det, e) => `<li class="au-ficha-item" data-e="${e}"><span class="au-ficha-lbl">${lbl}</span><span class="au-ficha-val">${val}</span>${det?`<span class="au-ficha-det">${det}</span>`:''}</li>`;
+    const consultas = celda('Consultas', `${s.consultas}`, s.casos ? `${s.casos} ${s.casos===1?'caso':'casos'} de ausentismo` : '', 'listo');
+    const ultima = s.ultima_consulta ? celda('Última', sgFecha(s.ultima_consulta.fecha), '', 'listo') : celda('Última', 'Sin consultas', '', 'nulo');
+    const proximo = s.proximo_turno ? celda('Próxima', `${sgFecha(s.proximo_turno.fecha,false)} ${escaparHtml(s.proximo_turno.hora||'')}`, '', 'listo')
+      : celda('Próxima', s.estado === 'cerrado' ? 'Cerrado' : 'Sin turno', '', s.estado === 'cerrado' ? 'nulo' : 'pendiente');
+    return `<article class="sg-fila sg-caso" role="button" tabindex="0" onclick="verDetalleSeguimiento(${s.id})" onkeydown="if(event.key==='Enter')verDetalleSeguimiento(${s.id})">
+      <div class="sg-caso-quien">
+        <div class="sg-fila-nombre"><h3 class="au-caso-nombre">${escaparHtml(s.paciente_nombre)}</h3>${badgeEstadoSeguimiento(s.estado)}</div>
+        <div class="au-caso-datos">${s.empresa?empresaTag(s.empresa):''}${s.paciente_dni?`<span>DNI ${escaparHtml(s.paciente_dni)}</span>`:''}<span>Desde ${sgFecha(s.creado_en)}</span></div>
+        ${s.diagnostico?`<p class="sg-fila-dx">${escaparHtml(s.diagnostico)}</p>`:''}
       </div>
-      <div class="sg-fila-lado">${lado.join('<br>')}</div>
-    </div>`;
+      <ul class="au-ficha sg-ficha-lista" aria-label="Estado del seguimiento">${consultas}${ultima}${proximo}</ul>
+    </article>`;
   }).join('');
 }
 
