@@ -105,7 +105,7 @@ async function enviarEmail(to, subject, html, options={}) {
 
 const {email:validEmail,requireEmails,createCaseNotifications}=require('./lib/case-notifications');
 const caseNotifications=createCaseNotifications({pool,send:enviarEmail,baseUrl:baseUrlApp});
-const doctorReminders=require('./lib/doctor-reminders').createDoctorReminders({pool,send:enviarEmail,baseUrl:baseUrlApp});
+const doctorReminders=require('./lib/doctor-reminders').createDoctorReminders({pool,send:enviarEmail,baseUrl:baseUrlApp,administrationEmail:'adm.medgrup@gmail.com'});
 
 // QR de verificación pública embebido en los PDFs (informes y presupuestos)
 async function generarQRDataUrl(numero) {

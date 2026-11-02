@@ -36,5 +36,16 @@ test('recordatorios médicos: hora argentina, destinatario, deduplicación, canc
     await n.processPending();assert.equal(sent.length,2);
     await db.exec("DELETE FROM turno_medicos WHERE turno_id='t1'");
     await n.processPending();assert.equal(sent.length,2);
+    const admin=createDoctorReminders({pool,administrationEmail:'adm@example.invalid',baseUrl:()=> 'https://example.invalid',send:async(to,subject,html)=>{sent.push({to,subject,html});return true;}});
+    await admin.processPending();
+    assert.equal(sent.length,3,'administración recibe incluso sin médico asignado');
+    assert.equal(sent[2].to,'adm@example.invalid');assert.match(sent[2].html,/Sin médico asignado/);
+    await db.exec(`INSERT INTO medicos(nombre) VALUES('Otra profesional sin correo'),('Tercer profesional sin correo');
+      INSERT INTO turnos SELECT 't2',paciente,fecha,hora,'Junta médica',estado FROM turnos WHERE id='t1';
+      INSERT INTO turno_medicos VALUES('t2','Otra profesional sin correo'),('t2','Tercer profesional sin correo');`);
+    await admin.processPending();await admin.processPending();
+    assert.equal(sent.length,4,'un solo aviso administrativo por turno, aunque tenga varios médicos sin correo');
+    assert.equal(sent[3].to,'adm@example.invalid');assert.match(sent[3].html,/Junta médica/);
+    assert.match(sent[3].html,/Otra profesional sin correo, Tercer profesional sin correo/);
   }finally{await db.close();}
 });
