@@ -854,6 +854,7 @@ td.no-label::before{display:none;}
 }
 </style>
 <link rel="stylesheet" href="/ausentismo-flow.css">
+<link rel="stylesheet" href="/claude-demo.css">
 </head>
 <body>
 
@@ -1404,60 +1405,87 @@ td.no-label::before{display:none;}
   </div>
 
   <!-- ===== CONTROL DE AUSENTISMO ===== -->
+  <!-- La lista es el trabajo del día y ocupa todo el ancho. El alta se abre aparte (panel lateral)
+       desde "Nuevo caso" o desde "Nuevo control" de un caso resuelto. IDs del formulario sin cambios. -->
   <div id="sec-ausentismo" style="display:none;">
-    <div class="two-col">
-      <div>
-        <div class="card">
-          <div class="card-hdr">
-            <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Casos de ausentismo</div>
-            <span class="badge b-blue" id="badge-casos">0</span>
-          </div>
-          <div style="padding:0 1.1rem 0.9rem;display:flex;gap:6px;flex-wrap:wrap;" id="au-filtros"></div>
-          <div id="casos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+    <section class="au-registro" aria-labelledby="au-registro-titulo">
+      <div class="au-registro-cab">
+        <div class="au-registro-titulo-wrap">
+          <h2 class="au-registro-titulo" id="au-registro-titulo">Casos</h2>
+          <span class="au-registro-total"><span id="badge-casos">0</span> trabajadores</span>
+        </div>
+        <div class="au-registro-herr">
+          <label class="au-buscar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span class="sr-only">Buscar caso</span>
+            <input type="search" id="au-buscar-caso" placeholder="Trabajador, DNI o empresa" oninput="buscarCasos(this.value)" autocomplete="off"/>
+          </label>
+          <button type="button" class="btn btn-primary" id="au-btn-nuevo" onclick="abrirAltaCaso()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo caso
+          </button>
         </div>
       </div>
-      <div id="au-panel-alta">
-        <div class="card">
-          <div class="card-hdr"><div class="card-title">Nuevo caso</div></div>
-          <div class="card-body">
-            <div style="font-size:12.5px;color:var(--text3);line-height:1.5;margin-bottom:12px;">Normalmente lo abre la empresa desde su portal. Cargalo acá si te lo avisaron por otra vía.</div>
-            <div class="form-grid">
-              <div class="form-group full"><label class="form-lbl">Tipo de control</label>
-                <select id="au-tipo-control" onchange="onTipoControlChange()">
-                  <option value="ausentismo">Control de ausentismo</option>
-                  <option value="examen_periodico">Seguimiento por examen periódico</option>
-                </select>
-                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">El control domiciliario por ubicación es el mismo en los dos. Cambia cómo se llama la entrevista en la agenda, en el acta y en el informe.</div>
-              </div>
-              <div class="form-group full"><label class="form-lbl">Empresa</label>
-                <select id="au-empresa"><option value="">Cargando empresas...</option></select>
-              </div>
-              <div class="form-group full"><label class="form-lbl">Trabajador (apellido y nombre)</label><input type="text" id="au-trabajador" placeholder="Apellido, Nombre"/></div>
-              <div class="form-group"><label class="form-lbl">DNI</label><input type="text" id="au-dni" placeholder="30111222"/></div>
-              <div class="form-group"><label class="form-lbl">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456"/></div>
-              <div class="form-group full"><label class="form-lbl" id="au-lbl-domicilio">Domicilio donde hace reposo</label>
-                <input type="text" id="au-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
-                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">Al entrar a la entrevista se le pide la ubicación al trabajador y se verifica contra este domicilio. Calle, número, ciudad y provincia.</div>
-              </div>
-              <div class="form-group full"><label class="form-lbl" id="au-lbl-motivo">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
-              <div class="form-group full"><label class="form-lbl">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
-              <div class="form-group full">
-                <label class="form-lbl">Certificado médico (opcional)</label>
-                <input type="file" id="au-certificados" multiple accept="application/pdf,image/jpeg,image/png,image/webp" style="font-size:12.5px;padding:8px;"/>
-                <div style="font-size:11.5px;color:var(--text3);margin-top:5px;line-height:1.5;">PDF o foto, hasta 5 MB cada uno. Podés adjuntar varios y también sumar más después.</div>
-              </div>
+      <!-- El circuito del caso, en orden. Cada etapa filtra la lista. -->
+      <nav class="au-circuito" id="au-filtros" aria-label="Filtrar por etapa del caso"></nav>
+      <div id="casos-lista" class="au-lista" aria-live="polite">
+        <div class="au-esqueleto" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span class="sr-only">Cargando casos…</span>
+      </div>
+    </section>
+
+    <div id="au-panel-alta" class="au-alta">
+      <div class="au-alta-fondo" onclick="cerrarAltaCaso()"></div>
+      <div class="card au-alta-hoja" role="dialog" aria-modal="true" aria-labelledby="au-alta-titulo">
+        <div class="card-hdr au-alta-cab">
+          <div class="card-title" id="au-alta-titulo">Nuevo caso</div>
+          <button type="button" class="au-alta-cerrar" onclick="cerrarAltaCaso()" aria-label="Cerrar sin perder lo cargado">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="au-alta-intro">Normalmente lo abre la empresa desde su portal. Cargalo acá si te lo avisaron por otra vía.</div>
+          <div class="form-grid">
+            <h3 class="au-paso"><span class="au-paso-n">1</span>Trabajador</h3>
+            <div class="form-group full"><label class="form-lbl" for="au-tipo-control">Tipo de control</label>
+              <select id="au-tipo-control" onchange="onTipoControlChange()">
+                <option value="ausentismo">Control de ausentismo</option>
+                <option value="examen_periodico">Seguimiento por examen periódico</option>
+              </select>
+              <div class="au-ayuda">El control por ubicación es el mismo en los dos. Cambia cómo se nombra la entrevista en la agenda, el acta y el informe.</div>
             </div>
-            <div id="au-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
-            <button class="btn btn-primary btn-full" style="margin-top:1rem;padding:12px;" onclick="crearCasoAusentismo()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Abrir caso
-            </button>
+            <div class="form-group full"><label class="form-lbl" for="au-empresa">Empresa</label>
+              <select id="au-empresa"><option value="">Cargando empresas...</option></select>
+            </div>
+            <div class="form-group full"><label class="form-lbl" for="au-trabajador">Trabajador (apellido y nombre)</label><input type="text" id="au-trabajador" placeholder="Apellido, Nombre"/></div>
+            <div class="form-group"><label class="form-lbl" for="au-dni">DNI</label><input type="text" id="au-dni" placeholder="30111222" inputmode="numeric"/></div>
+            <div class="form-group"><label class="form-lbl" for="au-telefono">WhatsApp</label><input type="text" id="au-telefono" placeholder="5492901123456" inputmode="tel"/></div>
+            <div class="form-group full"><label class="form-lbl" for="au-solicitante-email">Correo de la empresa · confirmación de solicitud</label><input type="email" id="au-solicitante-email" required autocomplete="email" placeholder="rrhh@empresa.com"/><div class="au-ayuda">Enviaremos aquí la confirmación al guardar el control.</div></div>
+            <div class="form-group full"><label class="form-lbl" for="au-trabajador-email">Correo del paciente · invitación a la visita</label><input type="email" id="au-trabajador-email" required autocomplete="off" placeholder="paciente@correo.com"/><div class="au-ayuda">Al programar la visita recibirá su enlace personal en este correo.</div></div>
+            <h3 class="au-paso"><span class="au-paso-n">2</span>Domicilio de reposo</h3>
+            <div class="form-group full"><label class="form-lbl" id="au-lbl-domicilio" for="au-domicilio">Domicilio donde hace reposo</label>
+              <input type="text" id="au-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
+              <div class="au-ayuda">Al entrar a la entrevista se le pide la ubicación al trabajador y se verifica contra este domicilio. Calle, número, ciudad y provincia.</div>
+            </div>
+            <!-- ausentismo-flow.js agrega acá la verificación en el mapa y, después, el paso 3 (profesional) -->
+            <h3 class="au-paso"><span class="au-paso-n">4</span>Motivo y documentación</h3>
+            <div class="form-group full"><label class="form-lbl" id="au-lbl-motivo" for="au-motivo">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
+            <div class="form-group full"><label class="form-lbl" for="au-documentacion">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
+            <div class="form-group full">
+              <label class="form-lbl" for="au-certificados">Certificado médico (opcional)</label>
+              <input type="file" id="au-certificados" class="au-archivos" multiple accept="application/pdf,image/jpeg,image/png,image/webp"/>
+              <div class="au-ayuda">PDF o foto, hasta 5 MB cada uno. Podés adjuntar varios y sumar más después.</div>
+            </div>
           </div>
+          <div id="au-error" class="au-error" role="alert" style="display:none;"></div>
+          <button class="btn btn-primary btn-full" onclick="crearCasoAusentismo()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Abrir caso
+          </button>
         </div>
       </div>
     </div>
   </div>
-
   <div id="sec-seguimientos" style="display:none;">
     <div id="sg-vista-lista">
       <div class="card">
@@ -2050,6 +2078,7 @@ td.no-label::before{display:none;}
             <option value="examen_periodico">Seguimiento por examen periódico</option>
           </select>
         </div>
+        <div class="form-group full"><label class="form-lbl" for="prog-trabajador-email">Correo del paciente (obligatorio)</label><input type="email" id="prog-trabajador-email" required placeholder="paciente@correo.com"/><div style="font-size:12px;margin-top:6px;">Se enviará automáticamente la invitación con el enlace personal.</div></div>
       </div>
       <div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px;">Se crea la videollamada y el caso pasa a la agenda como un turno normal. Con este nombre van a salir el acta y el informe.</div>
     </div>
@@ -2067,6 +2096,7 @@ td.no-label::before{display:none;}
     <div id="prog-error" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--rosa-dark);"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-programar-caso').classList.remove('open')">Cerrar</button>
+      <button class="btn btn-ghost" id="btn-prog-ahora" onclick="iniciarControlAhora(casoProgramandoId)">Iniciar ahora</button>
       <button class="btn btn-primary" id="btn-prog-confirmar" onclick="confirmarProgramarCaso()">Programar</button>
     </div>
   </div>
@@ -6120,8 +6150,11 @@ async function refrescarBadgeAusentismo(){
 async function cargarCasosAusentismo(){
   const lista = document.getElementById('casos-lista');
   // El alta de casos es cosa del admin: el médico solo ve los suyos
+  const esAdmin = usuarioActual?.rol === 'admin';
   const panelAlta = document.getElementById('au-panel-alta');
-  if(panelAlta) panelAlta.style.display = usuarioActual?.rol === 'admin' ? '' : 'none';
+  if(panelAlta) panelAlta.style.display = esAdmin ? '' : 'none';
+  const btnNuevo = document.getElementById('au-btn-nuevo');
+  if(btnNuevo) btnNuevo.style.display = esAdmin ? '' : 'none';
   // El equipo médico solo se carga al entrar a "Médicos": sin esto el desplegable
   // para asignar profesional aparece vacío si se entra directo a Ausentismo.
   if(!medicosData?.length) await cargarMedicos();
@@ -6132,14 +6165,51 @@ async function cargarCasosAusentismo(){
     casosAusentismo = data.casos || [];
     renderCasosAusentismo();
   }catch(e){
-    lista.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--rosa-dark);font-size:13px;">No se pudieron cargar los casos. Recargá la página.</div>';
+    lista.innerHTML = `<div class="au-vacio au-vacio--error"><p>No se pudieron cargar los casos.</p><button class="btn btn-ghost" onclick="cargarCasosAusentismo()">Reintentar</button></div>`;
   }
+}
+
+let busquedaCasos = '';
+function buscarCasos(texto){ busquedaCasos = String(texto||''); renderCasosAusentismo(); }
+
+// Íconos de trazo, de la misma familia que el menú lateral
+const AU_ICONO = {
+  clip:'<path d="m21.4 11-8.8 8.8a5.5 5.5 0 0 1-7.8-7.8l8.8-8.8a3.7 3.7 0 0 1 5.2 5.2l-8.8 8.8a1.8 1.8 0 0 1-2.6-2.6l8.1-8.1"/>',
+  doc:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  pin:'<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  acta:'<path d="M9 4h6v3H9z"/><path d="M15 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  play:'<path d="M7 5v14l11-7z"/>',
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+  mas:'<path d="M12 5v14M5 12h14"/>'
+};
+const auIcono = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AU_ICONO[n]}</svg>`;
+
+// Lo que el caso necesita para que la entrevista ocurra: domicilio verificado, profesional y turno.
+// Cada casillero dice si está listo, pendiente o si bloquea el ingreso del trabajador.
+function fichaCaso(c){
+  const fechaTurno = c.turno_fecha ? String(c.turno_fecha).split('T')[0].split('-').reverse().join('/') : '';
+  const dom = !c.domicilio
+    ? { e:'bloquea', v:'Sin domicilio', d:'El trabajador no va a poder ingresar' }
+    : c.domicilio_lat == null
+      ? { e:'bloquea', v:escaparHtml(c.domicilio), d:'Sin ubicar en el mapa: no se puede verificar' }
+      : { e:'listo', v:escaparHtml(c.domicilio), d:`Radio de ${c.radio_metros||300} m` };
+  const prof = c.profesional_nombre
+    ? { e:'listo', v:escaparHtml(c.profesional_nombre) }
+    : { e:'pendiente', v:'Sin asignar' };
+  const cerrado = ['resuelto','cancelado'].includes(c.estado);
+  const ent = c.turno_id && c.no_comparecio ? { e:'bloquea', v:fechaTurno ? `${fechaTurno} ${c.turno_hora||''}` : 'Registrada', d:'No compareció' }
+    : fechaTurno ? { e:'listo', v:`${fechaTurno} ${c.turno_hora||''}`, d: cerrado ? 'Realizada' : (c.estado==='en-curso' ? 'En curso' : 'Programada') }
+    : { e: cerrado ? 'nulo' : 'pendiente', v: cerrado ? 'Sin entrevista' : 'Sin programar' };
+  const celda = (lbl, x) => `<li class="au-ficha-item" data-e="${x.e}">
+      <span class="au-ficha-lbl">${lbl}</span>
+      <span class="au-ficha-val">${x.v}</span>${x.d?`<span class="au-ficha-det">${x.d}</span>`:''}
+    </li>`;
+  return `<ul class="au-ficha" aria-label="Preparación del control">${celda('Domicilio',dom)}${celda('Profesional',prof)}${celda('Entrevista',ent)}</ul>`;
 }
 
 function renderCasosAusentismo(){
   const lista = document.getElementById('casos-lista');
   const filtros = document.getElementById('au-filtros');
-  const abiertos = casosAusentismo.filter(c => !['resuelto','cancelado'].includes(c.estado));
 
   // Una fila por trabajador: el control vigente (el último) y, debajo, los anteriores
   const filas = agruparCasosPorTrabajador(casosAusentismo);
@@ -6147,70 +6217,75 @@ function renderCasosAusentismo(){
   pintarBadgeAusentismo(casosAusentismo);
 
   const cuenta = e => filas.filter(f => f.actual.estado === e).length;
-  filtros.innerHTML = [['','Todos',filas.length], ['nuevo','Nuevos',cuenta('nuevo')],
-    ['asignado','Asignados',cuenta('asignado')], ['programado','Programados',cuenta('programado')],
-    ['resuelto','Resueltos',cuenta('resuelto')]]
-    .map(([v,t,n]) => `<button class="btn ${filtroCasos===v?'btn-primary':'btn-ghost'}" style="padding:6px 12px;font-size:12px;" onclick="filtrarCasos('${v}')">${t} (${n})</button>`).join('');
+  const etapa = (v, t, n) => `<button type="button" class="au-etapa" aria-pressed="${filtroCasos===v}" onclick="filtrarCasos('${v}')"><span class="au-etapa-t">${t}</span><span class="au-etapa-n">${n}</span></button>`;
+  filtros.innerHTML = etapa('', 'Todos', filas.length) + '<span class="au-circuito-pasos">' +
+    [['nuevo','Nuevos'],['asignado','Asignados'],['programado','Programados'],['en-curso','En curso'],['resuelto','Resueltos']]
+      .map(([v,t]) => etapa(v, t, cuenta(v))).join('') + '</span>';
 
-  const visibles = filtroCasos ? filas.filter(f => f.actual.estado === filtroCasos) : filas;
+  const q = busquedaCasos.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const coincide = c => !q || [c.trabajador_nombre, c.trabajador_dni, c.empresa_nombre]
+    .some(x => String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().includes(q));
+  const visibles = filas.filter(f => (!filtroCasos || f.actual.estado === filtroCasos) && coincide(f.actual));
+  const esAdmin = usuarioActual?.rol === 'admin';
   if(!visibles.length){
-    lista.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px;">${casosAusentismo.length?'No hay casos con ese estado.':'Todavía no hay casos de ausentismo.'}</div>`;
+    lista.innerHTML = casosAusentismo.length
+      ? `<div class="au-vacio"><p>${q ? 'Ningún caso coincide con la búsqueda.' : 'No hay casos en esta etapa.'}</p><button class="btn btn-ghost" onclick="document.getElementById('au-buscar-caso').value='';busquedaCasos='';filtrarCasos('')">Ver todos</button></div>`
+      : `<div class="au-vacio"><p>Todavía no hay casos de ausentismo.</p>${esAdmin?'<button class="btn btn-primary" onclick="abrirAltaCaso()">Cargar el primero</button>':''}</div>`;
     return;
   }
 
-  const esAdmin = usuarioActual?.rol === 'admin';
+  const b = (clase, onclick, texto, icono) => `<button class="btn ${clase}" onclick="${onclick}">${icono?auIcono(icono):''}${texto}</button>`;
+  const a = (href, texto, icono) => `<a href="${href}" target="_blank" rel="noopener" class="btn au-acc-doc">${icono?auIcono(icono):''}${texto}</a>`;
+
   lista.innerHTML = visibles.map(({ actual: c, anteriores }) => {
     const est = ESTADO_CASO[c.estado] || { texto:c.estado, clase:'b-gray' };
     const creado = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
-    const turno = c.turno_fecha
-      ? `<span>·</span><span>Entrevista: ${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')} ${c.turno_hora||''}</span>`
-      : '';
-
+    const abierto = !['resuelto','cancelado'].includes(c.estado);
     const nCert = Number(c.certificados) || 0;
     const nInf = Number(c.informes_adjuntos) || 0;
-    const acciones = [];
-    if(esAdmin && ['resuelto','cancelado'].includes(c.estado))
-      acciones.push(`<button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="nuevoControlCaso(${c.id})">+ Nuevo control</button>`);
-    acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirCertificadosCaso(${c.id})">📎 Certificados${nCert?' ('+nCert+')':''}</button>`);
-    acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirInformesCaso(${c.id})">📄 Informes${nInf?' ('+nInf+')':''}</button>`);
-    if(esAdmin)
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirDomicilioCaso(${c.id})">📍 Domicilio</button>`);
-    if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="abrirAsignarCaso(${c.id})">${c.profesional_nombre?'Reasignar':'Asignar profesional'}</button>`);
-    if(c.profesional_id && ['asignado','programado'].includes(c.estado) && !c.turno_id)
-      acciones.push(`<button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="iniciarControlAhora(${c.id})">⚡ Iniciar control ahora</button>`);
-    if(c.profesional_id && ['asignado','programado'].includes(c.estado))
-      acciones.push(`<button class="btn btn-rosa" style="padding:6px 12px;font-size:12px;" onclick="abrirProgramarCaso(${c.id})">${c.turno_id?'Reprogramar':'Programar entrevista'}</button>`);
-    // El acta se decide sola según el registro: si el trabajador entró sale la de asistencia,
-    // y si no compareció sale la de inasistencia. Por eso alcanza con un solo link.
-    if(c.turno_id)
-      acciones.push(`<a href="/api/turnos/${c.turno_id}/acta" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Ver acta</a>`);
-    if(c.turno_id && c.no_comparecio)
-      acciones.push(`<a href="/api/turnos/${c.turno_id}/informe-inasistencia" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;">Informe de inasistencia</a>`);
-    if(c.turno_id && ['programado','en-curso'].includes(c.estado))
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="registrarInasistencia(${c.id})">No compareció</button>`);
-    if(c.estado === 'programado')
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="cambiarEstadoCaso(${c.id},'en-curso')">Marcar en curso</button>`);
-    if(c.estado === 'en-curso')
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:#1e6640;" onclick="cambiarEstadoCaso(${c.id},'resuelto')">Marcar resuelto</button>`);
-    if(esAdmin && !['resuelto','cancelado'].includes(c.estado))
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="cancelarCaso(${c.id})">Cancelar</button>`);
-    if(esAdmin)
-      acciones.push(`<button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--rosa-dark);" onclick="eliminarCaso(${c.id})">Eliminar</button>`);
 
-    return `<div class="turno-item" style="align-items:flex-start;">
-      <div class="turno-info" style="flex:1;">
-        <div class="turno-paciente"><span>${escaparHtml(c.trabajador_nombre)}</span>${anteriores.length?`<span class="badge b-blue">${anteriores.length+1}º control</span>`:''}<span class="badge ${est.clase}">${est.texto}</span>${tagTipoControl(c)}</div>
-        <div class="turno-meta">${empresaTag(c.empresa_nombre)}<span>·</span><span>${c.trabajador_dni?'DNI '+escaparHtml(c.trabajador_dni):'Sin DNI'}</span><span>·</span><span>Abierto el ${creado}</span>${turno}</div>
-        <div class="turno-meta" style="margin-top:3px;">${c.profesional_nombre
-          ? `<span style="color:var(--azul);font-weight:600;">${c.profesional_nombre}</span>`
-          : '<span style="color:#c8a800;font-weight:600;">Sin profesional asignado</span>'}</div>
-        ${domicilioTag(c)}
-        ${c.motivo?`<div style="font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.5;">${escaparHtml(c.motivo)}</div>`:''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${acciones.join('')}</div>
-        ${htmlControlesAnteriores(anteriores)}
-      </div>
-    </div>`;
+    // Mismas acciones y condiciones que antes, agrupadas por lo que hacen
+    const avanzar = [], estado = [], docs = [], peligro = [];
+    docs.push(b('au-acc-doc',`abrirCorreosCaso(${c.id})`,'Correos'));
+    if(esAdmin && !abierto) avanzar.push(b('btn-primary', `nuevoControlCaso(${c.id})`, 'Nuevo control', 'mas'));
+    if(c.profesional_id && ['asignado','programado'].includes(c.estado))
+      avanzar.push(c.turno_id
+        ? b('btn-ghost au-acc-sec', `abrirProgramarCaso(${c.id})`, 'Reprogramar', 'cal')
+        : b('btn-rosa', `abrirProgramarCaso(${c.id})`, 'Programar entrevista', 'cal'));
+    if(c.profesional_id && ['asignado','programado'].includes(c.estado) && !c.turno_id)
+      avanzar.push(b('btn-ghost au-acc-sec', `iniciarControlAhora(${c.id})`, 'Iniciar control ahora', 'play'));
+    if(esAdmin && abierto)
+      (c.profesional_nombre ? estado : avanzar).push(b(c.profesional_nombre ? 'btn-ghost au-acc-est' : 'btn-primary', `abrirAsignarCaso(${c.id})`, c.profesional_nombre ? 'Reasignar' : 'Asignar profesional'));
+    if(c.estado === 'programado') estado.push(b('btn-ghost au-acc-est', `cambiarEstadoCaso(${c.id},'en-curso')`, 'Marcar en curso'));
+    if(c.estado === 'en-curso') estado.push(b('btn-ghost au-acc-est au-acc-ok', `cambiarEstadoCaso(${c.id},'resuelto')`, 'Marcar resuelto'));
+    if(c.turno_id && ['programado','en-curso'].includes(c.estado)) estado.push(b('btn-ghost au-acc-est au-acc-alerta', `registrarInasistencia(${c.id})`, 'No compareció'));
+    docs.push(b('au-acc-doc', `abrirCertificadosCaso(${c.id})`, `Certificados${nCert?` <span class="au-n">${nCert}</span>`:''}`, 'clip'));
+    docs.push(b('au-acc-doc', `abrirInformesCaso(${c.id})`, `Informes${nInf?` <span class="au-n">${nInf}</span>`:''}`, 'doc'));
+    if(esAdmin) docs.push(b('au-acc-doc', `abrirDomicilioCaso(${c.id})`, 'Domicilio', 'pin'));
+    // El acta se decide sola según el registro: asistencia o inasistencia. Alcanza con un link.
+    if(c.turno_id) docs.push(a(`/api/turnos/${c.turno_id}/acta`, 'Acta', 'acta'));
+    if(c.turno_id && c.no_comparecio) docs.push(a(`/api/turnos/${c.turno_id}/informe-inasistencia`, 'Informe de inasistencia', 'doc'));
+    if(esAdmin && abierto) peligro.push(b('au-acc-peligro', `cancelarCaso(${c.id})`, 'Cancelar caso'));
+    if(esAdmin) peligro.push(b('au-acc-peligro', `eliminarCaso(${c.id})`, 'Eliminar'));
+
+    const bloqueado = abierto && (!c.domicilio || c.domicilio_lat == null);
+    return `<article class="au-caso${bloqueado?' au-caso--bloqueado':''}" data-estado="${escaparHtml(c.estado)}">
+      <header class="au-caso-cab">
+        <div class="au-caso-quien">
+          <h3 class="au-caso-nombre">${escaparHtml(c.trabajador_nombre)}</h3>
+          <div class="au-caso-datos">${empresaTag(c.empresa_nombre)}<span>${c.trabajador_dni?'DNI '+escaparHtml(c.trabajador_dni):'Sin DNI'}</span><span>Abierto el ${creado}</span></div>
+        </div>
+        <div class="au-caso-estado">${anteriores.length?`<span class="badge b-gray">${anteriores.length+1}º control</span>`:''}${tagTipoControl(c)}<span class="badge ${est.clase}">${est.texto}</span></div>
+      </header>
+      ${fichaCaso(c)}
+      ${c.motivo?`<p class="au-caso-motivo">${escaparHtml(c.motivo)}</p>`:''}
+      <footer class="au-caso-acc">
+        ${avanzar.length||estado.length?`<div class="au-acc-grupo au-acc-avanzar">${avanzar.join('')}${estado.join('')}</div>`:''}
+        <div class="au-acc-grupo au-acc-docs">${docs.join('')}</div>
+        ${peligro.length?`<div class="au-acc-grupo au-acc-fin">${peligro.join('')}</div>`:''}
+      </footer>
+      ${htmlControlesAnteriores(anteriores)}
+    </article>`;
   }).join('');
 }
 
@@ -6829,6 +6904,11 @@ async function registrarInasistencia(id){
 async function iniciarControlAhora(id){
   const c = casosAusentismo.find(x => x.id === id);
   if(!c) return;
+  const current=casoProgramandoId===id&&document.getElementById('modal-programar-caso').classList.contains('open');
+  const trabajador_email=current?document.getElementById('prog-trabajador-email').value.trim():c.trabajador_email||'';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trabajador_email)){
+    abrirProgramarCaso(id);const err=document.getElementById('prog-error');err.textContent='Cargá el correo del paciente y elegí Iniciar ahora para enviarle la invitación.';err.style.display='block';document.getElementById('prog-trabajador-email').focus();return;
+  }
 
   const aviso = c.domicilio_lat == null
     ? { texto: `${c.trabajador_nombre} no tiene el domicilio ubicado en el mapa, así que no va a poder entrar a la videollamada. Cargalo desde el botón Domicilio antes de iniciar.`,
@@ -6840,7 +6920,7 @@ async function iniciarControlAhora(id){
   try{
     const r = await fetch(`/api/ausentismo/casos/${id}/programar`, {
       method:'POST', headers:apiHeaders(),
-      body: JSON.stringify({ ahora: true, tipo_control: c.tipo_control || 'ausentismo' })
+      body: JSON.stringify({ ahora: true, tipo_control: c.tipo_control || 'ausentismo',trabajador_email })
     });
     const data = await r.json();
     if(!data.ok){ mostrarError(data.error || 'No se pudo iniciar el control'); return; }
@@ -6851,6 +6931,7 @@ async function iniciarControlAhora(id){
     document.getElementById('prog-form').style.display = 'none';
     document.getElementById('prog-error').style.display = 'none';
     document.getElementById('btn-prog-confirmar').style.display = 'none';
+    document.getElementById('btn-prog-ahora').style.display = 'none';
     document.getElementById('prog-resultado-txt').textContent =
       `Control iniciado${data.hora?' a las '+data.hora+' hs':''}. Mandale el link ahora: primero se le pide la ubicación y recién ahí entra a la videollamada. Después entrá a la llamada desde la agenda.`;
 
@@ -6876,7 +6957,7 @@ async function iniciarControlAhora(id){
     document.getElementById('prog-resultado').style.display = 'block';
     document.getElementById('modal-programar-caso').classList.add('open');
 
-    mostrarToast('✓ Control iniciado','#1e6640');
+    mostrarToast(data.correo_invitacion==='enviado'?'Control iniciado · invitación enviada por correo':'Control iniciado · correo pendiente, revisá Correos','#1e6640');
     addLog('rosa','Control de ausentismo iniciado', `${c.trabajador_nombre}${data.hora?' · '+data.hora+' hs':''}`);
     await cargarCasosAusentismo();
     cargarTurnos();
@@ -6892,10 +6973,12 @@ function abrirProgramarCaso(id){
     ? String(c.turno_fecha).split('T')[0]
     : new Date().toISOString().split('T')[0];
   document.getElementById('prog-tipo-control').value = c.tipo_control || 'ausentismo';
+  document.getElementById('prog-trabajador-email').value=c.trabajador_email||'';
   document.getElementById('prog-resultado').style.display = 'none';
   document.getElementById('prog-form').style.display = '';
   document.querySelector('#modal-programar-caso .modal-title').textContent = 'Programar la entrevista';
   document.getElementById('btn-prog-confirmar').style.display = 'inline-flex';
+  document.getElementById('btn-prog-ahora').style.display = 'inline-flex';
   // El modal lo comparte con el control inmediato: hay que devolverlo a su estado normal
   document.getElementById('prog-whatsapp').style.display = '';
   document.getElementById('prog-link-wrap').style.display = 'none';
@@ -6918,12 +7001,15 @@ async function confirmarProgramarCaso(){
   const fecha = document.getElementById('prog-fecha').value;
   const hora = document.getElementById('prog-hora').value;
   const tipo_control = document.getElementById('prog-tipo-control').value;
+  const emailField=document.getElementById('prog-trabajador-email');
+  if(!emailField.value.trim()||!emailField.checkValidity()){err.textContent='Cargá un correo válido del paciente para enviarle la invitación';err.style.display='block';emailField.focus();return;}
+  const trabajador_email=emailField.value.trim();
   if(!fecha){ err.textContent='Elegí la fecha'; err.style.display='block'; return; }
   const btn = document.getElementById('btn-prog-confirmar');
   btn.disabled = true;
   try{
     const r = await fetch(`/api/ausentismo/casos/${casoProgramandoId}/programar`, {
-      method:'POST', headers:apiHeaders(), body: JSON.stringify({ fecha, hora, tipo_control })
+      method:'POST', headers:apiHeaders(), body: JSON.stringify({ fecha, hora, tipo_control, trabajador_email })
     });
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo programar'; err.style.display='block'; return; }
@@ -6948,7 +7034,7 @@ async function confirmarProgramarCaso(){
     } else {
       document.getElementById('modal-programar-caso').classList.remove('open');
     }
-    mostrarToast(data.reprogramado ? '✓ Entrevista reprogramada' : '✓ Entrevista programada','#1e6640');
+    mostrarToast(data.correo_invitacion==='enviado'?'Visita programada · invitación enviada por correo':'Visita programada · correo pendiente, revisá Correos','#1e6640');
     addLog('blue','Entrevista programada', `${TIPO_CONTROL[tipo_control]?.texto||''} · ${fecha} ${hora}`);
     await cargarCasosAusentismo();
     cargarTurnos();

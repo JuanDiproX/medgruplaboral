@@ -79,18 +79,32 @@ function limpiarMarkdown(s) {
 }
 
 // Envío de emails transaccionales vía Resend (REST simple, sin SDK — mismo patrón que Daily/Anthropic)
-async function enviarEmail(to, subject, html) {
-  if (!RESEND_API_KEY) { console.error('⚠ RESEND_API_KEY no configurada: no se pudo enviar email a', to); return false; }
+async function enviarEmail(to, subject, html, options={}) {
+  if (!RESEND_API_KEY && process.env.SMTP_PASSWORD) {
+    try {
+      const port=Number(process.env.SMTP_PORT)||587;
+      const transport=require('nodemailer').createTransport({host:process.env.SMTP_HOST||'smtp.dreamhost.com',port,
+        secure:port===465,requireTLS:port!==465,auth:{user:process.env.SMTP_USER||'administracion@medgrup.com.ar',pass:process.env.SMTP_PASSWORD},
+        connectionTimeout:10000,socketTimeout:20000});
+      const result=await transport.sendMail({from:process.env.SMTP_FROM||'MEDGRUP <administracion@medgrup.com.ar>',to,subject,html});
+      return result.accepted?.length>0;
+    }catch(e){console.error('smtp_send_failed',e.code||'SMTP_ERROR');return false;}
+  }
+  if (!RESEND_API_KEY) { console.error('email_provider_missing'); return false; }
   try {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}`, ...(options.idempotencyKey?{'Idempotency-Key':options.idempotencyKey}:{}) },
+      timeout:20000,
       body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html })
     });
-    if (!resp.ok) { console.error('Error enviando email:', await resp.text()); return false; }
+    if (!resp.ok) { console.error('email_provider_failed',resp.status); return false; }
     return true;
   } catch (err) { console.error('Error enviando email:', err.message); return false; }
 }
+
+const {email:validEmail,requireEmails,createCaseNotifications}=require('./lib/case-notifications');
+const caseNotifications=createCaseNotifications({pool,send:enviarEmail,baseUrl:baseUrlApp});
 
 // QR de verificación pública embebido en los PDFs (informes y presupuestos)
 async function generarQRDataUrl(numero) {
@@ -3140,7 +3154,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC
 // cambia la huella y no molesta a nadie.
 const VERSION_PORTAL = (() => {
   const h = crypto.createHash('sha256');
-  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css']) {
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html']) {
     try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
   }
   return h.digest('hex').slice(0, 16);
@@ -3246,6 +3260,24 @@ async function turnoVisiblePara(turnoId, req) {
   return puedeGestionarInformesDelTurno(turnoId, req.usuario);
 }
 
+
+app.get('/api/ausentismo/casos/:id/correos',authMedgrupOEmpresa,async(req,res)=>{
+  try{if(!await casoVisiblePara(req.params.id,req))return res.status(403).json({error:'Sin acceso a este caso'});
+    const rows=(await pool.query('SELECT id,tipo,destinatario,estado,intentos,enviado_en,creado_en FROM caso_correos WHERE caso_id=$1 ORDER BY creado_en DESC',[req.params.id])).rows;
+    res.json({ok:true,correos:rows});
+  }catch{res.status(500).json({error:'No se pudieron consultar los correos'});}
+});
+app.post('/api/ausentismo/casos/:id/correos/:correoId/reintentar',authMiddleware,async(req,res)=>{
+  try{const caso=(await pool.query('SELECT * FROM casos_ausentismo WHERE id=$1',[req.params.id])).rows[0];
+    if(!caso||!await puedeVerCaso(caso,req))return res.status(403).json({error:'Sin acceso a este caso'});
+    const row=(await pool.query('SELECT estado FROM caso_correos WHERE id=$1 AND caso_id=$2',[req.params.correoId,req.params.id])).rows[0];
+    if(!row)return res.status(404).json({error:'Correo no encontrado'});
+    if(['enviado','reemplazado'].includes(row.estado))return res.status(409).json({error:'Ese correo ya fue enviado o reemplazado'});
+    await pool.query("UPDATE caso_correos SET estado='pendiente',intentos=0,proximo_en=NOW() WHERE id=$1",[req.params.correoId]);
+    res.json({ok:true,estado:await caseNotifications.deliver(req.params.correoId)});
+  }catch{res.status(500).json({error:'No se pudo reintentar'});}
+});
+
 // --- Listado: el admin ve todo, el médico solo lo que tiene asignado ---
 app.get('/api/ausentismo/casos', authMiddleware, async (req, res) => {
   try {
@@ -3274,10 +3306,11 @@ app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
 });
 
 require('./lib/ausentismo-workflow').registerWorkflow({app,pool,adminMiddleware,geocodificar,
-  vincular:vincularASeguimientosAbiertos,TIPOS_CONTROL});
+  vincular:vincularASeguimientosAbiertos,TIPOS_CONTROL,notifications:caseNotifications});
 
 // --- Edición de datos del caso (no cambia estado ni profesional: eso tiene su propia ruta) ---
 app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
+  if(req.body.trabajador_email!==undefined&&!validEmail(req.body.trabajador_email)||req.body.solicitante_email!==undefined&&!validEmail(req.body.solicitante_email))return res.status(400).json({error:'Correo inválido'});
   if (req.body.domicilio_lat != null || req.body.domicilio_lng != null) {
     if(!validCoordinates(req.body.domicilio_lat,req.body.domicilio_lng,0)) return res.status(400).json({error:'Coordenadas inválidas'});
   }
@@ -3325,6 +3358,10 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
       [empresa_nombre || null, empresaId ?? null, trabajador_nombre || null, trabajador_dni ?? null,
        trabajador_telefono ?? null, motivo ?? null, documentacion ?? null, notas_admin ?? null,
        domicilio ?? null, tocaCoords, lat, lng, radio_metros || null, tipo_control || null, req.params.id, req.body.excepcion_geo ?? null]);
+    if(req.body.trabajador_email!==undefined || req.body.solicitante_email!==undefined){
+      if(req.body.trabajador_email!==undefined&&!validEmail(req.body.trabajador_email)||req.body.solicitante_email!==undefined&&!validEmail(req.body.solicitante_email))return res.status(400).json({error:'Correo inválido'});
+      await pool.query('UPDATE casos_ausentismo SET trabajador_email=COALESCE($1,trabajador_email),solicitante_email=COALESCE($2,solicitante_email) WHERE id=$3',[req.body.trabajador_email??null,req.body.solicitante_email??null,req.params.id]);
+    }
     // Si la entrevista ya estaba creada, el tipo tiene que seguir al caso: el acta y el
     // informe se nombran desde el turno, no desde acá.
     if (tipo_control && chk.rows[0].turno_id) {
@@ -3837,6 +3874,20 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     if (!(await puedeVerCaso(caso, req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
     if (['resuelto', 'cancelado'].includes(caso.estado)) return res.status(400).json({ error: 'El caso ya está cerrado' });
     if (!caso.profesional_id) return res.status(400).json({ error: 'El caso todavía no tiene profesional asignado' });
+    const destinatario=validEmail(req.body.trabajador_email || caso.trabajador_email);
+    if(!destinatario)return res.status(400).json({error:'Cargá un correo válido del paciente para enviar la invitación'});
+    caso.trabajador_email=destinatario;
+    await pool.query('UPDATE casos_ausentismo SET trabajador_email=$1 WHERE id=$2',[destinatario,caso.id]);
+    async function invitationResult(turnoId){
+      const link=new URL(await turnoChat.invitationLink(turnoId,linkIngreso),baseUrlApp()).href;
+      const fingerprint=crypto.createHash('sha256').update(JSON.stringify([fecha,hora,destinatario])).digest('hex');
+      const revision=(await pool.query(`UPDATE casos_ausentismo SET visita_mail_version=CASE WHEN visita_mail_fingerprint IS DISTINCT FROM $1 THEN visita_mail_version+1 ELSE visita_mail_version END,
+        visita_mail_fingerprint=$1 WHERE id=$2 RETURNING visita_mail_version`,[fingerprint,caso.id])).rows[0];
+      caso.visita_mail_version=revision.visita_mail_version;
+      const job=await caseNotifications.visit(pool,caso,{fecha,hora,link,ahora});
+      return {link,correo:await caseNotifications.deliver(job)};
+    }
+
 
     // El trabajador entra por una página nuestra, no directo a la videollamada: ahí se le
     // pide la ubicación. Si tuviera el link de Daily se saltearía el control domiciliario.
@@ -3845,7 +3896,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
       token = crypto.randomBytes(24).toString('hex');
       await pool.query('UPDATE casos_ausentismo SET token_ingreso=$1 WHERE id=$2', [token, req.params.id]);
     }
-    const linkIngreso = `${req.protocol}://${req.get('host')}/ingreso/${token}`;
+    const linkIngreso = `${baseUrlApp()}/ingreso/${token}`;
 
     // El tipo se puede corregir al programar: es el último momento en que se elige cómo se va
     // a llamar esta entrevista en el acta y en el informe.
@@ -3867,7 +3918,8 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
       await turnoChat.resetVerification(caso.turno_id);
       await pool.query('UPDATE turnos SET fecha=$1, hora=$2, tipo=$3 WHERE id=$4',
         [fecha, hora, etiquetaControl(tipoCaso), caso.turno_id]);
-      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: new URL(await turnoChat.invitationLink(caso.turno_id,linkIngreso), linkIngreso).href, reprogramado: true, hora, fecha });
+      const notification=await invitationResult(caso.turno_id);
+      return res.json({ ok: true, turno_id: caso.turno_id, link_paciente: notification.link, correo_invitacion:notification.correo, reprogramado: true, hora, fecha });
     }
 
     const creado = await crearTurnoConVideollamada({
@@ -3883,7 +3935,8 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
       [creado.turnoId, req.params.id]);
     // Se devuelve el link de ingreso, no el de Daily: el de Daily se entrega recién
     // cuando el trabajador confirma que está en su domicilio.
-    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: new URL(await turnoChat.invitationLink(creado.turnoId,linkIngreso), linkIngreso).href, estado: 'programado', hora, fecha });
+    const notification=await invitationResult(creado.turnoId);
+    res.json({ ok: true, turno_id: creado.turnoId, link_paciente: notification.link, correo_invitacion:notification.correo, estado: 'programado', hora, fecha });
   } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
 });
 
@@ -4666,25 +4719,27 @@ app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
 });
 
 // --- Portal de la empresa: abre casos y sigue los suyos ---
-app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res) => {
-  const { trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion, domicilio } = req.body;
-  if (!trabajador_nombre || !trabajador_nombre.trim()) return res.status(400).json({ error: 'Falta el nombre del trabajador' });
-  if (!motivo || !motivo.trim()) return res.status(400).json({ error: 'Contanos el motivo de la ausencia' });
-  try {
-    // El reposo es domiciliario, así que la dirección que carga la empresa se resuelve a
-    // coordenadas ya en el alta. Si no se puede ubicar, el caso se abre igual y avisamos.
-    const g = domicilio ? await geocodificar(domicilio) : { punto: null };
-    const r = await pool.query(
-      `INSERT INTO casos_ausentismo (empresa_id, empresa_nombre, trabajador_nombre, trabajador_dni, trabajador_telefono, motivo, documentacion,
-                                     domicilio, domicilio_lat, domicilio_lng)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, creado_en`,
-      [req.empresa.id, req.empresa.nombre, trabajador_nombre.trim(), trabajador_dni || '',
-       trabajador_telefono || '', motivo.trim(), documentacion || '',
-       (domicilio || '').trim(), g.punto?.lat ?? null, g.punto?.lng ?? null]);
-    await vincularASeguimientosAbiertos({ casoId: r.rows[0].id, nombre: trabajador_nombre, dni: trabajador_dni });
-    res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en,
-      domicilio_ubicado: !!g.punto, domicilio_normalizado: g.punto?.normalizada || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+app.post('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async(req,res)=>{
+  const {trabajador_nombre,trabajador_dni,trabajador_telefono,motivo,documentacion,domicilio,trabajador_email}=req.body;
+  const solicitante_email=req.body.solicitante_email || req.empresa.email;
+  if(!trabajador_nombre?.trim()||!motivo?.trim())return res.status(400).json({error:'Completá trabajador y motivo de la ausencia'});
+  try{requireEmails({solicitante_email,trabajador_email});}catch(e){return res.status(400).json({error:e.message});}
+  const db=await pool.connect();let id,mailId,created,g;
+  try{
+    g=domicilio?await geocodificar(domicilio):{punto:null};
+    await db.query('BEGIN');
+    const result=await db.query(`INSERT INTO casos_ausentismo
+      (empresa_id,empresa_nombre,trabajador_nombre,trabajador_dni,trabajador_telefono,motivo,documentacion,domicilio,domicilio_lat,domicilio_lng,solicitante_email,trabajador_email)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,creado_en`,
+      [req.empresa.id,req.empresa.nombre,trabajador_nombre.trim(),trabajador_dni||'',trabajador_telefono||'',motivo.trim(),documentacion||'',
+      (domicilio||'').trim(),g.punto?.lat??null,g.punto?.lng??null,solicitante_email.trim(),trabajador_email.trim()]);
+    id=result.rows[0].id;created=result.rows[0].creado_en;
+    mailId=await caseNotifications.request(db,{id,empresa_nombre:req.empresa.nombre,trabajador_nombre,solicitante_email,trabajador_email});
+    await db.query('COMMIT');
+  }catch(e){await db.query('ROLLBACK');return res.status(500).json({error:'No se pudo registrar la solicitud'});}finally{db.release();}
+  await vincularASeguimientosAbiertos({casoId:id,nombre:trabajador_nombre,dni:trabajador_dni});
+  const correo=await caseNotifications.deliver(mailId);
+  res.json({ok:true,id,creado_en:created,correo_solicitud:correo,domicilio_ubicado:!!g.punto,domicilio_normalizado:g.punto?.normalizada||null});
 });
 
 app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res) => {
@@ -4692,7 +4747,7 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
     // La empresa ve el estado y el profesional, pero no las notas internas de MEDGRUP
     const r = await pool.query(`
       SELECT c.id, c.trabajador_nombre, c.trabajador_dni, c.trabajador_telefono, c.motivo,
-             c.documentacion, c.estado, c.creado_en, c.resuelto_en, c.turno_id, c.tipo_control,
+             c.documentacion,c.solicitante_email,c.trabajador_email, c.estado, c.creado_en, c.resuelto_en, c.turno_id, c.tipo_control,
              c.domicilio, (c.domicilio_lat IS NOT NULL) AS domicilio_ubicado,
              m.nombre AS profesional_nombre, m.especialidad AS profesional_especialidad,
              t.fecha AS turno_fecha, t.hora AS turno_hora,
@@ -4729,9 +4784,12 @@ app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'e
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 initDB().then(async () => {
+  await caseNotifications.init();
   await sessionStore.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
   app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));
   registrarWebhookDaily();
+  const emailTimer=setInterval(()=>caseNotifications.processPending().catch(()=>console.error('email_queue_retry_failed')),60000);
+  emailTimer.unref();
 });

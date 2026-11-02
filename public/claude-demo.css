@@ -1,0 +1,230 @@
+/* MEDGRUP · Control de ausentismo (rediseño para la demo del 4/11)
+   ─────────────────────────────────────────────────────────────────────────────
+   Se carga después de /ausentismo-flow.css. Usa solo los tokens de :root de index.html:
+   tinta marino, papel cálido, magenta = bloquea o urge, celeste = selección,
+   ámbar = pendiente, verde = listo. Radios discretos (4–6 px).
+
+   Estructura (index.html → #sec-ausentismo):
+     .au-registro   la lista a todo el ancho, como un libro de registro
+       .au-circuito el circuito del caso en orden; cada etapa filtra
+       .au-caso     un trabajador: quién, ficha de preparación, motivo, acciones
+     .au-alta       el alta / nuevo control, en un panel lateral por pasos
+   El elemento con carácter es la ficha (.au-ficha): dice qué le falta a cada caso. */
+
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* ── Registro ─────────────────────────────────────────────────────────────── */
+.au-registro{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;}
+.au-registro-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;padding:1.25rem 1.5rem 1rem;}
+.au-registro-titulo-wrap{display:flex;align-items:baseline;gap:14px;}
+.au-registro-titulo{font-family:var(--display);font-weight:400;font-size:1.9rem;line-height:1;letter-spacing:-.01em;color:var(--ink);}
+.au-registro-total{font-size:13.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.au-registro-herr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.au-buscar{position:relative;display:block;}
+.au-buscar svg{position:absolute;left:11px;top:50%;width:16px;height:16px;margin-top:-8px;fill:none;stroke:var(--ink-3);stroke-width:1.8;stroke-linecap:round;pointer-events:none;}
+.au-buscar input{width:280px;max-width:100%;min-height:40px;padding-left:34px;}
+
+/* Circuito: Todos, y las etapas en el orden en que avanza un caso */
+.au-circuito{display:flex;align-items:stretch;gap:10px;padding:0 1.5rem 1.1rem;border-bottom:1px solid var(--rule);}
+.au-circuito-pasos{display:flex;flex:1;min-width:0;background:var(--paper-2);border-radius:var(--r);padding:3px;gap:0;}
+.au-etapa{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:40px;padding:0 14px;border:0;border-radius:var(--r-sm);background:transparent;
+  font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer;white-space:nowrap;position:relative;
+  transition:background .15s,color .15s;
+}
+.au-circuito-pasos .au-etapa{flex:1 1 0;}
+.au-circuito > .au-etapa{border:1px solid var(--rule-2);background:#fff;padding:0 16px;}
+.au-etapa-n{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);font-size:15px;}
+.au-etapa:hover{color:var(--ink);background:rgba(255,255,255,.7);}
+.au-etapa[aria-pressed="true"]{background:var(--celeste);color:var(--ink);font-weight:600;}
+.au-circuito > .au-etapa[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff;}
+.au-circuito > .au-etapa[aria-pressed="true"] .au-etapa-n{color:#fff;}
+/* Separador de avance entre etapas */
+.au-circuito-pasos .au-etapa + .au-etapa::before{
+  content:"";position:absolute;left:-4px;top:50%;width:7px;height:7px;margin-top:-4px;
+  border-top:1.5px solid var(--rule-2);border-right:1.5px solid var(--rule-2);transform:rotate(45deg);
+}
+.au-circuito-pasos .au-etapa[aria-pressed="true"]::before,
+.au-circuito-pasos .au-etapa[aria-pressed="true"] + .au-etapa::before{opacity:0;}
+/* Etapas no elegidas: el número acompaña, no compite */
+.au-circuito-pasos .au-etapa:not([aria-pressed="true"]) .au-etapa-n{font-weight:500;}
+
+/* ── Caso ─────────────────────────────────────────────────────────────────── */
+.au-caso{padding:1.35rem 1.5rem 1.2rem;border-top:1px solid var(--rule);position:relative;}
+.au-caso:first-child{border-top:0;}
+/* Bloqueado (sin domicilio verificable): margen magenta, el único acento de urgencia de la fila */
+.au-caso--bloqueado{box-shadow:inset 3px 0 0 var(--magenta);}
+.au-caso-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 20px;flex-wrap:wrap;}
+.au-caso-quien{min-width:0;}
+.au-caso-nombre{font-family:var(--display);font-weight:400;font-size:1.5rem;line-height:1.15;letter-spacing:-.005em;color:var(--ink);overflow-wrap:anywhere;}
+.au-caso-datos{display:flex;align-items:center;flex-wrap:wrap;gap:4px 16px;margin-top:6px;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums;}
+.au-caso-estado{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-top:4px;}
+.au-caso-estado .badge{font-size:12.5px;padding:3px 10px;}
+
+/* Ficha de preparación: lo que el caso necesita para que la entrevista ocurra */
+.au-ficha{
+  list-style:none;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,1fr);
+  gap:1px;margin-top:14px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;
+}
+.au-ficha-item{display:flex;flex-direction:column;gap:2px;padding:10px 14px 11px;background:#fff;min-width:0;}
+.au-ficha-lbl{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--ink-3);}
+.au-ficha-lbl::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--rule-2);flex-shrink:0;}
+.au-ficha-val{font-size:14px;font-weight:600;color:var(--ink);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-variant-numeric:tabular-nums;}
+.au-ficha-det{font-size:12.5px;color:var(--ink-2);line-height:1.4;}
+.au-ficha-item[data-e="listo"] .au-ficha-lbl::before{background:var(--verde);}
+.au-ficha-item[data-e="pendiente"]{background:var(--amber-light);}
+.au-ficha-item[data-e="pendiente"] .au-ficha-lbl::before{background:var(--amber);}
+.au-ficha-item[data-e="pendiente"] .au-ficha-val{color:var(--amber);}
+.au-ficha-item[data-e="bloquea"]{background:var(--rosa-light);}
+.au-ficha-item[data-e="bloquea"] .au-ficha-lbl::before{background:var(--magenta);}
+.au-ficha-item[data-e="bloquea"] .au-ficha-det{color:var(--magenta-ink);font-weight:500;}
+.au-ficha-item[data-e="nulo"] .au-ficha-val{color:var(--ink-3);font-weight:500;}
+
+.au-caso-motivo{margin-top:12px;font-size:14px;line-height:1.55;color:var(--ink);max-width:72ch;}
+
+/* Acciones: avanzar el caso · documentos · lo irreversible al final */
+.au-caso-acc{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;margin-top:14px;}
+.au-acc-grupo{display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
+.au-caso-acc .btn{min-height:36px;padding:0 14px;font-size:13px;}
+.au-caso-acc .btn svg{width:15px;height:15px;}
+.au-acc-sec{border-color:var(--ink)!important;}
+.au-acc-est{color:var(--ink-2);font-weight:500;}
+.au-acc-alerta{color:var(--magenta-ink);}
+.au-acc-ok{color:var(--verde);}
+.au-acc-docs{gap:2px;}
+.au-caso-acc .au-acc-doc{
+  background:transparent;border:0;color:var(--ink-2);font-weight:500;padding:0 9px;text-decoration:none;
+}
+.au-caso-acc .au-acc-doc:hover{background:var(--paper-2);color:var(--ink);}
+.au-caso-acc .au-acc-doc svg{stroke:var(--ink-3);}
+.au-n{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--wash);color:var(--blue-ink);font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+.au-acc-fin{margin-left:auto;gap:2px;}
+.au-caso-acc .au-acc-peligro{background:transparent;border:0;color:var(--magenta-ink);font-weight:500;padding:0 8px;min-height:32px;}
+.au-caso-acc .au-acc-peligro:hover{background:var(--rosa-light);}
+
+/* Controles anteriores del mismo trabajador */
+.au-caso .au-anteriores{margin-top:14px;padding-top:10px;border-top:1px dashed var(--rule);}
+.au-caso .au-anteriores summary{margin-left:0;}
+.au-caso .au-anterior{margin-left:0;}
+
+/* Vacío, error y carga */
+.au-vacio{padding:3rem 1.5rem;text-align:center;}
+.au-vacio p{font-size:14.5px;color:var(--ink-2);margin-bottom:14px;}
+.au-vacio--error p{color:var(--magenta-ink);}
+.au-esqueleto{display:grid;gap:1px;background:var(--rule);}
+.au-esqueleto span{display:block;height:148px;background:linear-gradient(90deg,#fff 0 30%,var(--paper) 50%,#fff 70%) 0 0/300% 100%;animation:auBrillo 1.4s linear infinite;}
+@keyframes auBrillo{to{background-position:-150% 0;}}
+@media (prefers-reduced-motion:reduce){.au-esqueleto span{animation:none;background:var(--paper);}}
+
+/* ── Alta: panel lateral ─────────────────────────────────────────────────── */
+/* La entrada de sección del portal (.sec-anim) anima transform, y un transform convierte a la
+   sección en el contenedor de lo fijo: el panel quedaba atrapado dentro. Acá entra solo con opacidad. */
+#sec-ausentismo.sec-anim{animation-name:auSecIn;}
+@keyframes auSecIn{from{opacity:0;}to{opacity:1;}}
+#au-panel-alta.au-alta{position:fixed;inset:0;z-index:250;visibility:hidden;pointer-events:none;}
+#au-panel-alta.au-alta.abierto{visibility:visible;pointer-events:auto;}
+.au-alta-fondo{position:absolute;inset:0;background:rgba(19,35,58,.42);opacity:0;transition:opacity .25s var(--ease-out);}
+.au-alta.abierto .au-alta-fondo{opacity:1;}
+#au-panel-alta .au-alta-hoja{
+  position:absolute;top:0;right:0;bottom:0;width:min(620px,100%);margin:0;border:0;border-radius:0;
+  display:flex;flex-direction:column;background:var(--paper);box-shadow:var(--shadow-lg);
+  transform:translateX(100%);transition:transform .32s var(--ease-out);
+}
+#au-panel-alta.abierto .au-alta-hoja{transform:none;}
+@media (prefers-reduced-motion:reduce){.au-alta-fondo,#au-panel-alta .au-alta-hoja{transition:none;}}
+body.au-alta-activa{overflow:hidden;}
+
+.au-alta-cab{flex-shrink:0;min-height:68px;padding:.9rem 1rem .9rem 1.75rem;background:var(--paper)!important;}
+#au-panel-alta .au-alta-cab .card-title{font-family:var(--display);font-weight:400;font-size:1.75rem;letter-spacing:-.01em;}
+.au-alta-cerrar{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);cursor:pointer;}
+.au-alta-cerrar:hover{background:var(--paper-2);color:var(--ink);}
+.au-alta-cerrar svg{width:20px;height:20px;}
+#au-panel-alta .card-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.25rem 1.75rem 0;}
+.au-alta-intro{font-size:14px;color:var(--ink-2);line-height:1.55;max-width:52ch;}
+
+/* Pasos: el alta es una secuencia real (quién, dónde, quién controla, por qué) */
+#au-panel-alta .form-grid{gap:14px;}
+.au-paso{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin-top:18px;padding-top:20px;border-top:1px solid var(--rule);font-size:16px;font-weight:600;color:var(--ink);}
+.form-grid > .au-paso:first-child{margin-top:4px;padding-top:4px;border-top:0;}
+.au-paso-n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.au-ayuda,#au-panel-alta .au-step-hint{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin-top:2px;}
+#au-panel-alta input[type=text],#au-panel-alta select,#au-panel-alta textarea,#au-panel-alta input[type=number]{background:#fff;}
+#au-panel-alta select:disabled,#au-panel-alta input:read-only:not([type=file]){background:var(--paper-2);color:var(--ink-2);border-color:var(--rule);cursor:not-allowed;}
+
+/* Nuevo control del mismo trabajador */
+#au-flow-summary:not([hidden]){background:var(--wash);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:12px 14px;margin-top:18px;color:var(--ink);font-size:13.5px;line-height:1.55;}
+
+/* Verificación del domicilio */
+#au-panel-alta .au-geo{background:#fff;border-color:var(--rule);border-radius:var(--r);margin-top:6px;}
+#au-panel-alta .au-geo-actions{display:grid;grid-template-columns:auto minmax(0,1fr) 96px;align-items:center;gap:10px;}
+#au-panel-alta .au-geo-actions label{color:var(--ink-2);text-align:right;line-height:1.3;}
+#au-radio{width:96px!important;max-width:none!important;}
+#au-geo-status{position:relative;padding:9px 12px 9px 32px;border-radius:var(--r-sm);background:var(--paper);border:1px solid var(--rule);color:var(--ink-2);}
+#au-geo-status::before{content:"";position:absolute;left:12px;top:14px;width:9px;height:9px;border-radius:50%;background:var(--rule-2);}
+#au-geo-status[data-state="ok"]{background:var(--verde-light);border-color:#bcd8c6;color:var(--verde);}
+#au-geo-status[data-state="ok"]::before{background:var(--verde);}
+#au-geo-status[data-state="error"]{background:var(--rosa-light);border-color:var(--rosa-mid);color:var(--magenta-ink);}
+#au-geo-status[data-state="error"]::before{background:var(--magenta);}
+.au-geo:has(#au-buscar:disabled) #au-geo-status::before{background:transparent;border:2px solid var(--rule-2);border-top-color:var(--ink);width:7px;height:7px;animation:spin .7s linear infinite;}
+@media (prefers-reduced-motion:reduce){.au-geo:has(#au-buscar:disabled) #au-geo-status::before{animation:none;background:var(--ink-3);border:0;}}
+#au-mapa{border-radius:var(--r-sm)!important;height:240px!important;}
+#au-mapa-link:not([hidden]){font-size:13px;font-weight:600;}
+
+/* Certificados */
+#au-certificados.au-archivos{padding:16px;border:1.5px dashed var(--rule-2);border-radius:var(--r);background:#fff;color:var(--ink-2);font-size:13px;cursor:pointer;width:100%;transition:border-color .15s,background .15s;}
+#au-certificados.au-archivos:hover{border-color:var(--blue-ink);background:var(--celeste-light);}
+#au-certificados::file-selector-button{font:inherit;font-weight:600;font-size:13px;margin-right:12px;padding:8px 14px;cursor:pointer;background:var(--paper);color:var(--ink);border:1px solid var(--rule-2);border-radius:var(--r-sm);}
+
+/* Error y acciones, siempre a la vista al pie del panel */
+.au-error{flex:1 0 100%;margin:0;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-left:3px solid var(--magenta);border-radius:var(--r-sm);padding:11px 14px;font-size:13.5px;font-weight:500;line-height:1.5;color:var(--magenta-ink);}
+#au-panel-alta:has(.au-error[style*="block"]) #au-trabajador:placeholder-shown{border-color:var(--magenta);box-shadow:0 0 0 3px rgba(181,24,91,.12);}
+#au-panel-alta .au-flow-actions{
+  position:sticky;bottom:0;z-index:2;margin:20px -1.75rem 0;padding:14px 1.75rem calc(14px + env(safe-area-inset-bottom));
+  background:var(--paper);border-top:1px solid var(--rule);align-items:stretch;flex-wrap:wrap;
+}
+#au-panel-alta .au-flow-actions .btn{min-height:46px;margin-top:0!important;padding:10px 16px;}
+#au-guardar{flex:2 1 220px!important;}
+#au-guardar:disabled{opacity:.75;cursor:progress;}
+#au-panel-alta .au-flow-actions .btn-ghost{flex:1 1 150px!important;}
+
+/* ── Tablet y teléfono ───────────────────────────────────────────────────── */
+@media (max-width:1100px){
+  .au-circuito{flex-direction:column;}
+  .au-circuito > .au-etapa{align-self:flex-start;}
+}
+@media (max-width:760px){
+  .au-registro-cab{padding:1rem 1rem .9rem;align-items:stretch;}
+  .au-registro-herr{width:100%;}
+  .au-buscar{flex:1 1 200px;}
+  .au-buscar input{width:100%;}
+  .au-registro-herr .btn{flex:0 0 auto;min-height:44px;}
+  .au-circuito{padding:0 1rem .9rem;flex-direction:row;}
+  /* El circuito se desliza en vez de apretarse */
+  .au-circuito-pasos{overflow-x:auto;scrollbar-width:none;}
+  .au-circuito-pasos::-webkit-scrollbar{display:none;}
+  .au-circuito-pasos .au-etapa{flex:0 0 auto;}
+  .au-caso{padding:1.1rem 1rem 1rem;}
+  .au-caso-nombre{font-size:1.3rem;}
+  .au-ficha{grid-template-columns:1fr;}
+  .au-ficha-item{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 10px;}
+  .au-ficha-lbl{width:92px;flex-shrink:0;}
+  .au-ficha-val{flex:1 1 0;min-width:0;}
+  .au-ficha-det{flex-basis:100%;padding-left:102px;}
+  .au-caso-acc{gap:10px;}
+  .au-acc-avanzar{width:100%;}
+  .au-acc-avanzar .btn{flex:1 1 auto;min-height:44px;}
+  .au-acc-docs .au-acc-doc{min-height:40px;}
+  .au-acc-fin{width:100%;justify-content:flex-end;margin-left:0;}
+  #au-panel-alta .au-alta-hoja{width:100%;}
+  .au-alta-cab{padding-left:1rem;}
+  #au-panel-alta .card-body{padding:1rem 1rem 0;}
+  #au-panel-alta .au-flow-actions{margin:20px -1rem 0;padding-left:1rem;padding-right:1rem;}
+  #au-panel-alta .au-geo-actions{grid-template-columns:minmax(0,1fr) 96px;}
+  #au-panel-alta .au-geo-actions .btn{grid-column:1/-1;}
+  #au-panel-alta .au-geo-actions label{text-align:left;}
+}
+@media (max-width:600px){
+  #au-panel-alta .au-flow-actions{flex-direction:column;}
+  #au-panel-alta .au-flow-actions .btn{width:100%;flex:none!important;}
+}

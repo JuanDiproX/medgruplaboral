@@ -24,7 +24,7 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
       INSERT INTO ingresos_ubicacion VALUES(1,'aceptado',NOW());
       INSERT INTO eventos_turno(turno_id,tipo,participante,creado_en) VALUES
       ('test','union_medico','Médica de prueba','2026-10-23T17:20:53-03:00'),('test','fin_consulta','Médica de prueba','2026-10-23T17:40:28-03:00');`);
-    const query=(sql,p)=>db.query(sql,p?.map(x=>x===undefined?null:x));
+    const query=(sql,p)=>!p&&sql.includes(';')?db.exec(sql):db.query(sql,p?.map(x=>x===undefined?null:x));
     const pool={on(){},query,connect:async()=>({query,release(){}})};
     const nativeRequire=createRequire(path.resolve('server.js'));
     const context={require:name=>name==='pg'?{Pool:function(){return pool;}}:nativeRequire(name),__dirname:path.resolve('.'),console:{log(){},warn(){},error(){}},process:{env:{SESSION_SECRET:'isolated-fixture',ENABLE_TURNO_CHAT:'false'}},Buffer,setTimeout,clearTimeout,setInterval,clearInterval,URL};
@@ -37,8 +37,8 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     for(const alter of source.matchAll(/`(ALTER TABLE IF EXISTS dictamenes ADD COLUMN[^`]+)`/g))await db.exec(alter[1]);
     await db.exec('CREATE TABLE dictamen_revisiones(id BIGSERIAL PRIMARY KEY,dictamen_id INT,contenido JSONB,firmas JSONB,editado_por TEXT)');
     source=source.slice(0,source.indexOf('initDB().then(async () =>'));
-    vm.runInContext(source+'\nglobalThis.fixture={app,sessionStore};',context);
-    const {app,sessionStore}=context.fixture;await sessionStore.init();
+    vm.runInContext(source+'\nglobalThis.fixture={app,sessionStore,caseNotifications};',context);
+    const {app,sessionStore,caseNotifications}=context.fixture;await sessionStore.init();await caseNotifications.init();
     const token=await sessionStore.create('staff',{id:1,nombre:'Médica de prueba',rol:'medico'});
     const other=await sessionStore.create('staff',{id:2,nombre:'Otro profesional',rol:'medico'});
     const company=await sessionStore.create('company',{id:3,nombre:'Otra empresa'});
@@ -68,5 +68,12 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     assert.equal(response.status,200);assert.equal((await response.json()).requiere_firma,true);
     const amended=(await db.query('SELECT * FROM dictamenes WHERE id=1')).rows[0];assert.equal(amended.conclusion,'Texto corregido');assert.equal(amended.firma_doctor,null);assert.equal(amended.pdf_firmado,null);
     const revision=(await db.query('SELECT * FROM dictamen_revisiones')).rows[0];assert.equal(revision.contenido.conclusion,'Original');assert.equal(revision.contenido.pdf_firmado,'pdf-ficticio');assert.equal(revision.firmas.length,1);
+    await db.exec("ALTER TABLE casos_ausentismo ADD COLUMN token_ingreso TEXT;UPDATE casos_ausentismo SET estado='programado',token_ingreso='token-ficticio-existente' WHERE id=1;");
+    const schedule=body=>fetch(base+'/api/ausentismo/casos/1/programar',{method:'POST',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    response=await schedule({fecha:'2026-11-04',hora:'10:00'});assert.equal(response.status,400,'casos antiguos requieren correo antes de reprogramar');
+    const planned={fecha:'2026-11-04',hora:'10:00',trabajador_email:'paciente@example.invalid'};
+    response=await schedule(planned);assert.equal(response.status,200);const notified=await response.json();assert.equal(notified.correo_invitacion,'pendiente');assert.ok(notified.link_paciente.includes('token-ficticio-existente'));
+    assert.equal((await db.query('SELECT sala FROM turnos WHERE id=$1',['test'])).rows[0].sala,'sala-ficticia');
+    response=await schedule(planned);assert.equal(response.status,200);assert.equal((await db.query("SELECT COUNT(*)::int AS n FROM caso_correos WHERE tipo='visita'")).rows[0].n,1,'repetir programación no duplica invitaciones');
   }finally{if(http)await new Promise(resolve=>http.close(resolve));await db.close();}
 });

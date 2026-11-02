@@ -634,6 +634,8 @@ tbody tr:hover .avatar{transform:scale(1.08);}
             <div><label class="login-lbl">Trabajador (apellido y nombre)</label><input class="login-input" type="text" id="ca-trabajador" placeholder="Apellido, Nombre"/></div>
             <div><label class="login-lbl">DNI</label><input class="login-input" type="text" id="ca-dni" placeholder="30111222"/></div>
             <div><label class="login-lbl">WhatsApp del trabajador</label><input class="login-input" type="text" id="ca-telefono" placeholder="5492901123456"/></div>
+            <div><label class="login-lbl" for="ca-solicitante-email">Correo de la empresa (confirmación)</label><input class="login-input" type="email" id="ca-solicitante-email" required placeholder="rrhh@empresa.com"/></div>
+            <div><label class="login-lbl" for="ca-trabajador-email">Correo del paciente (invitación)</label><input class="login-input" type="email" id="ca-trabajador-email" required placeholder="paciente@correo.com"/></div>
           </div>
           <div style="margin-top:12px;"><label class="login-lbl">Domicilio donde hace reposo</label>
             <input class="login-input" type="text" id="ca-domicilio" placeholder="Av. San Martín 1234, Río Grande, Tierra del Fuego"/>
@@ -985,6 +987,8 @@ async function crearCasoEmpresa(){
   const motivo = document.getElementById('ca-motivo').value.trim();
   if(!trabajador){ err.textContent='Escribí el nombre del trabajador'; err.style.display='block'; return; }
   if(!motivo){ err.textContent='Contanos el motivo de la ausencia'; err.style.display='block'; return; }
+  const companyMail=document.getElementById('ca-solicitante-email'),patientMail=document.getElementById('ca-trabajador-email');
+  if(!companyMail.value.trim()||!patientMail.value.trim()||!companyMail.checkValidity()||!patientMail.checkValidity()){err.textContent='Completá un correo válido de la empresa y otro del paciente.';err.style.display='block';return;}
   try{
     const r = await fetch('/api/empresa/ausentismo/casos', {
       method:'POST', headers:empresaHeaders(),
@@ -992,6 +996,7 @@ async function crearCasoEmpresa(){
         trabajador_nombre: trabajador,
         trabajador_dni: document.getElementById('ca-dni').value.trim(),
         trabajador_telefono: document.getElementById('ca-telefono').value.trim(),
+        solicitante_email:companyMail.value.trim(),trabajador_email:patientMail.value.trim(),
         domicilio: document.getElementById('ca-domicilio').value.trim(),
         motivo
       })
@@ -1001,6 +1006,7 @@ async function crearCasoEmpresa(){
 
     // El caso ya quedó abierto: lo que falle después se avisa, pero no se pierde nada
     const avisos = [];
+    if(data.correo_solicitud!=='enviado')avisos.push('La confirmación por correo quedó pendiente de envío. La solicitud ya está registrada; no hace falta volver a crearla.');
 
     // Sin coordenadas no hay control domiciliario
     if(document.getElementById('ca-domicilio').value.trim() && !data.domicilio_ubicado){
@@ -1016,7 +1022,7 @@ async function crearCasoEmpresa(){
       err.textContent = 'La ausencia quedó informada. ' + avisos.join(' ');
       err.style.display = 'block';
     }
-    ['ca-trabajador','ca-dni','ca-telefono','ca-domicilio','ca-motivo'].forEach(id=>document.getElementById(id).value='');
+    ['ca-trabajador','ca-dni','ca-telefono','ca-domicilio','ca-motivo','ca-trabajador-email'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('ca-certificados').value = '';
     await cargarCasosEmpresa();
   }catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }

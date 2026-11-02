@@ -10,7 +10,7 @@ test('crear con ubicación; repetir sin heredar evidencia; idempotencia y rollba
       CREATE TABLE medicos(id SERIAL PRIMARY KEY,nombre TEXT,activo BOOLEAN);INSERT INTO medicos(nombre,activo) VALUES('Médica de prueba',true);
       CREATE TABLE casos_ausentismo(id SERIAL PRIMARY KEY,empresa_id INT,empresa_nombre TEXT,trabajador_nombre TEXT,trabajador_dni TEXT,
       trabajador_telefono TEXT,motivo TEXT,documentacion TEXT,notas_admin TEXT,domicilio TEXT,domicilio_lat DOUBLE PRECISION,domicilio_lng DOUBLE PRECISION,
-      radio_metros INT,tipo_control TEXT,profesional_id INT,estado TEXT,caso_anterior_id INT,excepcion_geo BOOLEAN);`);
+      radio_metros INT,tipo_control TEXT,profesional_id INT,estado TEXT,caso_anterior_id INT,excepcion_geo BOOLEAN,solicitante_email TEXT,trabajador_email TEXT);`);
     const query=(sql,params)=>sql.startsWith('SELECT pg_advisory')?Promise.resolve({rows:[]}):db.query(sql,params);
     const pool={query,connect:async()=>({query,release(){}})};
     const app=express();app.use(express.json());
@@ -19,7 +19,7 @@ test('crear con ubicación; repetir sin heredar evidencia; idempotencia y rollba
     server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
     const base='http://127.0.0.1:'+server.address().port;
     const post=(path,body)=>fetch(base+path,{method:'POST',headers:{'x-admin':'1','Content-Type':'application/json'},body:JSON.stringify(body)});
-    let response=await post('/api/ausentismo/casos',{empresa_nombre:'Empresa ficticia',trabajador_nombre:'Persona de prueba',trabajador_dni:'12345678',domicilio:'Dirección de prueba',domicilio_lat:-53,domicilio_lng:-67,radio_metros:300,profesional_id:1,validar_domicilio:true,motivo:'Primer control'});
+    let response=await post('/api/ausentismo/casos',{empresa_nombre:'Empresa ficticia',trabajador_nombre:'Persona de prueba',trabajador_dni:'12345678',domicilio:'Dirección de prueba',domicilio_lat:-53,domicilio_lng:-67,radio_metros:300,profesional_id:1,validar_domicilio:true,motivo:'Primer control',solicitante_email:'empresa@example.invalid',trabajador_email:'paciente@example.invalid'});
     assert.equal(response.status,200);const first=await response.json();assert.equal(geocodes,0);
     assert.equal((await db.query('SELECT estado FROM casos_ausentismo WHERE id=$1',[first.id])).rows[0].estado,'asignado');
     response=await post(`/api/ausentismo/casos/${first.id}/nuevo-control`,{});assert.equal(response.status,409);
