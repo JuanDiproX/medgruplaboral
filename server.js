@@ -105,6 +105,7 @@ async function enviarEmail(to, subject, html, options={}) {
 
 const {email:validEmail,requireEmails,createCaseNotifications}=require('./lib/case-notifications');
 const caseNotifications=createCaseNotifications({pool,send:enviarEmail,baseUrl:baseUrlApp});
+const doctorReminders=require('./lib/doctor-reminders').createDoctorReminders({pool,send:enviarEmail,baseUrl:baseUrlApp});
 
 // QR de verificación pública embebido en los PDFs (informes y presupuestos)
 async function generarQRDataUrl(numero) {
@@ -4785,6 +4786,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
 initDB().then(async () => {
   await caseNotifications.init();
+  await doctorReminders.init();
   await sessionStore.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
@@ -4792,4 +4794,7 @@ initDB().then(async () => {
   registrarWebhookDaily();
   const emailTimer=setInterval(()=>caseNotifications.processPending().catch(()=>console.error('email_queue_retry_failed')),60000);
   emailTimer.unref();
+  const reminderTimer=setInterval(()=>doctorReminders.processPending().catch(()=>console.error('doctor_reminder_failed')),60000);
+  reminderTimer.unref();
+  doctorReminders.processPending().catch(()=>console.error('doctor_reminder_failed'));
 });
