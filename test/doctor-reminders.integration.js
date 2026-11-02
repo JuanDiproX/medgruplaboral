@@ -25,6 +25,8 @@ test('recordatorios médicos: hora argentina, destinatario, deduplicación, canc
     await Promise.all([n.processPending(),n.processPending()]);
     assert.equal(sent.length,1);assert.equal(sent[0].to,'recordatorio@example.invalid');
     assert.match(sent[0].html,/Persona &lt;prueba&gt;/);assert.match(sent[0].html,/hora argentina/);
+    assert.match(sent[0].html,/https:\/\/example.invalid\/logo.png/);
+    assert.match(sent[0].html,/Abrir mi agenda/);
     await n.processPending();assert.equal(sent.length,1);
     // A failed send remains retryable; cancellation invalidates it immediately.
     await db.exec(`UPDATE turnos SET hora=to_char(NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires'+INTERVAL '40 minutes','HH24:MI') WHERE id='t1'`);
