@@ -39,9 +39,12 @@ test('lista compacta: menú, detalle, historial, permisos y foco al actualizar',
     assert.equal(await page.evaluate(s=>document.activeElement===document.querySelector(s),menu),true);
     await page.click(row+' .au-ver');
     await page.waitForFunction(()=>document.activeElement.id==='au-detalle-titulo');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#au-detalle .pl-hoja')).transform==='none');
     assert.match(await page.$eval('#au-detalle-cuerpo',e=>e.textContent),/Documento histórico <conservado>/);
     assert.equal(await page.$('#au-detalle-cuerpo conservado'),null);
     assert.equal(await page.$eval('#au-detalle-cuerpo .au-anteriores a',e=>e.getAttribute('href')),'/api/turnos/anterior/acta');
+    fs.mkdirSync('output/ausentismo-compacto',{recursive:true});
+    await page.screenshot({path:'output/ausentismo-compacto/detalle-escritorio.png',fullPage:true});
     await page.focus('#au-detalle-cuerpo .au-det-doc');
     const action=await page.evaluate(()=>document.activeElement.getAttribute('onclick'));
     await page.evaluate(()=>renderCasosAusentismo());
@@ -62,5 +65,11 @@ test('lista compacta: menú, detalle, historial, permisos y foco al actualizar',
     await page.setViewport({width:390,height:1000});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:'output/ausentismo-compacto/celular.png',fullPage:true});
+    await page.click(row+' .au-ver');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#au-detalle .pl-hoja')).transform==='none');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.screenshot({path:'output/ausentismo-compacto/detalle-celular.png',fullPage:true});
+    await page.$eval('#au-detalle-cuerpo .au-det-doc',e=>e.scrollIntoView({block:'start'}));
+    await page.screenshot({path:'output/ausentismo-compacto/documentos-celular.png',fullPage:true});
   }finally{await browser.close();}
 });

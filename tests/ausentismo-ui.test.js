@@ -20,7 +20,7 @@ test('formulario integrado: errores, punto confirmado, doble envío, repetición
     const head=html.slice(html.indexOf('<head>')+6,html.indexOf('</head>'));
     const start=html.indexOf('<div id="sec-ausentismo"');const end=html.indexOf('<div id="sec-seguimientos"',start);
     const section=html.slice(start,end).replace('style="display:none;"','');
-    const page=await browser.newPage();await page.setRequestInterception(true);
+    const page=await browser.newPage();await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'}]);await page.setRequestInterception(true);
     page.on('request',req=>req.url().startsWith('data:')?req.continue():req.abort());
     await page.setViewport({width:1440,height:1200});
     await page.setContent(`<html><head>${head}<style>body{display:block!important}.main{margin:0!important;padding:28px!important}#sec-ausentismo{display:block!important}</style></head><body><main class="main"><h1>Control de ausentismo</h1>${section}</main></body></html>`);
@@ -38,14 +38,20 @@ test('formulario integrado: errores, punto confirmado, doble envío, repetición
       };
     });
     await page.addScriptTag({path:path.resolve('public/ausentismo-flow.js')});
-    // El alta vive en un panel lateral: se abre como lo hace el botón "Nuevo caso"
+    await page.waitForFunction(()=>new DOMMatrixReadOnly(getComputedStyle(document.querySelector('#au-panel-alta .au-alta-hoja')).transform).m42>0,{timeout:5000});
+    const entrada=await page.$eval('#au-panel-alta .au-alta-hoja',el=>{const m=new DOMMatrixReadOnly(getComputedStyle(el).transform);return {x:m.m41,y:m.m42};});
+    assert.equal(entrada.x,0);assert.ok(entrada.y>0,'el alta entra desde abajo');
+    // El alta se abre centrada desde el botón "Nuevo caso".
     await page.evaluate(()=>window.abrirAltaCaso());
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('#au-panel-alta .au-alta-hoja')).transform==='none');
+    assert.equal(await page.$eval('#au-panel-alta .au-alta-hoja',el=>{const r=el.getBoundingClientRect();return Math.abs(r.left+r.width/2-innerWidth/2)<1&&Math.abs(r.top+r.height/2-innerHeight/2)<1;}),true,'alta centrada en escritorio');
     await page.click('#au-guardar');assert.match(await page.$eval('#au-error',e=>e.textContent),/empresa y trabajador/);
     await page.type('#au-trabajador','Persona de prueba');await page.type('#au-domicilio','Dirección ficticia, Río Grande');await page.type('#au-motivo','Control de demostración');
     await page.type('#au-solicitante-email','empresa@example.invalid');await page.type('#au-trabajador-email','paciente@example.invalid');
     fs.mkdirSync('output/ausentismo-preview',{recursive:true});
+    await page.$eval('#au-panel-alta .card-body',el=>el.scrollTop=0);
     await page.screenshot({path:'output/ausentismo-preview/escritorio.png',fullPage:true});
+    await page.$eval('#au-buscar',el=>el.scrollIntoView({block:'center',behavior:'instant'}));
     await page.click('#au-buscar');await page.waitForFunction(()=>document.getElementById('au-geo-status').dataset.state==='ok');
     await page.evaluate(()=>Promise.all([window.crearCasoAusentismo(),window.crearCasoAusentismo()]));
     const requests=await page.evaluate(()=>window.requests);
@@ -60,5 +66,10 @@ test('formulario integrado: errores, punto confirmado, doble envío, repetición
     await page.setViewport({width:390,height:1100});
     await page.screenshot({path:'output/ausentismo-preview/celular.png',fullPage:true});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false,'sin desplazamiento horizontal');
+    assert.equal(await page.$eval('#au-panel-alta .au-alta-hoja',el=>Math.abs(el.getBoundingClientRect().bottom-innerHeight)<1),true,'alta alineada al pie en móvil');
+    await page.evaluate(()=>cerrarAltaCaso());
+    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+    await page.evaluate(()=>abrirAltaCaso());
+    assert.equal(await page.$eval('#au-panel-alta .au-alta-hoja',el=>getComputedStyle(el).transform),'none','respeta movimiento reducido');
   }finally{await browser.close();}
 });

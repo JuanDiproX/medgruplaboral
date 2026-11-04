@@ -8,7 +8,7 @@
      .au-registro   la lista a todo el ancho, como un libro de registro
        .au-circuito el circuito del caso en orden; cada etapa filtra
        .au-caso     un trabajador: quién, ficha de preparación, motivo, acciones
-     .au-alta       el alta / nuevo control, en un panel lateral por pasos
+     .au-alta       el alta / nuevo control, centrada y con entrada desde abajo
    El elemento con carácter es la ficha (.au-ficha): dice qué le falta a cada caso. */
 
 .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
@@ -127,20 +127,26 @@
 .au-alta-fondo{position:absolute;inset:0;background:rgba(19,35,58,.42);opacity:0;transition:opacity .25s var(--ease-out);}
 .au-alta.abierto .au-alta-fondo{opacity:1;}
 #au-panel-alta .au-alta-hoja{
-  position:absolute;top:0;right:0;bottom:0;width:min(620px,100%);margin:0;border:0;border-radius:0;
-  display:flex;flex-direction:column;background:var(--paper);box-shadow:var(--shadow-lg);
-  transform:translateX(100%);transition:transform .32s var(--ease-out);
+  position:relative;top:auto;right:auto;bottom:auto;width:min(760px,calc(100% - 48px));height:min(920px,calc(100dvh - 64px));margin:0;border:0;border-radius:14px;
+  display:flex;flex-direction:column;background:var(--surface);box-shadow:var(--shadow-lg);
+  transform:translateY(100dvh);transition:transform .36s cubic-bezier(.16,1,.3,1);overflow:hidden;
 }
+#au-panel-alta.au-alta{display:grid;place-items:center;transition:visibility 0s .24s;}
+#au-panel-alta.au-alta.abierto{transition-delay:0s;}
 #au-panel-alta.abierto .au-alta-hoja{transform:none;}
-@media (prefers-reduced-motion:reduce){.au-alta-fondo,#au-panel-alta .au-alta-hoja{transition:none;}}
+@media (prefers-reduced-motion:reduce){
+  .au-alta-fondo{transition:opacity .1s linear;}
+  #au-panel-alta .au-alta-hoja{transform:none;opacity:0;transition:opacity .1s linear;}
+  #au-panel-alta.abierto .au-alta-hoja{opacity:1;}
+}
 body.au-alta-activa{overflow:hidden;}
 
-.au-alta-cab{flex-shrink:0;min-height:68px;padding:.9rem 1rem .9rem 1.75rem;background:var(--paper)!important;}
+.au-alta-cab{flex-shrink:0;min-height:76px;padding:1rem 1.25rem 1rem 1.75rem;background:var(--surface)!important;}
 #au-panel-alta .au-alta-cab .card-title{font-family:var(--display);font-weight:400;font-size:1.75rem;letter-spacing:-.01em;}
 .au-alta-cerrar{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);cursor:pointer;}
 .au-alta-cerrar:hover{background:var(--paper-2);color:var(--ink);}
 .au-alta-cerrar svg{width:20px;height:20px;}
-#au-panel-alta .card-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.25rem 1.75rem 0;}
+#au-panel-alta .card-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-padding-block:20px 170px;padding:1.25rem 1.75rem 0;}
 .au-alta-intro{font-size:14px;color:var(--ink-2);line-height:1.55;max-width:52ch;}
 
 /* Pasos: el alta es una secuencia real (quién, dónde, quién controla, por qué) */
@@ -216,7 +222,7 @@ body.au-alta-activa{overflow:hidden;}
   .au-acc-avanzar .btn{flex:1 1 auto;min-height:44px;}
   .au-acc-docs .au-acc-doc{min-height:40px;}
   .au-acc-fin{width:100%;justify-content:flex-end;margin-left:0;}
-  #au-panel-alta .au-alta-hoja{width:100%;}
+  #au-panel-alta .au-alta-hoja{width:100%;height:calc(100dvh - 12px);border-radius:16px 16px 0 0;align-self:end;}
   .au-alta-cab{padding-left:1rem;}
   #au-panel-alta .card-body{padding:1rem 1rem 0;}
   #au-panel-alta .au-flow-actions{margin:20px -1rem 0;padding-left:1rem;padding-right:1rem;}
@@ -394,32 +400,54 @@ body.pl-activo{overflow:hidden;}
 .au-menu-peligro .au-menu-item:hover,.au-menu-peligro .au-menu-item:focus-visible{background:var(--rosa-light);}
 
 /* Detalle "Ver caso" */
-.au-detalle .pl-hoja{width:min(560px,100%);}
+.au-detalle .pl-hoja{width:min(600px,100%);background:#fff;}
+.au-detalle .pl-hoja > .card{background:#fff;}
+.au-detalle .pl-hoja > .card > .card-hdr{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px 16px;padding:28px 28px 24px;background:#fff;align-items:start;}
+.au-detalle .pl-hoja > .card > .card-hdr .card-title{font-size:2rem;line-height:1.15;overflow-wrap:anywhere;}
+.au-detalle .pl-cerrar{grid-column:2;grid-row:1/3;width:44px;height:44px;border:1px solid var(--rule);}
+.au-det-subtitulo{grid-column:1;font-size:13px;color:var(--ink-2);line-height:1.5;overflow-wrap:anywhere;}
+.au-detalle .pl-hoja > .card > .card-body{padding:0;background:#fff;scrollbar-color:var(--rule-2) #fff;scrollbar-width:thin;}
 #au-detalle-titulo{outline:none;}
 #au-detalle-titulo:focus-visible{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px;}
-.au-det-estado{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;}
+.au-det-estado{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:20px 28px;}
 .au-det-estado .badge{font-size:13px;padding:3px 11px;}
 .au-det-estado .au-fila-aviso{margin-top:0;}
-.au-det-acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+.au-det-acciones{display:flex;flex-wrap:wrap;gap:8px;padding:0 28px 20px;}
 .au-det-acciones .btn{min-height:42px;}
-.au-det-seccion{margin-top:24px;padding-top:20px;border-top:1px solid var(--rule);}
-.au-det-seccion h3{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:12px;}
+.au-det-seccion{margin:0;padding:24px 28px;border-top:1px solid var(--rule);}
+.au-det-seccion h3{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:var(--ink);margin-bottom:20px;}
+.au-det-seccion h3 svg{width:19px;height:19px;stroke:var(--blue-ink);flex-shrink:0;}
 .au-det-seccion h4{font-size:13px;font-weight:600;color:var(--ink-2);margin:14px 0 4px;}
-.au-datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;}
+.au-datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 24px;margin:0;}
 .au-dato{min-width:0;}
 .au-dato--ancho{grid-column:1/-1;}
-.au-dato dt{font-size:12.5px;font-weight:500;color:var(--ink-3);}
-.au-dato dd{margin:3px 0 0;font-size:14.5px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+.au-dato dt{font-size:12px;font-weight:500;color:var(--ink-3);}
+.au-dato dd{margin:5px 0 0;font-size:14.5px;font-weight:500;line-height:1.5;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
 .au-dato-sub{display:block;margin-top:3px;font-size:13px;color:var(--ink-2);}
 .au-dato-vacio{color:var(--ink-3);}
 .au-det-texto{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-line;max-width:62ch;}
-.au-det-docs{display:flex;flex-wrap:wrap;gap:6px;}
-.au-det-doc{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--rule-2);border-radius:var(--r-sm);
-  background:#fff;font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);text-decoration:none;cursor:pointer;}
-.au-det-doc:hover{background:var(--paper-2);}
-.au-det-doc--peligro{color:var(--magenta-ink);border-color:var(--rosa-mid);}
+.au-det-docs{display:flex;flex-direction:column;gap:0;}
+.au-det-doc{display:flex;align-items:center;gap:12px;min-height:52px;width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--rule);border-radius:0;
+  background:#fff;font:inherit;font-size:14px;font-weight:500;color:var(--ink);text-align:left;text-decoration:none;cursor:pointer;}
+.au-det-doc:last-child{border-bottom:0;}
+.au-det-doc svg{width:19px;height:19px;flex-shrink:0;stroke:var(--ink-3);}
+.au-det-doc span{flex:1;}
+.au-det-doc .au-doc-flecha{width:16px;height:16px;}
+.au-det-doc:hover{background:var(--paper);color:var(--blue-ink);}
+.au-det-doc--peligro{color:var(--magenta-ink);font-size:13px;}
+.au-det-doc--peligro svg{stroke:var(--magenta-ink);}
 .au-det-doc--peligro:hover{background:var(--rosa-light);}
 .au-detalle .au-anteriores{margin-top:0;padding-top:0;border-top:0;}
+.au-detalle .au-anteriores summary{font-size:13px;line-height:1.5;}
+.au-detalle .au-anterior{padding:14px 0;}
+.au-detalle .au-det-peligro h3{font-size:13px;color:var(--ink-3);margin-bottom:8px;}
+@media (max-width:600px){
+  .au-detalle .pl-hoja > .card > .card-hdr{padding:24px 20px 20px;}
+  .au-detalle .pl-hoja > .card > .card-hdr .card-title{font-size:1.8rem;}
+  .au-det-estado{padding:18px 20px;}
+  .au-det-acciones{padding:0 20px 18px;}
+  .au-det-seccion{padding:22px 20px;}
+}
 
 @media (max-width:1180px){
   .au-fila{grid-template-columns:minmax(0,1fr) 120px auto;}
