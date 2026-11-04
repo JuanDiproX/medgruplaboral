@@ -1,161 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="robots" content="noindex,nofollow"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#fbfaf6">
 <title>Ingreso a la entrevista — MEDGRUP</title>
-<link rel="icon" href="/favicon.ico" sizes="any"/>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
-<meta name="theme-color" content="#3a6ea8"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<style>
-:root{
-  --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
-  --rosa:#c0365a;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
-  --verde:#1e6640;--verde-light:#eaf5f0;
-  --amber:#8f5000;--amber-light:#fdf6e3;--amber-mid:#e8d59a;
-  --bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;
-  --text:#1a1916;--text2:#4a4740;--text3:#8a8780;--border:#e4e9f0;--border2:#d4dce8;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-.caja{background:var(--surface);border-radius:18px;padding:2rem;width:100%;max-width:440px;
-  box-shadow:0 20px 50px rgba(20,40,80,.12);}
-.logo{text-align:center;margin-bottom:1.5rem;}
-.logo img{height:44px;width:auto;object-fit:contain;}
-h1{font-family:'Syne',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.4px;text-align:center;}
-.sub{font-size:13.5px;color:var(--text3);text-align:center;margin-top:6px;line-height:1.55;}
-.datos{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
-  padding:14px 16px;margin:1.4rem 0;font-size:13.5px;line-height:1.7;}
-.datos b{color:var(--text);}
-.aviso{border-radius:12px;padding:13px 15px;font-size:13px;line-height:1.6;margin-bottom:1.2rem;}
-.aviso-info{background:var(--azul-light);border:1px solid var(--azul-mid);color:var(--azul-dark);}
-.aviso-error{background:var(--rosa-light);border:1px solid var(--rosa-mid);color:var(--rosa);}
-.aviso-alerta{background:var(--amber-light);border:1px solid var(--amber-mid);color:var(--amber);}
-.aviso-ok{background:var(--verde-light);border:1px solid var(--verde);color:var(--verde);}
-button{width:100%;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:600;
-  font-family:'DM Sans',sans-serif;cursor:pointer;background:linear-gradient(135deg,var(--azul),var(--azul-dark));
-  color:#fff;transition:transform .12s,box-shadow .12s;}
-button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,110,168,.3);}
-button:disabled{opacity:.6;cursor:default;}
-.link-llamada{display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,var(--verde),#2d8a5a);
-  color:#fff;border-radius:12px;padding:15px;font-size:15px;font-weight:600;margin-top:4px;}
-.pie{font-size:11.5px;color:var(--text3);text-align:center;margin-top:1.2rem;line-height:1.6;}
-.cargando{display:none;align-items:center;justify-content:center;gap:9px;color:var(--text3);font-size:13.5px;padding:14px;}
-.spin{width:15px;height:15px;border:2px solid var(--azul-mid);border-top-color:var(--azul);
-  border-radius:50%;animation:girar .7s linear infinite;}
-@keyframes girar{to{transform:rotate(360deg)}}
-</style>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ingreso.css">
 </head>
 <body>
-<div class="caja">
-  <div class="logo"><img src="/logo.png" alt="MEDGRUP"/></div>
-  <h1 id="titulo">Ingreso a la entrevista</h1>
-  <div class="sub" id="subtitulo">Verificando el link...</div>
-
-  <div class="datos" id="datos" style="display:none;"></div>
-  <div id="aviso"></div>
-
-  <div class="cargando" id="cargando"><div class="spin"></div><span id="cargando-txt">Verificando tu ubicación...</span></div>
-
-  <button id="btn" style="display:none;" onclick="verificar()">Verificar mi ubicación e ingresar</button>
-  <a class="link-llamada" id="link-llamada" style="display:none;" href="#">Entrar a la videollamada</a>
-
-  <div class="pie" id="pie">Se te va a pedir permiso para acceder a tu ubicación. Es necesario porque el control es domiciliario: solo se usa para verificar que estás en el domicilio informado, y queda registrado junto a esta entrevista.</div>
-</div>
-
-<script>
-const token = location.pathname.split('/').filter(Boolean).pop();
-const $ = id => document.getElementById(id);
-
-function aviso(tipo, texto){
-  $('aviso').innerHTML = texto ? `<div class="aviso aviso-${tipo}">${texto}</div>` : '';
-}
-
-let excepcionGeo = false;
-async function cargar(){
-  try{
-    const r = await fetch('/api/ingreso/' + encodeURIComponent(token));
-    const d = await r.json();
-    if(!d.ok){ $('subtitulo').textContent=''; aviso('error', d.error || 'Este link no es válido.'); return; }
-
-    $('subtitulo').textContent = 'Hola ' + d.trabajador + ', te esperamos en la entrevista médica.';
-    if(d.fecha){
-      const f = String(d.fecha).split('T')[0].split('-').reverse().join('/');
-      // Motivo y domicilio los carga la empresa: van como texto, no como HTML
-      const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      $('datos').innerHTML = (d.control?`<div><b>Motivo:</b> ${esc(d.control)}</div>`:'') +
-        `<div><b>Fecha:</b> ${esc(f)}${d.hora?' a las '+esc(d.hora)+' hs':''}</div>` +
-        (d.domicilio?`<div><b>Domicilio informado:</b> ${esc(d.domicilio)}</div>`:'');
-      $('datos').style.display = 'block';
-    }
-    if(d.cerrado){ aviso('alerta','Esta entrevista ya está cerrada.'); return; }
-    excepcionGeo = d.excepcion_geo === true;
-    if(excepcionGeo){
-      aviso('info','MEDGRUP autorizó el ingreso sin validación geográfica para esta entrevista.');
-      $('btn').textContent = 'Continuar a la entrevista';
-      $('btn').style.display = 'block';
-      $('pie').textContent = 'El domicilio mostrado es el informado, sin verificación geográfica.';
-      return;
-    }
-    if(!d.tiene_domicilio){
-      aviso('alerta','Tu domicilio todavía no está verificado en el sistema. Avisale a tu empresa antes de la entrevista.');
-      return;
-    }
-    aviso('info','Para ingresar necesitamos confirmar que estás en tu domicilio. Si estás en el celular, activá el GPS.');
-    $('btn').style.display = 'block';
-  }catch(e){ aviso('error','No pudimos conectarnos. Revisá tu internet y recargá la página.'); }
-}
-
-function ubicacionActual(){
-  return new Promise(resolve => {
-    if(!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat:p.coords.latitude, lng:p.coords.longitude, precision:p.coords.accuracy }),
-      () => resolve(null),
-      // Se fuerza el GPS y se descarta cualquier lectura vieja guardada por el navegador
-      { enableHighAccuracy:true, timeout:20000, maximumAge:0 }
-    );
-  });
-}
-
-async function verificar(){
-  $('btn').disabled = true;
-  $('btn').style.display = 'none';
-  $('cargando').style.display = 'flex';
-  aviso('', '');
-  try{
-    const pos = excepcionGeo ? null : await ubicacionActual();
-    $('cargando-txt').textContent = 'Confirmando...';
-    const r = await fetch('/api/ingreso/' + encodeURIComponent(token) + '/verificar', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(pos || {})
-    });
-    const d = await r.json();
-    $('cargando').style.display = 'none';
-
-    if(d.ok){
-      aviso('ok',d.excepcion_geo ? 'Ingreso autorizado sin validación geográfica.' : 'Listo, confirmamos que estás en tu domicilio. Ya podés entrar.');
-      $('link-llamada').href = d.link;
-      $('link-llamada').style.display = 'block';
-      $('pie').textContent = 'Tocá el botón verde para entrar. Quedate en el domicilio durante toda la entrevista.';
-      return;
-    }
-    aviso(d.code === 'FUERA_DE_RANGO' ? 'alerta' : 'error', d.error || 'No pudimos verificar tu ubicación.');
-    $('btn').textContent = 'Volver a intentar';
-    $('btn').disabled = false;
-    $('btn').style.display = 'block';
-  }catch(e){
-    $('cargando').style.display = 'none';
-    aviso('error','No pudimos conectarnos. Revisá tu internet y volvé a intentar.');
-    $('btn').disabled = false;
-    $('btn').style.display = 'block';
-  }
-}
-
-cargar();
-</script>
+<header class="marca"><img src="/logo.png" alt="MEDGRUP · Servicio Médico"><span>Atención médica virtual</span></header>
+<main class="ingreso">
+  <ol class="pasos" aria-label="Pasos para ingresar">
+    <li id="paso-validar" aria-current="step"><span class="paso-numero">1</span><span id="paso-validar-texto">Validar ubicación</span></li>
+    <li id="paso-ingresar"><span class="paso-numero">2</span>Ingresar</li>
+  </ol>
+  <div class="ingreso-contenido">
+    <h1 id="titulo">Prepará tu ingreso</h1>
+    <p id="saludo" class="saludo" hidden></p>
+    <p id="subtitulo" class="sub">Estamos consultando los datos de tu entrevista.</p>
+    <dl id="datos" class="datos" hidden></dl>
+    <div id="aviso" role="status" aria-live="polite" aria-atomic="true"></div>
+    <section id="preparacion" class="preparacion" hidden aria-labelledby="preparacion-titulo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      <div><h2 id="preparacion-titulo">Validá desde tu domicilio</h2><p>Activá la ubicación de tu teléfono y elegí <strong>Permitir</strong> cuando el navegador te lo pida.</p></div>
+    </section>
+    <details id="ayuda" class="ayuda" hidden>
+      <summary>¿Necesitás ayuda con la ubicación?</summary>
+      <ul><li>Comprobá que la ubicación del teléfono esté activada.</li><li>Permití el acceso a la ubicación de este sitio en los permisos del navegador.</li><li>Si la señal es débil, acercate a una ventana y volvé a intentar.</li><li>Si abriste el enlace desde otra app y no podés dar permiso, abrilo en el navegador del teléfono.</li></ul>
+      <p>Si el domicilio informado no es correcto, contactá a quien coordinó la entrevista.</p>
+    </details>
+  </div>
+  <div class="ingreso-acciones" id="acciones-ingreso">
+    <div class="cargando" id="cargando" role="status" aria-live="polite" hidden><span class="spin" aria-hidden="true"></span><span id="cargando-txt">Consultando la entrevista…</span></div>
+    <button id="btn" type="button" hidden>Validar mi ubicación</button>
+    <a class="link-llamada" id="link-llamada" hidden>Ingresar a la videollamada<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
+    <button id="recargar" class="btn-secundario" type="button" hidden>Volver a cargar la entrevista</button>
+    <p class="pie" id="pie">La ubicación se usa para validar el domicilio informado y queda registrada junto a esta entrevista.</p>
+  </div>
+</main>
+<footer class="firma">MEDGRUP · Medicina Laboral</footer>
+<script src="/ingreso.js"></script>
 </body>
 </html>

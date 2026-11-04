@@ -1,35 +1,35 @@
 /* Paleta y tipografías de MEDGRUP: el paciente llega acá desde la página de ingreso y tiene
    que reconocer que sigue en el mismo lugar. */
 :root{
-  --azul:#3a6ea8;--azul-dark:#2a5080;--azul-light:#e8f0f8;--azul-mid:#c8ddf0;
-  --rosa:#c0365a;--rosa-dark:#9a2847;--rosa-light:#faedf1;--rosa-mid:#f0b8c8;
+  --azul:#2c5d92;--azul-dark:#13233a;--azul-light:#e6f1f5;--azul-mid:#bcd6e2;
+  --rosa:#b5185b;--rosa-dark:#95124a;--rosa-light:#f9ebf1;--rosa-mid:#ebbdd0;
   --verde:#1e6640;--verde-light:#eaf5f0;
-  --bg:#eef3f9;--surface:#fff;--surface2:#f4f7fb;
-  --text:#1a1916;--text2:#4a4740;--text3:#8a8780;--border:#e4e9f0;--border2:#d4dce8;
-  --r:18px;--r-sm:12px;
-  --sombra:0 10px 30px rgba(20,40,80,.08);
+  --bg:#fbfaf6;--surface:#fff;--surface2:#f6f5f0;
+  --text:#13233a;--text2:#4a586b;--text3:#5f6b7b;--border:#e4e3da;--border2:#d2d1c7;
+  --r:6px;--r-sm:5px;--sombra:none;
+  --display:"Libre Caslon Display",Georgia,serif;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
-  font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.5;
+  font-family:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.5;
   -webkit-text-size-adjust:100%}
 
 /* ---------- Cabecera ---------- */
 header{display:flex;gap:14px;align-items:center;padding:16px 22px;background:var(--surface);
-  border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(20,40,80,.04);
+  border-bottom:1px solid var(--border);box-shadow:none;
   padding-top:calc(16px + env(safe-area-inset-top))}
 header img{height:38px;width:auto;object-fit:contain;flex-shrink:0}
 .cabecera-txt{min-width:0}
-h1{font-family:"Syne",sans-serif;font-size:19px;font-weight:700;letter-spacing:-.3px;margin:0}
+h1{font-family:var(--display);font-size:25px;font-weight:400;letter-spacing:-.2px;line-height:1.15;margin:0}
 header p{margin:3px 0 0;font-size:13.5px;color:var(--text3);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  overflow-wrap:anywhere}
 
 /* ---------- Estructura ---------- */
 main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(330px,1fr);gap:16px;
   padding:16px;max-width:1180px;margin:0 auto;align-items:start}
 .tarjeta{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
   padding:20px;min-width:0;box-shadow:var(--sombra)}
-h2{font-family:"Syne",sans-serif;font-size:15.5px;font-weight:700;margin:0 0 10px;color:var(--azul-dark)}
+h2{font-family:var(--display);font-size:28px;font-weight:400;line-height:1.15;margin:0 0 12px;color:var(--azul-dark)}
 p{line-height:1.55;margin:0 0 10px}
 .hint{color:var(--text3);font-size:12.5px;line-height:1.5}
 small{display:block;color:var(--text3);font-size:11.5px;line-height:1.5}
@@ -41,15 +41,17 @@ small{display:block;color:var(--text3);font-size:11.5px;line-height:1.5}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
   border:1px solid transparent;border-radius:var(--r-sm);padding:12px 18px;min-height:44px;
   font-family:inherit;font-size:14.5px;font-weight:600;cursor:pointer;text-decoration:none;
-  transition:transform .12s,box-shadow .12s,background .12s}
-.btn-azul{background:linear-gradient(135deg,var(--azul),var(--azul-dark));color:#fff}
-.btn-verde{background:linear-gradient(135deg,var(--verde),#2d8a5a);color:#fff}
+  transition:background .15s;touch-action:manipulation}
+.btn-azul,.btn-verde{background:var(--azul-dark);color:#fff}
 .btn-borde{background:var(--surface);color:var(--azul-dark);border-color:var(--border2)}
 .btn-ancho{width:100%}
 .btn-chico{padding:9px 13px;min-height:38px;font-size:13px}
-.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,110,168,.28)}
+.btn:hover:not(:disabled){background:#213e62}
+.btn-borde:hover:not(:disabled){background:var(--surface2)}
 .btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none}
 .btn:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+::selection{background:#acdcec;color:var(--text)}
+#llamada .botonera .btn{min-height:54px;width:100%}
 
 /* ---------- Videollamada ---------- */
 #video{width:100%;height:min(62vh,540px);border:1px solid var(--border2);border-radius:var(--r-sm);
@@ -127,7 +129,7 @@ body.staff #mensajes{height:clamp(200px,38vh,420px)}
   .tarjeta{padding:16px;border-radius:var(--r-sm)}
   header{padding:14px 16px;gap:11px;padding-top:calc(14px + env(safe-area-inset-top))}
   header img{height:32px}
-  h1{font-size:17px}
+  h1{font-size:23px}
   #video{height:min(48vh,380px)}
   #mensajes{height:clamp(240px,44vh,440px)}
   .mensaje{max-width:90%}

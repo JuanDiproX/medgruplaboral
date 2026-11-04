@@ -3155,7 +3155,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC
 // cambia la huella y no molesta a nadie.
 const VERSION_PORTAL = (() => {
   const h = crypto.createHash('sha256');
-  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html', 'claude-portal.css']) {
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html', 'claude-portal.css', 'ingreso.html', 'ingreso.css', 'ingreso.js', 'atencion.html', 'atencion.css', 'atencion.js']) {
     try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
   }
   return h.digest('hex').slice(0, 16);
