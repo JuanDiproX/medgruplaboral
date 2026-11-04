@@ -107,7 +107,7 @@
     $('au-tipo-control').value=c.tipo_control||'ausentismo';onTipoControlChange();
     address.value=c.domicilio||'';invalidate();$('au-radio').value=c.radio_metros||300;
     if(c.domicilio_lat!=null&&c.domicilio_lng!=null)showPoint(Number(c.domicilio_lat),Number(c.domicilio_lng),'Domicilio del control anterior');
-    $('au-motivo').value='';$('au-documentacion').value='';$('au-certificados').value='';
+    $('au-motivo').value='';$('au-certificados').value='';
     summary.textContent=`Se conservarán los datos de ${c.trabajador_nombre}. El control anterior y sus documentos seguirán en el historial. Cargá el motivo actual y confirmá el domicilio; las autorizaciones excepcionales no se copian.`;
     summary.hidden=false;reset.hidden=false;professionalsLoaded=true;await loadClinicians(c.profesional_id);
     window.abrirAltaCaso();$('au-motivo').focus({preventScroll:true});
@@ -124,7 +124,7 @@
     try{
       if(!draftOnly&&(!point||point.address!==address.value.trim()))await locate();
       const body={empresa_nombre:empresa,trabajador_nombre:trabajador,trabajador_dni:$('au-dni').value.trim(),trabajador_telefono:$('au-telefono').value.trim(),
-        motivo,documentacion:$('au-documentacion').value.trim(),tipo_control:$('au-tipo-control').value,domicilio:address.value.trim(),
+        motivo,tipo_control:$('au-tipo-control').value,domicilio:address.value.trim(),
         solicitante_email:$('au-solicitante-email').value.trim(),trabajador_email:$('au-trabajador-email').value.trim(),
         radio_metros:Number($('au-radio').value),profesional_id:$('au-profesional').value?Number($('au-profesional').value):null,validar_domicilio:!draftOnly};
       if(point&&point.address===body.domicilio){body.domicilio_lat=point.lat;body.domicilio_lng=point.lng;}
@@ -132,7 +132,7 @@
       const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'No se pudo guardar el control.');
       let warning=d.correo_solicitud==='enviado'?'':d.ya_existia?'':'El control se guardó. La confirmación por correo quedó pendiente; podés revisar su estado desde Correos.';const files=[...$('au-certificados').files];
       if(files.length&&!d.ya_existia){try{await subirCertificados(d.id,files);}catch(e){warning='El control se guardó, pero un certificado no se adjuntó: '+e.message;}}
-      for(const id of ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo','au-documentacion','au-certificados','au-solicitante-email','au-trabajador-email'])$(id).value='';
+      for(const id of ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo','au-certificados','au-solicitante-email','au-trabajador-email'])$(id).value='';
       invalidate();clearSource();$('au-profesional').value='';
       if(!warning){busy=false;window.cerrarAltaCaso();busy=true;}
       await cargarCasosAusentismo();mostrarToast(d.ya_existia?'Ya existía un control abierto para este caso':'Control guardado','#205a40');

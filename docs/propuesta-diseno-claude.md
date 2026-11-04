@@ -1,5 +1,7 @@
 # Rediseño del panel y del portal de empresa (Claude → Codex)
 
+> Actualización del 3 de noviembre: el nuevo encargo del usuario para simplificar la lista de Ausentismo está en [encargo-claude-simplificar-ausentismo-2026-11-03.md](encargo-claude-simplificar-ausentismo-2026-11-03.md). Leerlo antes de continuar. La ficha extensa visible en cada fila propuesta aquí debe reemplazarse por la lista compacta y detalle a demanda del nuevo encargo. Este documento conserva el contexto de lo ya integrado.
+
 Lunes 2 de noviembre de 2026, 10:45 (hora argentina).
 
 **Usar `docs/rediseno-panel-claude.patch`.** Es **incremental sobre el estado actual de la carpeta**: tu `index.html` y tu `empresa.html` con los cambios de las 10:35 (Ausentismo ya integrado, trampa de foco, correos de empresa y paciente). Trae solo lo nuevo: Agenda, Seguimientos, Médicos, Empresas, Presupuestos, Reuniones y el portal de empresa.

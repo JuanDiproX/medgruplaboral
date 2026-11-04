@@ -1412,9 +1412,11 @@ td.no-label::before{display:none;}
       <div class="au-registro-cab">
         <div class="au-registro-titulo-wrap">
           <h2 class="au-registro-titulo" id="au-registro-titulo">Casos</h2>
-          <span class="au-registro-total"><span id="badge-casos">0</span> trabajadores</span>
+          <span class="au-registro-total"><span id="badge-casos">0</span> en la lista</span>
         </div>
         <div class="au-registro-herr">
+          <!-- Selector "Estado": lo completa renderCasosAusentismo() con las cantidades -->
+          <div class="au-filtro" id="au-filtros"></div>
           <label class="au-buscar">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             <span class="sr-only">Buscar caso</span>
@@ -1426,13 +1428,22 @@ td.no-label::before{display:none;}
           </button>
         </div>
       </div>
-      <!-- El circuito del caso, en orden. Cada etapa filtra la lista. -->
-      <nav class="au-circuito" id="au-filtros" aria-label="Filtrar por etapa del caso"></nav>
       <div id="casos-lista" class="au-lista" aria-live="polite">
         <div class="au-esqueleto" aria-hidden="true"><span></span><span></span><span></span></div>
         <span class="sr-only">Cargando casos…</span>
       </div>
     </section>
+
+    <!-- Detalle de un caso: panel aparte del alta, se abre desde "Ver caso" -->
+    <div class="panel-lateral au-detalle" id="au-detalle">
+      <div class="pl-fondo" onclick="cerrarPanelLateral()"></div>
+      <div class="pl-hoja" role="dialog" aria-modal="true" aria-labelledby="au-detalle-titulo">
+        <div class="card">
+          <div class="card-hdr"><h2 class="card-title" id="au-detalle-titulo" tabindex="-1">Caso</h2><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar el detalle del caso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="card-body" id="au-detalle-cuerpo"></div>
+        </div>
+      </div>
+    </div>
 
     <div id="au-panel-alta" class="au-alta">
       <div class="au-alta-fondo" onclick="cerrarAltaCaso()"></div>
@@ -1468,9 +1479,8 @@ td.no-label::before{display:none;}
               <div class="au-ayuda">Al entrar a la entrevista se le pide la ubicación al trabajador y se verifica contra este domicilio. Calle, número, ciudad y provincia.</div>
             </div>
             <!-- ausentismo-flow.js agrega acá la verificación en el mapa y, después, el paso 3 (profesional) -->
-            <h3 class="au-paso"><span class="au-paso-n">4</span>Motivo y documentación</h3>
-            <div class="form-group full"><label class="form-lbl" id="au-lbl-motivo" for="au-motivo">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:80px;" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea></div>
-            <div class="form-group full"><label class="form-lbl" for="au-documentacion">Documentación aportada (opcional)</label><textarea id="au-documentacion" style="min-height:60px;" placeholder="Certificado del Dr. X del 16/06, estudios..."></textarea></div>
+            <h3 class="au-paso"><span class="au-paso-n">4</span>Motivo y certificados</h3>
+            <div class="form-group full"><label class="form-lbl" id="au-lbl-motivo" for="au-motivo">Motivo de la ausencia</label><textarea id="au-motivo" style="min-height:120px;" aria-describedby="au-motivo-ayuda" placeholder="Faltó 3 días sin aviso, presentó certificado por..."></textarea><div class="au-ayuda" id="au-motivo-ayuda">Contá el motivo del control y cualquier dato relevante del certificado.</div></div>
             <div class="form-group full">
               <label class="form-lbl" for="au-certificados">Certificado médico (opcional)</label>
               <input type="file" id="au-certificados" class="au-archivos" multiple accept="application/pdf,image/jpeg,image/png,image/webp"/>
@@ -6215,55 +6225,77 @@ async function cargarCasosAusentismo(){
 let busquedaCasos = '';
 function buscarCasos(texto){ busquedaCasos = String(texto||''); renderCasosAusentismo(); }
 
-// Íconos de trazo, de la misma familia que el menú lateral
-const AU_ICONO = {
-  clip:'<path d="m21.4 11-8.8 8.8a5.5 5.5 0 0 1-7.8-7.8l8.8-8.8a3.7 3.7 0 0 1 5.2 5.2l-8.8 8.8a1.8 1.8 0 0 1-2.6-2.6l8.1-8.1"/>',
-  doc:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
-  pin:'<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
-  acta:'<path d="M9 4h6v3H9z"/><path d="M15 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
-  play:'<path d="M7 5v14l11-7z"/>',
-  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
-  mas:'<path d="M12 5v14M5 12h14"/>'
-};
-const auIcono = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AU_ICONO[n]}</svg>`;
 
-// Lo que el caso necesita para que la entrevista ocurra: domicilio verificado, profesional y turno.
-// Cada casillero dice si está listo, pendiente o si bloquea el ingreso del trabajador.
-function fichaCaso(c){
-  const fechaTurno = c.turno_fecha ? String(c.turno_fecha).split('T')[0].split('-').reverse().join('/') : '';
-  const dom = !c.domicilio
-    ? { e:'bloquea', v:'Sin domicilio', d:'El trabajador no va a poder ingresar' }
-    : c.domicilio_lat == null
-      ? { e:'bloquea', v:escaparHtml(c.domicilio), d:'Sin ubicar en el mapa: no se puede verificar' }
-      : { e:'listo', v:escaparHtml(c.domicilio), d:`Radio de ${c.radio_metros||300} m` };
-  const prof = c.profesional_nombre
-    ? { e:'listo', v:escaparHtml(c.profesional_nombre) }
-    : { e:'pendiente', v:'Sin asignar' };
-  const cerrado = ['resuelto','cancelado'].includes(c.estado);
-  const ent = c.turno_id && c.no_comparecio ? { e:'bloquea', v:fechaTurno ? `${fechaTurno} ${c.turno_hora||''}` : 'Registrada', d:'No compareció' }
-    : fechaTurno ? { e:'listo', v:`${fechaTurno} ${c.turno_hora||''}`, d: cerrado ? 'Realizada' : (c.estado==='en-curso' ? 'En curso' : 'Programada') }
-    : { e: cerrado ? 'nulo' : 'pendiente', v: cerrado ? 'Sin entrevista' : 'Sin programar' };
-  const celda = (lbl, x) => `<li class="au-ficha-item" data-e="${x.e}">
-      <span class="au-ficha-lbl">${lbl}</span>
-      <span class="au-ficha-val">${x.v}</span>${x.d?`<span class="au-ficha-det">${x.d}</span>`:''}
-    </li>`;
-  return `<ul class="au-ficha" aria-label="Preparación del control">${celda('Domicilio',dom)}${celda('Profesional',prof)}${celda('Entrevista',ent)}</ul>`;
+// ── Lista de casos (presentación) ─────────────────────────────────────────────
+// Cada fila cerrada responde: quién es, de qué empresa, cómo está el control y qué hacer.
+// El resto (domicilio, radio, profesional, motivo, documentos, antecedentes) vive en "Ver caso".
+// Las acciones, sus condiciones y sus permisos son los mismos de antes: accionesCaso() los arma
+// una sola vez y los usan la fila, el menú "Más acciones" y el detalle.
+function fechaControlCaso(c){
+  if(!c.turno_fecha) return '';
+  return `${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')}${c.turno_hora?` ${c.turno_hora}`:''}`;
+}
+// Un solo aviso, y solo si impide avanzar. Un caso cerrado no repite lo que ya tiene.
+function avisoCaso(c){
+  if(['resuelto','cancelado'].includes(c.estado)) return '';
+  if(!c.domicilio) return 'Falta cargar el domicilio';
+  if(c.domicilio_lat == null) return 'Falta confirmar el domicilio';
+  return '';
+}
+function accionesCaso(c){
+  const esAdmin = usuarioActual?.rol === 'admin';
+  const abierto = !['resuelto','cancelado'].includes(c.estado);
+  const nCert = Number(c.certificados) || 0;
+  const nInf = Number(c.informes_adjuntos) || 0;
+  const avanzar = [], estado = [], docs = [], peligro = [];
+  const acc = (texto, onclick, extra = {}) => ({ texto, onclick, ...extra });
+  if(esAdmin && abierto && !c.profesional_nombre) avanzar.push(acc('Asignar profesional', `abrirAsignarCaso(${c.id})`));
+  if(c.profesional_id && ['asignado','programado'].includes(c.estado))
+    avanzar.push(acc(c.turno_id ? 'Reprogramar' : 'Programar entrevista', `abrirProgramarCaso(${c.id})`, { principal: !c.turno_id }));
+  if(c.profesional_id && ['asignado','programado'].includes(c.estado) && !c.turno_id)
+    avanzar.push(acc('Iniciar control ahora', `iniciarControlAhora(${c.id})`));
+  if(esAdmin && !abierto) avanzar.push(acc('Nuevo control', `nuevoControlCaso(${c.id})`));
+  if(esAdmin && abierto && c.profesional_nombre) estado.push(acc('Reasignar profesional', `abrirAsignarCaso(${c.id})`));
+  if(c.estado === 'programado') estado.push(acc('Marcar en curso', `cambiarEstadoCaso(${c.id},'en-curso')`));
+  if(c.estado === 'en-curso') estado.push(acc('Marcar resuelto', `cambiarEstadoCaso(${c.id},'resuelto')`));
+  if(c.turno_id && ['programado','en-curso'].includes(c.estado)) estado.push(acc('Registrar que no compareció', `registrarInasistencia(${c.id})`));
+  docs.push(acc(`Certificados${nCert?` (${nCert})`:''}`, `abrirCertificadosCaso(${c.id})`));
+  docs.push(acc(`Informes${nInf?` (${nInf})`:''}`, `abrirInformesCaso(${c.id})`));
+  if(c.turno_id) docs.push(acc('Acta', null, { href:`/api/turnos/${c.turno_id}/acta` }));
+  if(c.turno_id && c.no_comparecio) docs.push(acc('Informe de inasistencia', null, { href:`/api/turnos/${c.turno_id}/informe-inasistencia` }));
+  docs.push(acc('Correos', `abrirCorreosCaso(${c.id})`));
+  if(esAdmin) docs.push(acc('Domicilio', `abrirDomicilioCaso(${c.id})`));
+  if(esAdmin && abierto) peligro.push(acc('Cancelar caso', `cancelarCaso(${c.id})`));
+  if(esAdmin) peligro.push(acc('Eliminar caso', `eliminarCaso(${c.id})`));
+  // La acción que domina la fila: asignar, programar o, si no hay nada que hacer, ver el caso
+  const principal = avanzar.find(a => a.texto === 'Asignar profesional') || avanzar.find(a => a.principal) || null;
+  return { principal, avanzar, estado, docs, peligro };
+}
+function htmlAccion(a, clase){
+  return a.href
+    ? `<a class="${clase}" href="${a.href}" target="_blank" rel="noopener">${a.texto}</a>`
+    : `<button type="button" class="${clase}" onclick="${a.onclick}">${a.texto}</button>`;
 }
 
 function renderCasosAusentismo(){
   const lista = document.getElementById('casos-lista');
   const filtros = document.getElementById('au-filtros');
+  cerrarMenuCaso(false);
 
   // Una fila por trabajador: el control vigente (el último) y, debajo, los anteriores
   const filas = agruparCasosPorTrabajador(casosAusentismo);
   document.getElementById('badge-casos').textContent = filas.length;
   pintarBadgeAusentismo(casosAusentismo);
 
+  // Selector "Estado": mismos valores y significado que antes, todos visibles aunque estén en cero
   const cuenta = e => filas.filter(f => f.actual.estado === e).length;
-  const etapa = (v, t, n) => `<button type="button" class="au-etapa" aria-pressed="${filtroCasos===v}" onclick="filtrarCasos('${v}')"><span class="au-etapa-t">${t}</span><span class="au-etapa-n">${n}</span></button>`;
-  filtros.innerHTML = etapa('', 'Todos', filas.length) + '<span class="au-circuito-pasos">' +
-    [['nuevo','Nuevos'],['asignado','Asignados'],['programado','Programados'],['en-curso','En curso'],['resuelto','Resueltos']]
-      .map(([v,t]) => etapa(v, t, cuenta(v))).join('') + '</span>';
+  const opciones = [['','Todos',filas.length],['nuevo','Nuevos',cuenta('nuevo')],['asignado','Asignados',cuenta('asignado')],
+    ['programado','Programados',cuenta('programado')],['en-curso','En curso',cuenta('en-curso')],['resuelto','Resueltos',cuenta('resuelto')]];
+  if(!document.getElementById('au-filtro-estado')) filtros.innerHTML = '<label class="au-estado"><span class="au-estado-lbl">Estado</span><select id="au-filtro-estado" onchange="filtrarCasos(this.value)"></select></label>';
+  const selectorEstado = document.getElementById('au-filtro-estado');
+  const opcionesHtml = opciones.map(([v,t,n]) => `<option value="${v}">${t} (${n})</option>`).join('');
+  if(selectorEstado.innerHTML !== opcionesHtml) selectorEstado.innerHTML = opcionesHtml;
+  selectorEstado.value = filtroCasos;
 
   const q = busquedaCasos.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const coincide = c => !q || [c.trabajador_nombre, c.trabajador_dni, c.empresa_nombre]
@@ -6272,64 +6304,182 @@ function renderCasosAusentismo(){
   const esAdmin = usuarioActual?.rol === 'admin';
   if(!visibles.length){
     lista.innerHTML = casosAusentismo.length
-      ? `<div class="au-vacio"><p>${q ? 'Ningún caso coincide con la búsqueda.' : 'No hay casos en esta etapa.'}</p><button class="btn btn-ghost" onclick="document.getElementById('au-buscar-caso').value='';busquedaCasos='';filtrarCasos('')">Ver todos</button></div>`
+      ? `<div class="au-vacio"><p>${q ? 'Ningún caso coincide con la búsqueda.' : 'No hay casos en este estado.'}</p><button class="btn btn-ghost" onclick="document.getElementById('au-buscar-caso').value='';busquedaCasos='';filtrarCasos('')">Ver todos</button></div>`
       : `<div class="au-vacio"><p>Todavía no hay casos de ausentismo.</p>${esAdmin?'<button class="btn btn-primary" onclick="abrirAltaCaso()">Cargar el primero</button>':''}</div>`;
+    refrescarDetalleCaso();
     return;
   }
 
-  const b = (clase, onclick, texto, icono) => `<button class="btn ${clase}" onclick="${onclick}">${icono?auIcono(icono):''}${texto}</button>`;
-  const a = (href, texto, icono) => `<a href="${href}" target="_blank" rel="noopener" class="btn au-acc-doc">${icono?auIcono(icono):''}${texto}</a>`;
-
-  lista.innerHTML = visibles.map(({ actual: c, anteriores }) => {
+  lista.innerHTML = `<ul class="au-filas" role="list">${visibles.map(({ actual: c, anteriores }) => {
     const est = ESTADO_CASO[c.estado] || { texto:c.estado, clase:'b-gray' };
-    const creado = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
-    const abierto = !['resuelto','cancelado'].includes(c.estado);
-    const nCert = Number(c.certificados) || 0;
-    const nInf = Number(c.informes_adjuntos) || 0;
+    const { principal } = accionesCaso(c);
+    const cuando = fechaControlCaso(c);
+    const aviso = avisoCaso(c);
+    const tipo = c.tipo_control && c.tipo_control !== 'ausentismo' ? TIPO_CONTROL[c.tipo_control]?.texto : '';
+    const linea2 = [escaparHtml(c.empresa_nombre||'Sin empresa'),
+      cuando ? `Control ${escaparHtml(cuando)}` : '',
+      anteriores.length ? `${anteriores.length+1}º control` : '',
+      tipo ? escaparHtml(tipo) : ''].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+    const nombreId = `au-fila-nombre-${c.id}`;
+    return `<li class="au-fila" data-caso-id="${c.id}" data-estado="${escaparHtml(c.estado)}">
+      <div class="au-fila-quien">
+        <h3 class="au-fila-nombre" id="${nombreId}">${escaparHtml(c.trabajador_nombre)}</h3>
+        <div class="au-fila-datos">${linea2}</div>
+        ${aviso ? `<div class="au-fila-aviso">${aviso}</div>` : ''}
+      </div>
+      <div class="au-fila-estado">
+        <span class="badge ${est.clase}">${est.texto}</span>
+        ${c.no_comparecio ? '<span class="au-resultado au-resultado--nc">No compareció</span>' : ''}
+      </div>
+      <div class="au-fila-acc">
+        ${principal ? htmlAccion(principal, 'btn btn-primary au-fila-principal') : ''}
+        <button type="button" class="btn ${principal ? 'btn-ghost' : 'btn-primary au-fila-principal'} au-ver" onclick="verCaso(${c.id})" aria-describedby="${nombreId}">Ver caso</button>
+        <button type="button" class="btn btn-ghost au-mas" onclick="abrirMenuCaso(${c.id}, this)" aria-haspopup="menu" aria-expanded="false" aria-label="Más acciones para ${escaparHtml(c.trabajador_nombre)}">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
+      </div>
+    </li>`;
+  }).join('')}</ul>`;
+  refrescarDetalleCaso();
+}
 
-    // Mismas acciones y condiciones que antes, agrupadas por lo que hacen
-    const avanzar = [], estado = [], docs = [], peligro = [];
-    docs.push(b('au-acc-doc',`abrirCorreosCaso(${c.id})`,'Correos'));
-    if(esAdmin && !abierto) avanzar.push(b('btn-primary', `nuevoControlCaso(${c.id})`, 'Nuevo control', 'mas'));
-    if(c.profesional_id && ['asignado','programado'].includes(c.estado))
-      avanzar.push(c.turno_id
-        ? b('btn-ghost au-acc-sec', `abrirProgramarCaso(${c.id})`, 'Reprogramar', 'cal')
-        : b('btn-rosa', `abrirProgramarCaso(${c.id})`, 'Programar entrevista', 'cal'));
-    if(c.profesional_id && ['asignado','programado'].includes(c.estado) && !c.turno_id)
-      avanzar.push(b('btn-ghost au-acc-sec', `iniciarControlAhora(${c.id})`, 'Iniciar control ahora', 'play'));
-    if(esAdmin && abierto)
-      (c.profesional_nombre ? estado : avanzar).push(b(c.profesional_nombre ? 'btn-ghost au-acc-est' : 'btn-primary', `abrirAsignarCaso(${c.id})`, c.profesional_nombre ? 'Reasignar' : 'Asignar profesional'));
-    if(c.estado === 'programado') estado.push(b('btn-ghost au-acc-est', `cambiarEstadoCaso(${c.id},'en-curso')`, 'Marcar en curso'));
-    if(c.estado === 'en-curso') estado.push(b('btn-ghost au-acc-est au-acc-ok', `cambiarEstadoCaso(${c.id},'resuelto')`, 'Marcar resuelto'));
-    if(c.turno_id && ['programado','en-curso'].includes(c.estado)) estado.push(b('btn-ghost au-acc-est au-acc-alerta', `registrarInasistencia(${c.id})`, 'No compareció'));
-    docs.push(b('au-acc-doc', `abrirCertificadosCaso(${c.id})`, `Certificados${nCert?` <span class="au-n">${nCert}</span>`:''}`, 'clip'));
-    docs.push(b('au-acc-doc', `abrirInformesCaso(${c.id})`, `Informes${nInf?` <span class="au-n">${nInf}</span>`:''}`, 'doc'));
-    if(esAdmin) docs.push(b('au-acc-doc', `abrirDomicilioCaso(${c.id})`, 'Domicilio', 'pin'));
-    // El acta se decide sola según el registro: asistencia o inasistencia. Alcanza con un link.
-    if(c.turno_id) docs.push(a(`/api/turnos/${c.turno_id}/acta`, 'Acta', 'acta'));
-    if(c.turno_id && c.no_comparecio) docs.push(a(`/api/turnos/${c.turno_id}/informe-inasistencia`, 'Informe de inasistencia', 'doc'));
-    if(esAdmin && abierto) peligro.push(b('au-acc-peligro', `cancelarCaso(${c.id})`, 'Cancelar caso'));
-    if(esAdmin) peligro.push(b('au-acc-peligro', `eliminarCaso(${c.id})`, 'Eliminar'));
+// ── Menú "Más acciones" ──
+// Botón con aria-haspopup; se abre con clic, Enter o Espacio; flechas para recorrer;
+// Escape o Tab lo cierran y el foco vuelve al botón. Posición fija para no recortarse en la lista.
+let menuCaso = null;
+function abrirMenuCaso(id, boton){
+  const yaAbierto = menuCaso && menuCaso.boton === boton;
+  cerrarMenuCaso(false);
+  if(yaAbierto) return;
+  const c = casosAusentismo.find(x => x.id === id);
+  if(!c) return;
+  const { principal, avanzar, estado, docs, peligro } = accionesCaso(c);
+  const item = a => a.href
+    ? `<a role="menuitem" class="au-menu-item" href="${a.href}" target="_blank" rel="noopener" tabindex="-1">${a.texto}</a>`
+    : `<button type="button" role="menuitem" class="au-menu-item" tabindex="-1" onclick="cerrarMenuCaso(false);${a.onclick}">${a.texto}</button>`;
+  const grupo = (lista, clase='') => lista.length ? `<div class="au-menu-grupo ${clase}" role="group">${lista.map(item).join('')}</div>` : '';
+  const menu = document.createElement('div');
+  menu.className = 'au-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', `Acciones para ${c.trabajador_nombre}`);
+  menu.innerHTML = grupo([{ texto:'Ver caso', onclick:`verCaso(${c.id})` }, ...avanzar.filter(a => a !== principal), ...estado])
+    + grupo(docs) + grupo(peligro, 'au-menu-peligro');
+  document.body.appendChild(menu);
+  boton.setAttribute('aria-expanded', 'true');
+  menuCaso = { menu, boton };
+  ubicarMenuCaso();
+  menu.querySelector('.au-menu-item')?.focus({ preventScroll:true });
+}
+// Junto a su botón, abajo o arriba según el espacio. Si el botón sale de la pantalla, se cierra.
+function ubicarMenuCaso(){
+  if(!menuCaso) return;
+  const { menu, boton } = menuCaso;
+  const r = boton.getBoundingClientRect();
+  if(r.bottom < 0 || r.top > innerHeight) return cerrarMenuCaso(false);
+  const ancho = menu.offsetWidth, alto = menu.offsetHeight;
+  menu.style.left = Math.max(8, Math.min(r.right - ancho, innerWidth - ancho - 8)) + 'px';
+  menu.style.top = (r.bottom + 6 + alto > innerHeight - 8 ? Math.max(8, r.top - 6 - alto) : r.bottom + 6) + 'px';
+}
+function cerrarMenuCaso(devolverFoco = true){
+  if(!menuCaso) return;
+  const { menu, boton } = menuCaso;
+  menuCaso = null;
+  menu.remove();
+  boton.setAttribute('aria-expanded', 'false');
+  if(devolverFoco && document.contains(boton)) boton.focus();
+}
+document.addEventListener('keydown', e => {
+  if(!menuCaso) return;
+  const items = [...menuCaso.menu.querySelectorAll('.au-menu-item')];
+  const i = items.indexOf(document.activeElement);
+  if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); cerrarMenuCaso(); }
+  else if(e.key === 'Tab'){ e.preventDefault(); cerrarMenuCaso(); }
+  else if(e.key === 'ArrowDown'){ e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+  else if(e.key === 'Home'){ e.preventDefault(); items[0]?.focus(); }
+  else if(e.key === 'End'){ e.preventDefault(); items[items.length - 1]?.focus(); }
+}, true);
+document.addEventListener('click', e => {
+  if(menuCaso && !menuCaso.menu.contains(e.target) && !menuCaso.boton.contains(e.target)) cerrarMenuCaso(false);
+});
+window.addEventListener('resize', ubicarMenuCaso);
+document.addEventListener('scroll', e => { if(menuCaso && !menuCaso.menu.contains(e.target)) ubicarMenuCaso(); }, true);
 
-    const bloqueado = abierto && (!c.domicilio || c.domicilio_lat == null);
-    return `<article class="au-caso${bloqueado?' au-caso--bloqueado':''}" data-estado="${escaparHtml(c.estado)}">
-      <header class="au-caso-cab">
-        <div class="au-caso-quien">
-          <h3 class="au-caso-nombre">${escaparHtml(c.trabajador_nombre)}</h3>
-          <div class="au-caso-datos">${empresaTag(c.empresa_nombre)}<span>${c.trabajador_dni?'DNI '+escaparHtml(c.trabajador_dni):'Sin DNI'}</span><span>Abierto el ${creado}</span></div>
-        </div>
-        <div class="au-caso-estado">${anteriores.length?`<span class="badge b-gray">${anteriores.length+1}º control</span>`:''}${tagTipoControl(c)}<span class="badge ${est.clase}">${est.texto}</span></div>
-      </header>
-      ${fichaCaso(c)}
-      ${c.motivo?`<p class="au-caso-motivo">${escaparHtml(c.motivo)}</p>`:''}
-      <footer class="au-caso-acc">
-        ${avanzar.length||estado.length?`<div class="au-acc-grupo au-acc-avanzar">${avanzar.join('')}${estado.join('')}</div>`:''}
-        <div class="au-acc-grupo au-acc-docs">${docs.join('')}</div>
-        ${peligro.length?`<div class="au-acc-grupo au-acc-fin">${peligro.join('')}</div>`:''}
-      </footer>
-      ${htmlControlesAnteriores(anteriores)}
-    </article>`;
-  }).join('');
+// ── Detalle "Ver caso" ──
+// Panel lateral propio (#au-detalle): no comparte estado con el alta, así que abrir un caso
+// no resetea ni pisa un "Nuevo caso" en preparación. Al cerrar, el foco vuelve a su fila.
+let casoDetalleId = null;
+const botonVerCaso = id => document.querySelector(`.au-fila[data-caso-id="${id}"] .au-ver`);
+function verCaso(id){
+  casoDetalleId = id;
+  pintarDetalleCaso();
+  // El foco de vuelta es siempre el "Ver caso" de la fila, aunque se abra desde el menú
+  botonVerCaso(id)?.focus({ preventScroll:true });
+  abrirPanelLateral('au-detalle');
+  requestAnimationFrame(() => document.getElementById('au-detalle-titulo')?.focus({ preventScroll:true }));
+}
+function refrescarDetalleCaso(){
+  if(casoDetalleId == null || panelLateralAbierto?.id !== 'au-detalle') return;
+  const cuerpo = document.getElementById('au-detalle-cuerpo');
+  const foco = cuerpo.contains(document.activeElement) ? document.activeElement : null;
+  const accion = foco && { onclick:foco.getAttribute('onclick'), href:foco.getAttribute('href'), summary:foco.tagName === 'SUMMARY' };
+  const scroll = cuerpo.scrollTop;
+  pintarDetalleCaso();
+  cuerpo.scrollTop = scroll;
+  if(accion){
+    const destino = [...cuerpo.querySelectorAll('button,a,summary')].find(el =>
+      accion.onclick ? el.getAttribute('onclick') === accion.onclick : accion.href ? el.getAttribute('href') === accion.href : accion.summary && el.tagName === 'SUMMARY');
+    (destino || document.getElementById('au-detalle-titulo')).focus({preventScroll:true});
+  }
+  // Si la lista se volvió a dibujar con el detalle abierto, el foco vuelve a la fila nueva
+  const b = botonVerCaso(casoDetalleId);
+  if(b) panelLateralOrigen = b;
+}
+function pintarDetalleCaso(){
+  const cuerpo = document.getElementById('au-detalle-cuerpo');
+  const c = casosAusentismo.find(x => x.id === casoDetalleId);
+  if(!c){ cuerpo.innerHTML = '<p class="au-ayuda">Este caso ya no está en la lista.</p>'; return; }
+  const grupo = agruparCasosPorTrabajador(casosAusentismo).find(g => g.actual.id === c.id || g.anteriores.some(x => x.id === c.id));
+  const anteriores = grupo ? grupo.anteriores.filter(x => x.id !== c.id) : [];
+  const est = ESTADO_CASO[c.estado] || { texto:c.estado, clase:'b-gray' };
+  const { principal, avanzar, estado, docs, peligro } = accionesCaso(c);
+  const tipo = TIPO_CONTROL[c.tipo_control]?.texto || 'Control de ausentismo';
+  const abierto = c.creado_en ? new Date(c.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'}) : '—';
+  const dato = (lbl, val) => `<div class="au-dato"><dt>${lbl}</dt><dd>${val}</dd></div>`;
+  const vacio = t => `<span class="au-dato-vacio">${t}</span>`;
+  const domicilio = !c.domicilio ? vacio('Sin domicilio cargado')
+    : `${escaparHtml(c.domicilio)}<span class="au-dato-sub">${c.domicilio_lat != null ? `Ubicado en el mapa. Radio permitido: ${c.radio_metros||300} m` : 'Sin ubicar en el mapa: no se puede verificar la ubicación'}</span>`;
+  const resultado = c.no_comparecio ? '<span class="au-resultado au-resultado--nc">No compareció</span>'
+    : c.estado === 'resuelto' ? 'Resuelto' : '';
+  document.getElementById('au-detalle-titulo').textContent = c.trabajador_nombre;
+  cuerpo.innerHTML = `
+    <div class="au-det-estado"><span class="badge ${est.clase}">${est.texto}</span>${c.no_comparecio?'<span class="au-resultado au-resultado--nc">No compareció</span>':''}${avisoCaso(c)?`<span class="au-fila-aviso">${avisoCaso(c)}</span>`:''}</div>
+    ${principal || avanzar.length || estado.length ? `<div class="au-det-acciones">${[principal, ...avanzar.filter(a => a !== principal), ...estado].filter(Boolean)
+      .map((a, i) => htmlAccion(a, i === 0 && principal ? 'btn btn-primary' : 'btn btn-ghost')).join('')}</div>` : ''}
+    <section class="au-det-seccion"><h3>Trabajador</h3><dl class="au-datos">
+      ${dato('Empresa', escaparHtml(c.empresa_nombre||'—'))}
+      ${dato('DNI', c.trabajador_dni ? escaparHtml(c.trabajador_dni) : vacio('Sin DNI'))}
+      ${dato('WhatsApp', c.trabajador_telefono ? escaparHtml(c.trabajador_telefono) : vacio('Sin cargar'))}
+      ${dato('Tipo de control', escaparHtml(tipo))}
+      ${dato('Abierto el', abierto)}
+    </dl></section>
+    <section class="au-det-seccion"><h3>Control</h3><dl class="au-datos">
+      ${dato('Profesional', c.profesional_nombre ? escaparHtml(c.profesional_nombre) : vacio('Sin asignar'))}
+      ${dato('Entrevista', fechaControlCaso(c) ? escaparHtml(fechaControlCaso(c)) : vacio('Sin programar'))}
+      ${resultado ? dato('Resultado', resultado) : ''}
+      <div class="au-dato au-dato--ancho"><dt>Domicilio de reposo</dt><dd>${domicilio}</dd></div>
+    </dl></section>
+    <section class="au-det-seccion"><h3>Motivo</h3>
+      ${c.motivo ? `<p class="au-det-texto">${escaparHtml(c.motivo)}</p>` : `<p>${vacio('Sin motivo cargado')}</p>`}
+      ${c.documentacion ? `<h4>Documentación declarada</h4><p class="au-det-texto">${escaparHtml(c.documentacion)}</p>` : ''}
+    </section>
+    <section class="au-det-seccion"><h3>Documentos</h3>
+      <div class="au-det-docs">${docs.map(a => htmlAccion(a, 'au-det-doc')).join('')}</div>
+    </section>
+    ${anteriores.length ? `<section class="au-det-seccion"><h3>Controles anteriores</h3>${htmlControlesAnteriores(anteriores)}</section>` : ''}
+    ${peligro.length ? `<section class="au-det-seccion au-det-peligro"><h3>Otras acciones</h3><div class="au-det-docs">${peligro.map(a => htmlAccion(a, 'au-det-doc au-det-doc--peligro')).join('')}</div></section>` : ''}`;
+  // Los antecedentes se ven abiertos dentro del detalle
+  cuerpo.querySelector('.au-anteriores')?.setAttribute('open', '');
 }
 
 // Mismo trabajador = mismo DNI, o mismo nombre (sin importar orden ni tildes) en la misma
@@ -6862,7 +7012,7 @@ async function crearCasoAusentismo(){
       trabajador_dni: document.getElementById('au-dni').value.trim(),
       trabajador_telefono: document.getElementById('au-telefono').value.trim(),
       domicilio: document.getElementById('au-domicilio').value.trim(),
-      motivo, documentacion: document.getElementById('au-documentacion').value.trim()
+      motivo
     })});
     const data = await r.json();
     if(!data.ok){ err.textContent = data.error||'No se pudo abrir el caso'; err.style.display='block'; return; }
@@ -6880,7 +7030,7 @@ async function crearCasoAusentismo(){
     }
     if(avisos.length){ err.textContent = 'El caso se abrió. ' + avisos.join(' '); err.style.display='block'; }
 
-    ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo','au-documentacion'].forEach(id=>document.getElementById(id).value='');
+    ['au-trabajador','au-dni','au-telefono','au-domicilio','au-motivo'].forEach(id=>document.getElementById(id).value='');
     // El tipo vuelve al habitual: el próximo caso que se cargue no hereda la excepción
     document.getElementById('au-tipo-control').value = 'ausentismo';
     onTipoControlChange();

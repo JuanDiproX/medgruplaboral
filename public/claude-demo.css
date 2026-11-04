@@ -344,3 +344,100 @@ body.pl-activo{overflow:hidden;}
   #medicos-lista td[style*="display:flex"],#empresas-lista td[style*="display:flex"],#presupuestos-lista td[style*="display:flex"]{display:table-cell!important;text-align:right;white-space:nowrap;vertical-align:middle;}
   #medicos-lista td[style*="display:flex"] > * + *,#empresas-lista td[style*="display:flex"] > * + *,#presupuestos-lista td[style*="display:flex"] > * + *{margin-left:6px;}
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   AUSENTISMO — LISTA COMPACTA (3 de noviembre)
+   Reemplaza en la lista a las fichas de preparación (.au-caso / .au-ficha, que siguen
+   en uso en Seguimientos). Cada fila: nombre y estado primero, empresa y fecha del control
+   en una segunda línea discreta, un solo aviso si algo impide avanzar, una acción que manda,
+   "Ver caso" y un menú con el resto. El detalle completo vive en #au-detalle.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.au-registro-herr .au-filtro{display:flex;}
+.au-estado{display:flex;align-items:center;gap:8px;}
+.au-estado-lbl{font-size:13px;font-weight:500;color:var(--ink-2);}
+.au-estado select{min-height:40px;width:auto;min-width:170px;padding-right:32px;font-variant-numeric:tabular-nums;}
+
+.au-filas{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule);}
+.au-fila{
+  display:grid;grid-template-columns:minmax(0,1fr) 140px 312px;grid-template-areas:"quien estado acc";
+  align-items:center;gap:6px 20px;padding:14px 1.5rem;border-bottom:1px solid var(--rule);
+}
+.au-fila:last-child{border-bottom:0;}
+.au-fila:hover{background:var(--paper);}
+.au-fila-quien{grid-area:quien;min-width:0;}
+.au-fila-nombre{font-size:15.5px;font-weight:600;line-height:1.3;color:var(--ink);overflow-wrap:anywhere;}
+.au-fila-datos{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px;font-size:13px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.au-fila-datos span:first-child{color:var(--ink-2);}
+.au-fila-aviso{display:inline-flex;align-items:center;gap:7px;margin-top:6px;font-size:13px;font-weight:600;color:var(--magenta-ink);}
+.au-fila-aviso::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--magenta);flex-shrink:0;}
+.au-fila-estado{grid-area:estado;display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+.au-fila-estado .badge{font-size:12.5px;padding:3px 10px;}
+.au-resultado{font-size:12.5px;font-weight:600;}
+.au-resultado--nc{color:var(--magenta-ink);}
+.au-fila-acc{grid-area:acc;display:flex;align-items:center;gap:6px;justify-content:flex-end;}
+.au-fila-acc .btn{min-height:38px;padding:0 14px;font-size:13.5px;}
+.au-fila-acc .au-ver.btn-ghost{border-color:var(--rule-2);}
+.au-mas{width:38px;padding:0!important;justify-content:center;}
+.au-mas svg{width:18px;height:18px;}
+.au-mas[aria-expanded="true"]{background:var(--paper-2);border-color:var(--ink-3);}
+
+/* Menú "Más acciones" (se dibuja en <body>, posición fija) */
+.au-menu{position:fixed;z-index:400;min-width:232px;max-width:min(300px,calc(100vw - 16px));max-height:min(70vh,520px);overflow-y:auto;
+  background:#fff;border:1px solid var(--rule-2);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:4px 0;}
+.au-menu-grupo{padding:4px;}
+.au-menu-grupo + .au-menu-grupo{border-top:1px solid var(--rule);}
+.au-menu-item{display:flex;align-items:center;width:100%;min-height:40px;padding:0 12px;border:0;border-radius:var(--r-sm);background:transparent;
+  font:inherit;font-size:14px;color:var(--ink);text-align:left;text-decoration:none;cursor:pointer;}
+.au-menu-item:hover,.au-menu-item:focus-visible{background:var(--paper-2);outline:none;}
+.au-menu-item:focus-visible{box-shadow:inset 0 0 0 2px var(--blue-ink);}
+.au-menu-peligro .au-menu-item{color:var(--magenta-ink);}
+.au-menu-peligro .au-menu-item:hover,.au-menu-peligro .au-menu-item:focus-visible{background:var(--rosa-light);}
+
+/* Detalle "Ver caso" */
+.au-detalle .pl-hoja{width:min(560px,100%);}
+#au-detalle-titulo{outline:none;}
+#au-detalle-titulo:focus-visible{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px;}
+.au-det-estado{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;}
+.au-det-estado .badge{font-size:13px;padding:3px 11px;}
+.au-det-estado .au-fila-aviso{margin-top:0;}
+.au-det-acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+.au-det-acciones .btn{min-height:42px;}
+.au-det-seccion{margin-top:24px;padding-top:20px;border-top:1px solid var(--rule);}
+.au-det-seccion h3{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:12px;}
+.au-det-seccion h4{font-size:13px;font-weight:600;color:var(--ink-2);margin:14px 0 4px;}
+.au-datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;}
+.au-dato{min-width:0;}
+.au-dato--ancho{grid-column:1/-1;}
+.au-dato dt{font-size:12.5px;font-weight:500;color:var(--ink-3);}
+.au-dato dd{margin:3px 0 0;font-size:14.5px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+.au-dato-sub{display:block;margin-top:3px;font-size:13px;color:var(--ink-2);}
+.au-dato-vacio{color:var(--ink-3);}
+.au-det-texto{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-line;max-width:62ch;}
+.au-det-docs{display:flex;flex-wrap:wrap;gap:6px;}
+.au-det-doc{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--rule-2);border-radius:var(--r-sm);
+  background:#fff;font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);text-decoration:none;cursor:pointer;}
+.au-det-doc:hover{background:var(--paper-2);}
+.au-det-doc--peligro{color:var(--magenta-ink);border-color:var(--rosa-mid);}
+.au-det-doc--peligro:hover{background:var(--rosa-light);}
+.au-detalle .au-anteriores{margin-top:0;padding-top:0;border-top:0;}
+
+@media (max-width:1180px){
+  .au-fila{grid-template-columns:minmax(0,1fr) 120px auto;}
+}
+@media (max-width:900px){
+  .au-fila{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"quien estado" "acc acc";padding:14px 1rem;gap:10px 14px;}
+  .au-fila-estado{min-width:0;align-items:flex-end;}
+  .au-fila-acc{justify-content:stretch;}
+  .au-fila-acc .btn{min-height:44px;}
+  .au-fila-acc .au-fila-principal{flex:1 1 auto;}
+  .au-fila-acc .au-ver.btn-ghost{flex:1 1 auto;}
+  .au-mas{width:44px;flex:0 0 44px;}
+}
+@media (max-width:760px){
+  .au-registro-herr .au-filtro{flex:1 1 100%;order:2;}
+  .au-estado{width:100%;}
+  .au-estado select{flex:1;min-height:44px;}
+  .au-menu-item{min-height:44px;}
+  .au-buscar input{min-height:44px;font-size:16px;}
+  .au-datos{grid-template-columns:1fr;}
+}

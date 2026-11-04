@@ -51,6 +51,7 @@ test('formulario integrado: errores, punto confirmado, doble envío, repetición
     const requests=await page.evaluate(()=>window.requests);
     assert.equal(requests.filter(r=>r.url==='/api/ausentismo/casos').length,1);
     const saved=JSON.parse(requests.find(r=>r.url==='/api/ausentismo/casos').body);assert.equal(saved.domicilio_lat,-53.78);assert.equal(saved.validar_domicilio,true);
+    assert.equal('documentacion' in saved,false,'alta con un solo campo narrativo');
     await page.evaluate(()=>window.nuevoControlCaso(1));
     assert.equal(await page.$eval('#au-trabajador',e=>e.value),'Persona de demostración');assert.equal(await page.$eval('#au-motivo',e=>e.value),'');
     assert.match(await page.$eval('#au-flow-summary',e=>e.textContent),/no se copian/);
