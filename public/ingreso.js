@@ -37,11 +37,12 @@
    const pos=excepcionGeo?null:await ubicacionActual();$('cargando-txt').textContent='Validando el ingreso…';
    const r=await fetch('/api/ingreso/'+encodeURIComponent(token)+'/verificar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pos||{})}),d=await r.json();
    if(d.ok){
-    listo=false;$('titulo').textContent='Ya podés ingresar';$('subtitulo').textContent='Al entrar, permití el uso de la cámara y el micrófono para hablar con el equipo médico.';
-    aviso('ok',d.excepcion_geo?'Tu ingreso está autorizado, sin validación geográfica.':'Ubicación validada. Ya podés entrar a tu entrevista.');
+    listo=false;$('titulo').textContent='Ingresando a tu entrevista';$('subtitulo').textContent='Estamos abriendo la videollamada. Permití el uso de la cámara y el micrófono si el navegador te lo pide.';
+    aviso('ok',d.excepcion_geo?'Tu ingreso está autorizado, sin validación geográfica.':'Ubicación validada. Te estamos conectando con el equipo médico.');
     $('paso-validar').removeAttribute('aria-current');$('paso-validar').classList.add('listo');$('paso-ingresar').setAttribute('aria-current','step');
     $('link-llamada').href=d.link;$('link-llamada').hidden=false;$('ayuda').hidden=true;
-    $('pie').textContent=d.excepcion_geo?'Ingresá desde el botón para continuar con el equipo médico.':'Permanecé en el domicilio informado durante la entrevista.';$('link-llamada').focus({preventScroll:true});return;
+    $('pie').textContent=d.excepcion_geo?'El acceso se abrirá automáticamente.':'Permanecé en el domicilio informado durante la entrevista.';
+    location.replace(d.link);return;
    }
    let mensaje=d.error||'No pudimos verificar tu ubicación.';
    if(d.code==='SIN_UBICACION'&&geoError==='permiso')mensaje='El navegador no tiene permiso para acceder a tu ubicación. Habilitalo en los permisos del sitio y volvé a intentar.';

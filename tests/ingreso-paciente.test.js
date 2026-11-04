@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path');
 const origin='https://medgrup.example.invalid';
 const datos={ok:true,trabajador:'Persona de demostración',fecha:'2026-11-04',hora:'16:00',control:'Control de ausentismo',domicilio:'Dirección de ejemplo 123, Río Grande',tiene_domicilio:true};
 async function pagina(browser,{data=datos,response={ok:true,link:'/atencion.html#token=prueba'},geo='ok',network=false}={}){
-  const page=await browser.newPage();const posts=[];let fail=network;
+  const page=await browser.newPage();const posts=[],geoReadings=[];let fail=network;
   await page.setViewport({width:390,height:844});
   await page.evaluateOnNewDocument(geo=>{
     window.geoCalls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,error,options){window.geoCalls++;window.geoOptions=options;setTimeout(()=>geo==='ok'?ok({coords:{latitude:-53.78,longitude:-67.7,accuracy:20}}):error({code:geo==='denied'?1:3}),150);}}});
@@ -13,18 +13,21 @@ async function pagina(browser,{data=datos,response={ok:true,link:'/atencion.html
   page.on('request',async r=>{
     const url=new URL(r.url());
     if(url.origin!==origin)return r.abort();
+    if(url.pathname==='/api/chat/paciente/sesion')return r.respond({contentType:'application/json',body:JSON.stringify({paciente:data.trabajador,llamada:origin+'/sala-simulada'})});
+    if(url.pathname==='/api/chat/paciente/mensajes')return r.respond({contentType:'application/json',body:'{"mensajes":[]}'});
+    if(url.pathname==='/sala-simulada')return r.respond({contentType:'text/html',body:'<p>Videollamada simulada</p>'});
     if(url.pathname.startsWith('/api/ingreso/')){
       if(fail){fail=false;return r.abort();}
-      if(r.method()==='POST'){posts.push(JSON.parse(r.postData()));return r.respond({status:response.ok?200:403,contentType:'application/json',body:JSON.stringify(response)});}
+      if(r.method()==='POST'){posts.push(JSON.parse(r.postData()));geoReadings.push(await page.evaluate(()=>({calls:window.geoCalls,options:window.geoOptions})));return r.respond({status:response.ok?200:403,contentType:'application/json',body:JSON.stringify(response)});}
       return r.respond({status:data.ok?200:404,contentType:'application/json',body:JSON.stringify(data)});
     }
     const file=url.pathname.startsWith('/ingreso/')?'ingreso.html':url.pathname.slice(1);
-    if(!['ingreso.html','ingreso.css','ingreso.js','logo.png'].includes(file))return r.abort();
+    if(!['ingreso.html','ingreso.css','ingreso.js','atencion.html','atencion.css','atencion.js','logo.png'].includes(file))return r.abort();
     return r.respond({status:200,contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html',body:fs.readFileSync(path.join('public',file))});
   });
   await page.goto(origin+'/ingreso/token-ficticio',{waitUntil:'load'});
   await page.waitForFunction(()=>document.getElementById('cargando').hidden);
-  return {page,posts};
+  return {page,posts,geoReadings};
 }
 
 test('ingreso móvil: ubicación concedida/denegada, fuera de rango, excepción y cierres',async()=>{
@@ -40,11 +43,13 @@ test('ingreso móvil: ubicación concedida/denegada, fuera de rango, excepción 
       if(width!==320)await normal.page.screenshot({path:`output/ingreso-paciente/listo-${width}.png`,fullPage:true});
     }
     await normal.page.evaluate(()=>{document.getElementById('btn').click();document.getElementById('btn').click();});
-    await normal.page.waitForFunction(()=>!document.getElementById('link-llamada').hidden);
+    await normal.page.waitForFunction(()=>location.pathname==='/atencion.html'&&document.getElementById('video')&&!document.getElementById('video').hidden);
     assert.equal(normal.posts.length,1);assert.equal(normal.posts[0].precision,20);
-    assert.equal(await normal.page.evaluate(()=>window.geoOptions.maximumAge),0);
-    assert.equal(await normal.page.$eval('#paso-ingresar',e=>e.getAttribute('aria-current')),'step');
-    assert.equal(await normal.page.$eval('#link-llamada',e=>e.getAttribute('href')),'/atencion.html#token=prueba');
+    assert.equal(normal.geoReadings[0].options.maximumAge,0);
+    assert.equal(normal.geoReadings[0].calls,1);
+    assert.equal(await normal.page.$eval('#video',e=>e.src),origin+'/sala-simulada','la llamada se abre sin un segundo toque');
+    assert.equal(await normal.page.$eval('#conectar',e=>e.hidden),true);
+    assert.equal(await normal.page.evaluate(()=>sessionStorage.getItem('medgrup_chat_token')),'prueba');
     await normal.page.setViewport({width:390,height:844});
     await normal.page.screenshot({path:'output/ingreso-paciente/validado.png',fullPage:true});await normal.page.close();
 
@@ -60,9 +65,12 @@ test('ingreso móvil: ubicación concedida/denegada, fuera de rango, excepción 
       await p.page.screenshot({path:`output/ingreso-paciente/${name}.png`,fullPage:true});await p.page.close();
     }
     const excepcion=await pagina(browser,{data:{...datos,excepcion_geo:true},response:{ok:true,link:'/atencion.html#token=excepcion',excepcion_geo:true}});
-    await excepcion.page.click('#btn');await excepcion.page.waitForFunction(()=>!document.getElementById('link-llamada').hidden);
-    assert.equal(await excepcion.page.evaluate(()=>window.geoCalls),0);
-    assert.match(await excepcion.page.$eval('#aviso',e=>e.textContent),/sin validación geográfica/);await excepcion.page.close();
+    await excepcion.page.click('#btn');await excepcion.page.waitForFunction(()=>document.getElementById('video')&&!document.getElementById('video').hidden);
+    assert.equal(excepcion.geoReadings[0].calls,0);
+    assert.equal(await excepcion.page.evaluate(()=>sessionStorage.getItem('medgrup_chat_token')),'excepcion');await excepcion.page.close();
+    const directo=await pagina(browser,{response:{ok:true,link:origin+'/sala-simulada'}});
+    await directo.page.click('#btn');await directo.page.waitForFunction(()=>location.pathname==='/sala-simulada');
+    assert.equal(directo.posts.length,1,'conserva el ingreso directo si el chat no está disponible');await directo.page.close();
     for(const data of [{...datos,cerrado:true},{...datos,tiene_domicilio:false},{ok:false,error:'Enlace no válido <prueba>'}]){
       const p=await pagina(browser,{data});assert.equal(await p.page.$eval('#btn',e=>e.hidden),true);assert.equal(await p.page.$eval('#link-llamada',e=>e.hidden),true);
       assert.equal(await p.page.$('#aviso prueba'),null);await p.page.close();

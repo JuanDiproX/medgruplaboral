@@ -7,7 +7,11 @@
   if(!staff)token=token||sessionStorage.getItem('medgrup_chat_token');
   const base=staff?`/api/turnos/${encodeURIComponent(turno)}/chat`:'/api/chat/paciente';
   const headers=()=>staff?{'x-session-token':localStorage.getItem('medgrup_token')||''}:{'x-chat-token':token||''};
-  let cursor='0',busy=false,stopped=false,call=null;
+  let cursor='0',busy=false,stopped=false,connecting=false;
+  function abrirLlamada(link){
+    $('video').src=link;$('video').hidden=false;$('conectar').hidden=true;$('ingreso').hidden=true;
+    $('instruccion').textContent='La videollamada se está abriendo. Si el navegador te lo pide, permití el uso de la cámara y el micrófono.';
+  }
   async function api(path,options={}){
     const r=await fetch(base+path,{...options,headers:{...headers(),...(options.headers||{})},cache:'no-store'});
     if(!r.ok){const d=await r.json().catch(()=>({}));if(r.status===401||r.status===403){stopped=true;$('enviar').disabled=true;}throw Error(d.error||'No se pudo conectar.');}return r;
@@ -55,17 +59,18 @@
     try{await api('/revocar',{method:'POST'});$('invitacion').hidden=true;$('estado').textContent='Enlaces revocados. Podés generar uno nuevo.';}catch(e){$('estado').textContent=e.message;}
   };
   $('conectar').onclick=async()=>{
+    if(connecting)return;connecting=true;$('conectar').disabled=true;
     try{
       const d=await(await api('/sesion')).json();
       if(!d.llamada)throw Error('La llamada no está habilitada.');
-      $('video').src=d.llamada;$('video').hidden=false;$('conectar').hidden=true;
-    }catch(e){$('estado').textContent=e.message;}
+      abrirLlamada(d.llamada);
+    }catch(e){$('estado').textContent=e.message;}finally{connecting=false;$('conectar').disabled=false;}
   };
   async function start(){
     if(staff){document.body.classList.add('staff');$('llamada').hidden=true;$('acciones').hidden=false;}
     try{
       const d=await(await api('/sesion')).json();$('paciente').textContent=d.paciente;
-      if(d.llamada){call=d.llamada;$('conectar').hidden=false;}
+      if(d.llamada&&!staff)abrirLlamada(d.llamada);
       else if(d.ingreso){$('ingreso').href=d.ingreso;$('ingreso').hidden=false;$('instruccion').textContent='Podés enviar documentación ahora. Para entrar a la videollamada, primero completá la verificación de ingreso.';}
       else if(!staff)$('instruccion').textContent='El chat está disponible para enviar documentación; la llamada no está habilitada.';
       $('enviar').disabled=false;poll();
