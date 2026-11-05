@@ -4787,10 +4787,10 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
 });
 
 const participantAccess = require('./lib/participant-access').createParticipantAccess({
-  app,pool,authMiddleware,secret:process.env.SESSION_SECRET,patient:(req,db)=>turnoChat.authorizePatient(req,db),hashDictamen
+  app,pool,authMiddleware,secret:process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET,patient:(req,db)=>turnoChat.authorizePatient(req,db),hashDictamen
 });
 const turnoChat = require('./lib/turno-chat').createTurnoChat({
-  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.SESSION_SECRET, externalDoctor:participantAccess.authorize
+  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET, externalDoctor:participantAccess.authorize
 });
 
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));

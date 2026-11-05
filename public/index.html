@@ -4194,7 +4194,7 @@ async function buildLinksHtml(t){
     const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudieron preparar los accesos');
     t={...t,linksMedicos:data.links_medicos.map(l=>({...l,link:new URL(l.link,location.origin).href})),linkPaciente:await linkPacienteConChat(t)};
   }
-  catch(e){return '<p>No se pudo preparar el enlace personal. Volvé a abrir las invitaciones para reintentar.</p>';}
+  catch(e){return `<p>No se pudo preparar el enlace personal. ${escaparHtml(e.message||'Volvé a abrir las invitaciones para reintentar.')}</p>`;}
   const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
   const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
 
