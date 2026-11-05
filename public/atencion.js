@@ -2,11 +2,16 @@
   'use strict';
   const $=id=>document.getElementById(id), params=new URLSearchParams(location.hash.slice(1));
   const turno=params.get('turno'), staff=Boolean(turno);
-  let token=params.get('token');
-  if(token){sessionStorage.setItem('medgrup_chat_token',token);history.replaceState(null,'',location.pathname);}
-  if(!staff)token=token||sessionStorage.getItem('medgrup_chat_token');
-  const base=staff?`/api/turnos/${encodeURIComponent(turno)}/chat`:'/api/chat/paciente';
-  const headers=()=>staff?{'x-session-token':localStorage.getItem('medgrup_token')||''}:{'x-chat-token':token||''};
+  let medico=params.get('medico'),token=params.get('token');
+  if(medico){sessionStorage.setItem('medgrup_medico_invitacion',medico);sessionStorage.setItem('medgrup_atencion_rol','medico');}
+  else if(token){sessionStorage.setItem('medgrup_chat_token',token);sessionStorage.setItem('medgrup_atencion_rol','paciente');}
+  if(token||medico)history.replaceState(null,'',location.pathname);
+  const doctor=!staff&&sessionStorage.getItem('medgrup_atencion_rol')==='medico';
+  if(!staff){token=token||sessionStorage.getItem('medgrup_chat_token');medico=medico||sessionStorage.getItem('medgrup_medico_invitacion');}
+  const base=staff?`/api/turnos/${encodeURIComponent(turno)}/chat`:doctor?'/api/acceso-medico':'/api/chat/paciente';
+  const headers=()=>staff?{'x-session-token':localStorage.getItem('medgrup_token')||''}:doctor?{'x-medico-invitacion':medico||''}:{'x-chat-token':token||''};
+  window.medgrupParticipant={base,headers,staff,doctor};
+  if(doctor)document.body.classList.add('medical-participant');
   let cursor='0',busy=false,stopped=false,connecting=false;
   function abrirLlamada(link){
     $('video').src=link;$('video').hidden=false;$('conectar').hidden=true;$('ingreso').hidden=true;
@@ -69,7 +74,7 @@
   async function start(){
     if(staff){document.body.classList.add('staff');$('llamada').hidden=true;$('acciones').hidden=false;}
     try{
-      const d=await(await api('/sesion')).json();$('paciente').textContent=d.paciente;
+      const d=await(await api('/sesion')).json();$('paciente').textContent=doctor?`${d.nombre} · Consulta de ${d.paciente}`:d.paciente;
       if(d.llamada&&!staff)abrirLlamada(d.llamada);
       else if(d.ingreso){$('ingreso').href=d.ingreso;$('ingreso').hidden=false;$('instruccion').textContent='Podés enviar documentación ahora. Para entrar a la videollamada, primero completá la verificación de ingreso.';}
       else if(!staff)$('instruccion').textContent='El chat está disponible para enviar documentación; la llamada no está habilitada.';

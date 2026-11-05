@@ -1,7 +1,7 @@
 // Read-only checks. No login, patient data, room creation or provider credentials.
 const path=require('node:path'),crypto=require('node:crypto'),{execFileSync}=require('node:child_process');
 const base='https://medicinalaboral.medgrup.com.ar';
-const files=['index.html','llamada.js','chat-medico.js','descargas.js','ausentismo-flow.js','ausentismo-flow.css','claude-demo.css','empresa.html','claude-portal.css','ingreso.html','ingreso.css','ingreso.js','atencion.html','atencion.css','atencion.js'];
+const files=['index.html','llamada.js','chat-medico.js','descargas.js','ausentismo-flow.js','ausentismo-flow.css','claude-demo.css','empresa.html','claude-portal.css','ingreso.html','ingreso.css','ingreso.js','atencion.html','atencion.css','atencion.js','participant-signature.js'];
 const revision=process.argv[2]||'HEAD';
 if(!/^[a-zA-Z0-9._/-]+$/.test(revision))throw Error('Revisión inválida');
 // Git export attributes may normalize line endings. Compare content separately

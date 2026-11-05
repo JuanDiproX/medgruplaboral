@@ -68,6 +68,13 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     assert.equal(response.status,200);assert.equal((await response.json()).requiere_firma,true);
     const amended=(await db.query('SELECT * FROM dictamenes WHERE id=1')).rows[0];assert.equal(amended.conclusion,'Texto corregido');assert.equal(amended.firma_doctor,null);assert.equal(amended.pdf_firmado,null);
     const revision=(await db.query('SELECT * FROM dictamen_revisiones')).rows[0];assert.equal(revision.contenido.conclusion,'Original');assert.equal(revision.contenido.pdf_firmado,'pdf-ficticio');assert.equal(revision.firmas.length,1);
+    await db.query("UPDATE dictamenes SET firma_doctor='firma-previa',pdf_firmado='pdf-previo' WHERE id=1");
+    await db.query("INSERT INTO firmas_dictamen(dictamen_id,medico_nombre,firma_base64) VALUES(1,'Médica de prueba','firma-previa')");
+    response=await fetch(base+'/api/dictamenes/1/informe-completo',{method:'POST',headers:{'x-session-token':other,'Content-Type':'application/json'},body:JSON.stringify({informe_texto:'No autorizado'})});assert.equal(response.status,403);
+    response=await fetch(base+'/api/dictamenes/1/informe-completo',{method:'POST',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({informe_texto:'Texto revisado por la médica'})});assert.equal(response.status,200);
+    const updated=(await db.query('SELECT * FROM dictamenes WHERE id=1')).rows[0];assert.equal(updated.informe_completo,'Texto revisado por la médica');assert.equal(updated.firma_doctor,null);assert.equal(updated.pdf_firmado,null);
+    assert.equal((await db.query('SELECT * FROM firmas_dictamen WHERE dictamen_id=1')).rows.length,0,'editar contenido exige nuevas firmas');
+    assert.equal((await db.query('SELECT * FROM dictamen_revisiones')).rows.length,2);
     await db.exec("ALTER TABLE casos_ausentismo ADD COLUMN token_ingreso TEXT;UPDATE casos_ausentismo SET estado='programado',token_ingreso='token-ficticio-existente' WHERE id=1;");
     const schedule=body=>fetch(base+'/api/ausentismo/casos/1/programar',{method:'POST',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify(body)});
     response=await schedule({fecha:'2026-11-04',hora:'10:00'});assert.equal(response.status,400,'casos antiguos requieren correo antes de reprogramar');

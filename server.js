@@ -2716,7 +2716,7 @@ app.get('/api/turnos/:id/acta', authMedgrupOEmpresa, async (req, res) => {
       // Mismo criterio que en el informe: si la matrícula ya trae el prefijo, no se repite
       const rotulo = !matricula ? '' : (/^(MN|MP|M\.N|M\.P)/i.test(String(matricula).trim()) ? matricula : 'MN/MP ' + matricula);
       return `<div class="firma-item">${firmaImg}<div class="firma-nombre">${escapeHtml(nombreMedico)}</div><div class="firma-esp">${escapeHtml(especialidad)}</div><div class="firma-mat">${escapeHtml(rotulo)}</div>${f?'':'<div class="firma-esp" style="color:#c8a800;margin-top:2px;">Firma pendiente</div>'}</div>`;
-    }).join('') + (t.paciente_presencial && t.firma_paciente !== false ? (() => {
+    }).join('') + ((t.paciente_presencial || firmasActa.some(f=>f.es_paciente)) && t.firma_paciente !== false ? (() => {
       const fp = firmasActa.find(x => x.es_paciente);
       const firmaImg = fp
         ? `<img src="data:image/png;base64,${fp.firma_base64}" alt="firma" style="max-width:150px;max-height:46px;object-fit:contain;margin-bottom:2px;"/>`
@@ -3037,12 +3037,21 @@ app.post('/api/dictamenes/:id/firma', authMiddleware, async (req, res) => {
 
 // ===== INFORME COMPLETO EDITADO =====
 app.post('/api/dictamenes/:id/informe-completo', authMiddleware, async (req, res) => {
+  const db=await pool.connect();
   try {
     const { informe_texto } = req.body;
     if (!informe_texto) return res.status(400).json({ error: 'Falta el texto' });
-    await pool.query('UPDATE dictamenes SET informe_completo=$1 WHERE id=$2', [informe_texto, req.params.id]);
+    await db.query('BEGIN');
+    const d=(await db.query('SELECT * FROM dictamenes WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];
+    if(!d){await db.query('ROLLBACK');return res.status(404).json({error:'Informe no encontrado'});}
+    if(!(await puedeGestionarInformesDelTurno(d.turno_id,req.usuario))){await db.query('ROLLBACK');return res.status(403).json({error:'No estás asignado a este turno'});}
+    await db.query(`INSERT INTO dictamen_revisiones(dictamen_id,contenido,firmas,editado_por)
+      SELECT d.id,to_jsonb(d),COALESCE((SELECT jsonb_agg(to_jsonb(f)) FROM firmas_dictamen f WHERE f.dictamen_id=d.id),'[]'::jsonb),$2 FROM dictamenes d WHERE d.id=$1`,[d.id,req.usuario.nombre]);
+    await db.query('UPDATE dictamenes SET informe_completo=$1,firma_doctor=NULL,pdf_firmado=NULL,pdf_firmado_nombre=NULL,pdf_firmado_fecha=NULL WHERE id=$2', [informe_texto, req.params.id]);
+    await db.query('DELETE FROM firmas_dictamen WHERE dictamen_id=$1',[d.id]);
+    await db.query('COMMIT');
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { await db.query('ROLLBACK');res.status(500).json({ error: err.message }); }finally{db.release();}
 });
 
 // ===== PROXY ANTHROPIC =====
@@ -3155,7 +3164,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC
 // cambia la huella y no molesta a nadie.
 const VERSION_PORTAL = (() => {
   const h = crypto.createHash('sha256');
-  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html', 'claude-portal.css', 'ingreso.html', 'ingreso.css', 'ingreso.js', 'atencion.html', 'atencion.css', 'atencion.js']) {
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html', 'claude-portal.css', 'ingreso.html', 'ingreso.css', 'ingreso.js', 'atencion.html', 'atencion.css', 'atencion.js', 'participant-signature.js']) {
     try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
   }
   return h.digest('hex').slice(0, 16);
@@ -4777,8 +4786,11 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+const participantAccess = require('./lib/participant-access').createParticipantAccess({
+  app,pool,authMiddleware,secret:process.env.SESSION_SECRET,patient:(req,db)=>turnoChat.authorizePatient(req,db),hashDictamen
+});
 const turnoChat = require('./lib/turno-chat').createTurnoChat({
-  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.SESSION_SECRET
+  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.SESSION_SECRET, externalDoctor:participantAccess.authorize
 });
 
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));
@@ -4788,6 +4800,7 @@ initDB().then(async () => {
   await caseNotifications.init();
   await doctorReminders.init();
   await sessionStore.init();
+  await participantAccess.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
   app.listen(PORT, () => console.log(`MEDGRUP en puerto ${PORT}`));
