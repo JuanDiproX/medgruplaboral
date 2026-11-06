@@ -1021,7 +1021,7 @@ td.no-label::before{display:none;}
           <div class="np-cuerpo">
             <div id="notas-paso1" class="np-paso">
               <div class="np-paso-tit"><span class="np-num">1</span>Dictá el caso</div>
-              <p class="np-ayuda">Datos del paciente, hallazgos, análisis y aptitud. Con eso se arma el borrador del informe.</p>
+              <p class="np-ayuda">Datos del paciente, hallazgos y conclusiones. Con eso se arma el borrador del informe.</p>
               <textarea id="notas-libre" placeholder="Ej: Luis Pérez DNI 36708613, 34 años, Río Grande TDF, soltero 2 hijos, secundario, procesos en Solnik hace 12 años..." oninput="guardarNotaBorrador()"></textarea>
               <button onclick="generarInformeIA()" id="btn-generar-ia" class="btn btn-primary np-ancho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg><span id="btn-ia-text">Generar informe con IA</span></button>
               <div id="ia-status" class="np-trabajando" style="display:none;"><span class="spinner" aria-hidden="true"></span>Analizando y redactando...</div>
@@ -1043,7 +1043,7 @@ td.no-label::before{display:none;}
               </div>
             </div>
             <p id="notas-preview-hint" class="np-ayuda" style="display:none;">Cuando termines, tocá <strong>Finalizar consulta</strong>: el informe pasa solo al dictamen.</p>
-            <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-aptitud" value="apto"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
+            <input type="hidden" id="notas-dni"/><input type="hidden" id="notas-edad"/><input type="hidden" id="notas-obrasocial"/><input type="hidden" id="notas-profesion"/><input type="hidden" id="notas-antecedentes"/><input type="hidden" id="notas-hallazgos"/><input type="hidden" id="notas-conclusion"/><input type="hidden" id="notas-indicaciones"/><input type="hidden" id="notas-reposo" value="0"/><input type="hidden" id="notas-guardado-status"/>
           </div>
         </aside>
       </div>
@@ -1168,7 +1168,7 @@ td.no-label::before{display:none;}
               <button class="btn btn-primary btn-full" id="btn-guardar-dict" onclick="guardarDictamen()" style="padding:14px;font-size:14px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>Guardar y emitir informe firmado
               </button>
-              <input type="hidden" id="dict-paciente-input"/><input type="hidden" id="dict-dni"/><input type="hidden" id="dict-edad"/><input type="hidden" id="dict-obrasocial"/><input type="hidden" id="dict-profesion"/><input type="hidden" id="dict-antecedentes"/><input type="hidden" id="dict-hallazgos"/><input type="hidden" id="dict-conclusion"/><input type="hidden" id="dict-aptitud" value="apto"/><input type="hidden" id="dict-reposo" value="0"/><input type="hidden" id="dict-derivacion" value="Sin derivación"/><input type="hidden" id="dict-indicaciones"/><input type="hidden" id="firma-base64"/>
+              <input type="hidden" id="dict-paciente-input"/><input type="hidden" id="dict-dni"/><input type="hidden" id="dict-edad"/><input type="hidden" id="dict-obrasocial"/><input type="hidden" id="dict-profesion"/><input type="hidden" id="dict-antecedentes"/><input type="hidden" id="dict-hallazgos"/><input type="hidden" id="dict-conclusion"/><input type="hidden" id="dict-reposo" value="0"/><input type="hidden" id="dict-derivacion" value="Sin derivación"/><input type="hidden" id="dict-indicaciones"/><input type="hidden" id="firma-base64"/>
               <div id="cert-ok" style="display:none;margin-top:14px;background:linear-gradient(135deg,#eaf5f0,#d4eddc);border:1px solid rgba(30,102,64,0.2);border-radius:var(--r);padding:1rem 1.2rem;">
                 <div style="font-size:14px;font-weight:700;color:#1e6640;display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><polyline points="20,6 9,17 4,12"/></svg>Informe emitido</div>
                 <div id="cert-info" style="font-size:12px;color:var(--text2);margin-top:6px;"></div>
@@ -1967,7 +1967,7 @@ td.no-label::before{display:none;}
   </div>
 </div>
 
-<!-- MODAL VISTA PREVIA DEL INFORME: el informe completo (texto + aptitud/reposo), editable a
+<!-- MODAL VISTA PREVIA DEL INFORME: el texto completo del informe, editable a
      mano acá mismo, con su propio cuadro de "Corregir con IA" para no tener que ir y volver. -->
 <div class="modal-bg" id="modal-vista-previa-informe">
   <div class="modal" style="max-width:660px;padding:0;overflow:hidden;">
@@ -1982,16 +1982,8 @@ td.no-label::before{display:none;}
       <div style="font-size:10.5px;color:var(--text3);margin-bottom:8px;">Es el mismo texto del informe — lo que edites acá queda, no hace falta volver.</div>
       <textarea id="vp-informe-texto" oninput="sincronizarDesdeVistaPrevia()" style="width:100%;min-height:320px;font-size:12.5px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
       <div style="margin-top:12px;border-radius:10px;padding:13px 15px;background:var(--surface2);border:1.5px solid var(--border2);">
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:9px;">Aptitud y reposo — así sale impreso</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:9px;">Datos complementarios</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:170px;">
-            <label class="form-lbl" style="display:block;font-size:10px;margin-bottom:4px;">Aptitud</label>
-            <select id="vp-aptitud" onchange="sincronizarDesdeVistaPrevia()" style="width:100%;">
-              <option value="apto">Aptitud Laboral Total</option>
-              <option value="restricc">Apto con restricciones</option>
-              <option value="no-apto">No apto</option>
-            </select>
-          </div>
           <div style="width:110px;">
             <label class="form-lbl" style="display:block;font-size:10px;margin-bottom:4px;">Días de reposo</label>
             <input type="text" id="vp-reposo" oninput="sincronizarDesdeVistaPrevia()" placeholder="0"/>
@@ -2172,7 +2164,7 @@ td.no-label::before{display:none;}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.1rem;padding-bottom:0.9rem;border-bottom:1px solid var(--border);">
       <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-identificacion')">Identificación</button>
       <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-contenido')">Contenido médico</button>
-      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-aptitud')">Aptitud</button>
+      <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-aptitud')">Diagnóstico</button>
       <button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="edIrA('ed-sec-firmante')">Firmante y firmas</button>
     </div>
 
@@ -2211,25 +2203,9 @@ td.no-label::before{display:none;}
       <div class="form-group"><label class="form-lbl">VI. Conclusiones médico-legales</label><textarea id="ed-conclusion" class="ed-texto-largo" style="min-height:300px;" placeholder="1. Encuadre Diagnóstico: ..."></textarea></div>
     </div>
 
-    <!-- Sección: Aptitud y diagnóstico -->
-    <div class="divider" id="ed-sec-aptitud">Aptitud y diagnóstico</div>
-    <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;margin:2px 0 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;">
-      <input type="checkbox" id="ed-sin-aptitud" style="width:auto;margin:2px 0 0 0;" onchange="edToggleAptitud()"/>
-      <span style="font-size:12.5px;line-height:1.5;">Este informe no lleva determinación de aptitud laboral<br/><span style="color:var(--text3);font-size:11.5px;">Para informes que no son una evaluación de aptitud (ej. análisis de encuadre legal de licencias). El recuadro de aptitud/reposo no se imprime. Los datos no se borran: si volvés a destildarlo, reaparece tal cual.</span></span>
-    </label>
+    <!-- Sección: Diagnóstico e indicaciones -->
+    <div class="divider" id="ed-sec-aptitud">Diagnóstico e indicaciones</div>
     <div class="form-grid" style="margin-bottom:8px;">
-      <div class="form-group">
-        <label class="form-lbl">Aptitud laboral</label>
-        <select id="ed-aptitud">
-          <option value="apto">Aptitud Laboral Total</option>
-          <option value="restricc">Apto con restricciones</option>
-          <option value="no-apto">No apto / Reposo indicado</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-lbl">Texto complementario de aptitud</label>
-        <input type="text" id="ed-aptitud-texto" placeholder="en condiciones de aptitud sin restricciones para el trabajo que ostenta"/>
-      </div>
       <div class="form-group full"><label class="form-lbl">Diagnóstico CIE-10</label><textarea id="ed-cie" class="ed-texto-largo" style="min-height:80px;" placeholder="Z63.4 — Desaparición y fallecimiento de familiar"></textarea></div>
       <div class="form-group"><label class="form-lbl">Días de reposo</label><input type="text" id="ed-reposo" placeholder="0"/></div>
       <div class="form-group full"><label class="form-lbl">Indicaciones</label><input type="text" id="ed-indicaciones" placeholder="Se sugiere seguimiento médico general..."/></div>
@@ -2406,6 +2382,7 @@ Dos campos, y solo esos:
 - No contradigas ni suavices al médico. Si describe una negativa, una incongruencia o
   sobreactuación, va tal cual, en lenguaje técnico.
 - Si el médico ya dio diagnóstico, días de reposo o aptitud, respetá exactamente lo que dijo.
+- La aptitud solo se expresa en el texto clínico cuando el médico la indicó; no agregues una clasificación automática ni pidas elegirla después.
 - Nunca escribas "Sin datos", "No especificado", "N/A": esos campos van vacíos "".
 
 === ALERTA POR DIAGNÓSTICO PREVIO (campo "alerta_diagnostico_previo") ===
@@ -2433,7 +2410,6 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "analisis": "lo que refirió el trabajador",
   "conclusion": "el cierre del control",
   "diagnostico_cie": "código y nombre, solo si el médico lo dio",
-  "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
   "indicaciones": "indicaciones",
@@ -2505,6 +2481,7 @@ desmentir y lo primero que mira un abogado.
 - Vocabulario médico-legal forense, pero sobrio. No adornes: la floritura suele ser invento.
 - No contradigas ni suavices al médico. Si describe teatralidad, incongruencia afectiva o
   simulación, va tal cual, en lenguaje técnico.
+- La aptitud solo se expresa en el texto clínico cuando el médico la indicó; no agregues una clasificación automática ni pidas elegirla después.
 - Si el médico ya dio el diagnóstico, los días de reposo o la aptitud, respetá exactamente
   lo que dijo. No lo ajustes, no lo completes, no lo "mejores".
 - Si algo del dictado es ambiguo o no se entiende, dejalo afuera. No adivines.
@@ -2549,7 +2526,6 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
   "analisis": "sección V",
   "conclusion": "sección VI numerada 1. 2. 3. 4.",
   "diagnostico_cie": "código y nombre",
-  "aptitud": "apto" o "restricc" o "no-apto",
   "dias_reposo": 0,
   "derivacion": "Sin derivación",
   "indicaciones": "indicaciones",
@@ -2749,7 +2725,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       set('notas-dni', info.dni); set('notas-edad', info.edad); set('notas-obrasocial', info.obra_social);
       set('notas-profesion', info.profesion || info.puesto); set('notas-antecedentes', info.antecedentes);
       set('notas-hallazgos', info.hallazgos); set('notas-conclusion', info.conclusion);
-      if(info.aptitud) set('notas-aptitud', info.aptitud); set('notas-reposo', info.dias_reposo ?? 0);
+      set('notas-reposo', info.dias_reposo ?? 0);
       ['apellido_nombre','fecha_nacimiento','lugar_nacimiento','estado_civil','estudios','puesto','antiguedad','situacion_licencia','metodologia','analisis','diagnostico_cie'].forEach(k=>{
         let el = document.getElementById('ia-campo-'+k);
         if(!el){ el=document.createElement('input'); el.type='hidden'; el.id='ia-campo-'+k; document.body.appendChild(el); }
@@ -2770,7 +2746,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       set('dict-dni', info.dni); set('dict-edad', info.edad); set('dict-obrasocial', info.obra_social);
       set('dict-profesion', info.profesion || info.puesto); set('dict-antecedentes', info.antecedentes);
       set('dict-hallazgos', info.hallazgos); set('dict-conclusion', info.conclusion);
-      if(info.aptitud) set('dict-aptitud', info.aptitud); set('dict-reposo', info.dias_reposo ?? 0);
+      set('dict-reposo', info.dias_reposo ?? 0);
       if(info.derivacion) set('dict-derivacion', info.derivacion.toLowerCase().includes('sin') ? 'Sin derivación' : info.derivacion);
       set('dict-indicaciones', info.indicaciones);
       set('dict-paciente-input', info.apellido_nombre || document.getElementById('dict-paciente-input').value);
@@ -2924,7 +2900,7 @@ function renderChatCorreccion(destino){
 }
 
 // La vista previa es el informe real, editable ahí mismo: el textarea y los campos de
-// aptitud/reposo/derivación son los MISMOS datos que dict-*/notas-* (hidden), solo que acá se
+// reposo/derivación son los MISMOS datos que dict-*/notas-* (hidden), solo que acá se
 // ven. Cualquier tecla escrita se vuelca de inmediato a los campos reales con
 // sincronizarDesdeVistaPrevia(), así que cerrar el modal no pierde nada.
 let vpDestinoActual = null;
@@ -2934,7 +2910,6 @@ function abrirVistaPreviaInforme(destino){
   const pref = destino==='notas' ? 'notas-' : 'dict-';
   const previewId = destino==='notas' ? 'notas-preview-text' : 'informe-preview-text';
   document.getElementById('vp-informe-texto').value = document.getElementById(previewId)?.value || '';
-  document.getElementById('vp-aptitud').value = document.getElementById(pref+'aptitud')?.value || 'apto';
   document.getElementById('vp-reposo').value = document.getElementById(pref+'reposo')?.value || '0';
   // La derivación solo existe como campo en el dictamen (no en las notas en vivo durante la llamada).
   const derivWrap = document.getElementById('vp-derivacion-wrap');
@@ -2963,8 +2938,6 @@ function sincronizarDesdeVistaPrevia(){
   const previewId = vpDestinoActual==='notas' ? 'notas-preview-text' : 'informe-preview-text';
   const previewEl = document.getElementById(previewId);
   if(previewEl) previewEl.value = document.getElementById('vp-informe-texto')?.value ?? '';
-  const elApt = document.getElementById(pref+'aptitud');
-  if(elApt) elApt.value = document.getElementById('vp-aptitud')?.value || 'apto';
   const elReposo = document.getElementById(pref+'reposo');
   if(elReposo) elReposo.value = document.getElementById('vp-reposo')?.value ?? '0';
   if(vpDestinoActual==='dict'){
@@ -2989,7 +2962,7 @@ async function corregirDesdeVistaPrevia(){
   const inputReal = document.getElementById(vpDestinoActual==='notas' ? 'notas-correccion-texto' : 'dict-correccion-texto');
   if(inputReal) inputReal.value = pedido;
   const btn = document.getElementById('btn-vp-corregir');
-  const campos = ['vp-informe-texto','vp-aptitud','vp-reposo','vp-derivacion','vp-correccion-texto'].map(id=>document.getElementById(id)).filter(Boolean);
+  const campos = ['vp-informe-texto','vp-reposo','vp-derivacion','vp-correccion-texto'].map(id=>document.getElementById(id)).filter(Boolean);
   if(btn){ btn.disabled=true; btn.textContent='Ajustando…'; }
   campos.forEach(el=>el.disabled=true);
   try{
@@ -3020,7 +2993,7 @@ function deshacerCorreccionIA(){
   set(pref+'dni', info.dni); set(pref+'edad', info.edad); set(pref+'obrasocial', info.obra_social);
   set(pref+'profesion', info.profesion || info.puesto); set(pref+'antecedentes', info.antecedentes);
   set(pref+'hallazgos', info.hallazgos); set(pref+'conclusion', info.conclusion);
-  if(info.aptitud) set(pref+'aptitud', info.aptitud); set(pref+'reposo', info.dias_reposo ?? 0);
+  set(pref+'reposo', info.dias_reposo ?? 0);
   if(snap.destino === 'dict'){
     if(info.derivacion) set('dict-derivacion', info.derivacion.toLowerCase().includes('sin') ? 'Sin derivación' : info.derivacion);
     set('dict-indicaciones', info.indicaciones);
@@ -4658,7 +4631,7 @@ function guardarNotaBorrador(){
     hallazgos:document.getElementById('notas-hallazgos').value,
     conclusion:document.getElementById('notas-conclusion').value,
     indicaciones:document.getElementById('notas-indicaciones').value,
-    aptitud:document.getElementById('notas-aptitud').value,
+
     reposo:document.getElementById('notas-reposo').value,
     // Si ya generó el informe con IA, guardamos también el preview editado
     previewEditado:document.getElementById('notas-preview-text')?.value||''
@@ -4688,7 +4661,7 @@ function cargarNotaBorrador(){
     document.getElementById('notas-hallazgos').value=b.hallazgos||'';
     document.getElementById('notas-conclusion').value=b.conclusion||'';
     document.getElementById('notas-indicaciones').value=b.indicaciones||'';
-    document.getElementById('notas-aptitud').value=b.aptitud||'apto';
+
     document.getElementById('notas-reposo').value=b.reposo||'0';
     // Si ya había generado un preview con IA, restaurarlo también
     if(b.previewEditado){
@@ -4921,7 +4894,7 @@ async function abrirDictamenParaTurno(t, dur){
     document.getElementById('dict-antecedentes').value=borrador?.antecedentes||'';
     document.getElementById('dict-hallazgos').value=borrador?.hallazgos||'';
     document.getElementById('dict-conclusion').value=borrador?.conclusion||'';
-    document.getElementById('dict-aptitud').value=borrador?.aptitud||'apto';
+
     document.getElementById('dict-reposo').value=borrador?.reposo||'0';
     document.getElementById('dict-derivacion').value='Sin derivación';
     document.getElementById('dict-indicaciones').value=borrador?.indicaciones||'';
@@ -5003,12 +4976,11 @@ function renderDictamenesExistentes(dictamenes){
   if(!dictamenes.length){box.style.display='none';return;}
   box.style.display='block';
   body.innerHTML=dictamenes.map(d=>{
-    const aptLabel={'apto':'Apto','restricc':'Apto c/restricciones','no-apto':'No apto'}[d.aptitud]||d.aptitud;
     const esMio=d.medico===usuarioActual?.nombre;
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:0;">
         <div style="font-size:13px;font-weight:600;color:var(--text);">${d.medico} ${esMio?'<span class="badge b-blue" style="margin-left:4px;">vos</span>':''}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${d.numero} · ${aptLabel} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'sin reposo'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${d.numero}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <a href="/api/dictamenes/${d.id}/${d.pdf_firmado ? 'pdf-firmado' : 'pdf'}?download=1" data-descarga-pdf class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;text-decoration:none;">PDF</a>
@@ -5029,7 +5001,7 @@ function cargarDictamenEnFormulario(d){
   document.getElementById('dict-antecedentes').value=d.antecedentes||'';
   document.getElementById('dict-hallazgos').value=d.hallazgos||'';
   document.getElementById('dict-conclusion').value=d.conclusion||'';
-  document.getElementById('dict-aptitud').value=d.aptitud||'apto';
+
   document.getElementById('dict-reposo').value=d.dias_reposo||0;
   document.getElementById('dict-derivacion').value=d.derivacion||'Sin derivación';
   document.getElementById('dict-indicaciones').value=d.indicaciones||'';
@@ -5037,7 +5009,7 @@ function cargarDictamenEnFormulario(d){
   dictamenActualCreado=d.creado_en;
   document.getElementById('cert-ok').style.display='block';
   document.getElementById('cert-info').innerHTML=`
-    <div>${d.numero} · ${d.paciente} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[d.aptitud]} · ${d.dias_reposo>0?d.dias_reposo+' días reposo':'Sin reposo'}</div>
+    <div>${d.numero} · ${d.paciente}</div>
   `;
   document.getElementById('cert-pdf-links').innerHTML=`
     <a href="/api/dictamenes/${d.id}/pdf?download=1" data-descarga-pdf class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
@@ -5066,7 +5038,7 @@ function cargarDictamenEnFormulario(d){
     metodologia: d.metodologia || '', antecedentes: d.antecedentes || '',
     hallazgos: d.hallazgos || '', analisis: d.analisis || '',
     conclusion: d.conclusion || '', diagnostico_cie: d.diagnostico_cie || '',
-    aptitud: d.aptitud || 'apto', dias_reposo: d.dias_reposo || 0,
+    dias_reposo: d.dias_reposo || 0,
     derivacion: d.derivacion || 'Sin derivación', indicaciones: d.indicaciones || '',
     alerta_diagnostico_previo: ''
   };
@@ -5295,9 +5267,7 @@ function feAbrirFirma(dictamenId){
   document.getElementById('fe-firmar-sub').textContent = `${p.numero} · ${p.empresa||'—'} · ${fecha}`;
   document.getElementById('fe-conclusion').textContent = p.conclusion || 'Sin conclusiones cargadas — revisá el PDF completo antes de firmar.';
 
-  const aptLabels = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto / Reposo indicado' };
   const extras = [];
-  if(p.aptitud) extras.push(`<strong>Aptitud:</strong> ${aptLabels[p.aptitud]||p.aptitud}`);
   if(p.dias_reposo > 0) extras.push(`<strong>Reposo:</strong> ${p.dias_reposo} días`);
   if(p.diagnostico_cie) extras.push(`<strong>CIE-10:</strong> ${p.diagnostico_cie}`);
   document.getElementById('fe-datos-extra').innerHTML = extras.join(' &nbsp;·&nbsp; ');
@@ -5954,16 +5924,6 @@ function edToggleSemiologico(){
   if(!caja) return;
   caja.disabled = !!apagado;
   caja.style.opacity = apagado ? '0.45' : '1';
-}
-// Mismo mecanismo que edToggleSemiologico, pero para el recuadro de aptitud/reposo del PDF.
-function edToggleAptitud(){
-  const apagado = document.getElementById('ed-sin-aptitud')?.checked;
-  ['ed-aptitud','ed-aptitud-texto','ed-reposo','ed-derivacion'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.disabled = !!apagado;
-    el.style.opacity = apagado ? '0.45' : '1';
-  });
 }
 function edIrA(id){
   const el = document.getElementById(id);
@@ -7388,13 +7348,8 @@ async function abrirModalEditarDictamen(dictamenId){
   set('ed-medico',          d.medico);
   set('ed-especialidad',    d.especialidad);
   set('ed-matricula',       d.matricula);
-  set('ed-aptitud-texto',   d.aptitud_texto || '');
-  const selAptitud = document.getElementById('ed-aptitud');
-  if(selAptitud) selAptitud.value = d.aptitud || 'apto';
   const chkSemio = document.getElementById('ed-sin-semiologico');
   if(chkSemio){ chkSemio.checked = !!d.sin_semiologico; edToggleSemiologico(); }
-  const chkAptitud = document.getElementById('ed-sin-aptitud');
-  if(chkAptitud){ chkAptitud.checked = !!d.sin_aptitud; edToggleAptitud(); }
 
   const verPdf = document.getElementById('ed-ver-pdf');
   if(verPdf) verPdf.href = '/api/dictamenes/' + dictamenId + '/pdf';
@@ -7434,7 +7389,7 @@ async function guardarEdicionDictamen(){
     obra_social:        get('ed-obra-social'),
     situacion_licencia: get('ed-situacion-lic'),
     sin_semiologico:    !!document.getElementById('ed-sin-semiologico')?.checked,
-    sin_aptitud:        !!document.getElementById('ed-sin-aptitud')?.checked,
+    sin_aptitud:        true,
     metodologia:        get('ed-metodologia'),
     antecedentes:       get('ed-antecedentes'),
     hallazgos:          get('ed-hallazgos'),
@@ -7444,8 +7399,6 @@ async function guardarEdicionDictamen(){
     dias_reposo:        parseInt(get('ed-reposo')||'0'),
     indicaciones:       get('ed-indicaciones'),
     derivacion:         get('ed-derivacion') || 'Sin derivación',
-    aptitud:            document.getElementById('ed-aptitud')?.value || 'apto',
-    aptitud_texto:      get('ed-aptitud-texto'),
     medico:             getObligatorio('ed-medico'),
     especialidad:       getObligatorio('ed-especialidad'),
     matricula:          getObligatorio('ed-matricula'),
@@ -7506,7 +7459,7 @@ async function guardarDictamen(){
   const antecedentes=document.getElementById('dict-antecedentes').value.trim();
   const hallazgos=document.getElementById('dict-hallazgos').value.trim();
   const conclusion=document.getElementById('dict-conclusion').value.trim();
-  const aptitud=document.getElementById('dict-aptitud').value;
+
   const reposo=parseInt(document.getElementById('dict-reposo').value)||0;
   const derivacion=document.getElementById('dict-derivacion').value;
   const indicaciones=document.getElementById('dict-indicaciones').value;
@@ -7522,7 +7475,7 @@ async function guardarDictamen(){
       res=await fetch('/api/dictamenes/'+dictamenActualId,{
         method:'PATCH',headers:apiHeaders(),
         body:JSON.stringify({
-          aptitud,dias_reposo:reposo,derivacion,indicaciones,
+          sin_aptitud:true,dias_reposo:reposo,derivacion,indicaciones,
           paciente_dni:dni,edad,obra_social:obraSocial,profesion,
           antecedentes,hallazgos,conclusion,
           apellido_nombre: campoIA('apellido_nombre') || pacienteNombre,
@@ -7564,7 +7517,7 @@ async function guardarDictamen(){
         duracion: document.getElementById('dict-duracion').textContent,
         paciente_dni: dni, edad, obra_social: obraSocial, profesion,
         antecedentes, hallazgos, conclusion,
-        aptitud, dias_reposo: reposo,
+        sin_aptitud: true, dias_reposo: reposo,
         derivacion, indicaciones,
         sala: t?.sala||'',
         matricula: medicoActual?.matricula||'',
@@ -7611,7 +7564,7 @@ async function guardarDictamen(){
 
     document.getElementById('cert-ok').style.display='block';
     document.getElementById('cert-info').innerHTML=`
-      <div>${num} · ${pacienteNombre} · ${({'apto':'Apto','restricc':'Apto con restricciones','no-apto':'No apto'})[aptitud]} · ${reposo>0?reposo+' días reposo':'Sin reposo'}</div>
+      <div>${num} · ${pacienteNombre}</div>
     `;
     document.getElementById('cert-pdf-links').innerHTML=`
       <a href="/api/dictamenes/${data.dictamen.id}/pdf?download=1" data-descarga-pdf class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">

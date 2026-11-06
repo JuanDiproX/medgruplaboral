@@ -2283,7 +2283,6 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
     const fechaEmision = new Date(d.creado_en).toLocaleDateString('es-AR', { year:'numeric',month:'long',day:'numeric',timeZone:'America/Argentina/Buenos_Aires' });
     const fechaConsulta = d.fecha_consulta ? new Date(d.fecha_consulta).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires' }) : '—';
     const qrVerificacion = await generarQRDataUrl(d.numero);
-    const aptitudMap = { apto:'Aptitud Laboral Total', restricc:'Apto con restricciones', 'no-apto':'No apto' };
     // Antes se agregaba sola una línea por médico diciendo "Evaluación remota vía MEDGRUP
     // Telemedicina". Sobraba —los profesionales ya constan al pie con su matrícula— y encima
     // era falsa cuando la evaluación fue presencial. La metodología la redacta el médico.
@@ -2393,9 +2392,6 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
     const n = () => ++seccion;
     const romano = i => ['I','II','III','IV','V','VI','VII','VIII','IX','X'][i-1] || String(i);
 
-    const aptColor = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
-    const aptBg = d.aptitud==='apto'?'#eaf5f0':d.aptitud==='restricc'?'#fdf5e8':'#fdf0f0';
-    const aptBorder = d.aptitud==='apto'?'#1e6640':d.aptitud==='restricc'?'#8f5000':'#b02a2a';
 
     // El control de ausentismo no se informa como una evaluación clínica: alcanza con qué
     // refirió el trabajador y si estaba en su domicilio. Por eso lleva su propio formato,
@@ -2580,9 +2576,6 @@ ul{margin:4px 0 8px 18px;}
 li{margin-bottom:5px;}
 .bullet-item{display:flex;gap:6px;margin-bottom:5px;font-size:12.5px;}
 .bullet-item::before{content:"●";color:#3a6ea8;flex-shrink:0;}
-.conc-box{border-radius:8px;padding:12px 16px;margin:10px 0;background:${aptBg};border:1.5px solid ${aptBorder};break-inside:avoid;page-break-inside:avoid;}
-.conc-label{font-size:14px;font-weight:700;color:${aptColor};margin-bottom:4px;}
-.conc-sub{font-size:10.5px;color:#5a5750;}
 .firmas-row{display:flex;gap:30px;flex-wrap:wrap;margin-top:40px;padding-top:16px;border-top:1.5px solid #e8e4de;}
 .firma-item{text-align:center;flex:1;min-width:160px;break-inside:avoid;page-break-inside:avoid;}
 .firma-linea{width:160px;border-bottom:1.5px solid #1a1916;margin:0 auto 6px;height:28px;}
@@ -2649,19 +2642,7 @@ ${analisis?`<h2>${romano(n())}. Análisis médico-legal de la documentación</h2
 <h2>${romano(n())}. Conclusiones médico-legales</h2>
 ${d.conclusion?`<p style="white-space:pre-wrap;">${escapeHtml(d.conclusion)}</p>`:''}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${escapeHtml(diagCIE)}</p>`:''}
-${!d.sin_aptitud ? (()=>{
-  // "Sin reposo indicado" al lado de "No apto" queda contradictorio — si hay días, se
-  // muestran igual; si no los hay, esa aclaración solo tiene sentido cuando SÍ está apto.
-  const partesSub = [];
-  if (d.dias_reposo>0) partesSub.push(`${d.dias_reposo} día(s) de reposo indicado`);
-  else if (d.aptitud !== 'no-apto') partesSub.push('Sin reposo indicado');
-  if (d.derivacion && d.derivacion!=='Sin derivación') partesSub.push('Derivación a: '+d.derivacion);
-  return `<div class="conc-box">
-  <div class="conc-label">${aptitudMap[d.aptitud]||d.aptitud}</div>
-  ${d.aptitud_texto ? `<div style="font-size:12px;color:${aptColor};margin:4px 0 2px;font-style:italic;">${d.aptitud_texto}</div>` : ''}
-  ${partesSub.length ? `<div class="conc-sub">${partesSub.join(' · ')}</div>` : ''}
-</div>`;
-})() : ''}
+
 ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${escapeHtml(d.indicaciones)}</p>`:''}
 
 <p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
@@ -4077,21 +4058,12 @@ function instanteTurno(t) {
   return new Date(y, m - 1, d, Number.isFinite(hh) ? hh : 12, Number.isFinite(mm) ? mm : 0);
 }
 
-// El legajo muestra lo que dice el informe impreso, no lo que quedó guardado en el
-// formulario: el selector de aptitud siempre tiene un valor (por defecto), pero si el médico
-// marcó "sin aptitud" —o es un control de ausentismo, que sale con el formato de auditoría—
-// el PDF no dictamina aptitud ni reposo, y el legajo tampoco debe hacerlo.
-const APTITUD_TEXTO = { apto: 'Apto', restricc: 'Apto con restricciones', 'no-apto': 'No apto' };
+// El legajo no interpreta como dictamen los antiguos valores automáticos del formulario.
 function dictamenComoSeImprime(d, esAuditoria) {
-  const conAptitud = !d.sin_aptitud && !esAuditoria;
   return {
     id: d.id, numero: d.numero, medico: d.medico, firmado: d.firmado,
     diagnostico: d.diagnostico_cie || d.diagnostico_desc || d.diagnostico || '',
-    // Un código que no está en la lista se muestra con su texto, no crudo
-    aptitud: conAptitud ? (APTITUD_TEXTO[d.aptitud] || d.aptitud_texto || d.aptitud || null) : null,
-    aptitud_detalle: conAptitud && APTITUD_TEXTO[d.aptitud] ? (d.aptitud_texto || '') : '',
-    dias_reposo: conAptitud ? (Number(d.dias_reposo) || 0) : null,
-    derivacion: conAptitud && d.derivacion && d.derivacion !== 'Sin derivación' ? d.derivacion : '',
+    aptitud: null, aptitud_detalle: '', dias_reposo: null, derivacion: '',
     conclusion: d.conclusion || '', indicaciones: d.indicaciones || ''
   };
 }

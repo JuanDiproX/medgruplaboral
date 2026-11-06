@@ -1300,8 +1300,6 @@ function renderTabla(turnos){
 async function verDetalle(t){
   const medicos = Array.isArray(t.medicos) ? t.medicos : [];
   const dicts = t.dictamenes_data || [];
-  const aptLabels = { apto:'Apto', restricc:'Apto con restricciones', 'no-apto':'No apto' };
-  const aptBadge = { apto:'b-verde', restricc:'b-amber', 'no-apto':'b-rosa' };
 
   document.getElementById('modal-avatar').textContent = iniciales(t.paciente);
   document.getElementById('modal-paciente-nombre').textContent = t.paciente;
@@ -1319,7 +1317,6 @@ async function verDetalle(t){
             <div class="informe-medico">${d.medico}</div>
             <div class="informe-numero">${d.numero}</div>
           </div>
-          <span class="badge ${aptBadge[d.aptitud]||'b-gris'}">${aptLabels[d.aptitud]||d.aptitud}</span>
         </div>
         ${d.conclusion ? `<div class="informe-conc">${d.conclusion.substring(0,240)}${d.conclusion.length>240?'…':''}</div>` : ''}
         <a href="${d.pdf_firmado ? '/api/dictamenes/'+d.id+'/pdf-firmado' : '/api/dictamenes/'+d.id+'/pdf'}" target="_blank" class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;">

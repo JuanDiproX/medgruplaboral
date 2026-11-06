@@ -21,7 +21,7 @@
   $('firma-titulo').textContent=doc.id?'Informe '+doc.numero:'Acta de participación';
   if(doc.id){
    const labels={numero:'Número',paciente:'Paciente',apellido_nombre:'Nombre',fecha_consulta:'Fecha de consulta',antecedentes:'Antecedentes',hallazgos:'Hallazgos',analisis:'Análisis',conclusion:'Conclusión',aptitud:'Aptitud',dias_reposo:'Días de reposo',diagnostico:'Diagnóstico',diagnostico_desc:'Descripción del diagnóstico',diagnostico_cie:'Código diagnóstico',indicaciones:'Indicaciones',informe_completo:'Informe'};
-   for(const [key,value] of Object.entries(doc.contenido)){if(value!==null&&value!=='')paragraph($('firma-preview'),`${labels[key]||key.replaceAll('_',' ')}: ${value}`);}
+   for(const [key,value] of Object.entries(doc.contenido)){if(!['aptitud','dias_reposo'].includes(key)&&value!==null&&value!=='')paragraph($('firma-preview'),`${labels[key]||key.replaceAll('_',' ')}: ${value}`);}
   }
   else{
    paragraph($('firma-preview'),`Consulta: ${doc.tipo||'Consulta médica'}. Paciente: ${doc.paciente}. Firmante: ${doc.nombre}.`);

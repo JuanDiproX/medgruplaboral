@@ -63,6 +63,13 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     response=await get('/api/turnos/test/informe-inasistencia',staff);assert.equal(response.status,409);
     response=await get('/api/turnos/test/acta',staff);assert.match(await response.text(),/Acta de Asistencia/);
     await db.query("INSERT INTO dictamenes(numero,turno_id,paciente,medico,conclusion,firma_doctor,pdf_firmado) VALUES('DICT-TEST','test','Persona ficticia','Médica de prueba','Original','firma-ficticia','pdf-ficticio')");
+    // Los valores históricos no agregan una conclusión automática al texto médico.
+    await db.query("UPDATE dictamenes SET turno_id=NULL,aptitud='apto',dias_reposo=0,sin_aptitud=false WHERE id=1");
+    const reportAdmin=await sessionStore.create('staff',{id:99,nombre:'Admin de prueba',rol:'admin'});
+    response=await get('/api/dictamenes/1/pdf',{'x-session-token':reportAdmin});assert.equal(response.status,200);
+    const report=await response.text();assert.match(report,/Original/);
+    assert.doesNotMatch(report,/conc-box|Aptitud Laboral Total|Sin reposo indicado/);
+    await db.query("UPDATE dictamenes SET turno_id='test' WHERE id=1");
     await db.query("INSERT INTO firmas_dictamen(dictamen_id,medico_nombre,firma_base64) VALUES(1,'Médica de prueba','firma-ficticia')");
     response=await fetch(base+'/api/dictamenes/1',{method:'PATCH',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({conclusion:'Texto corregido'})});
     assert.equal(response.status,200);assert.equal((await response.json()).requiere_firma,true);
