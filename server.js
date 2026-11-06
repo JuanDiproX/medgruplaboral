@@ -3196,6 +3196,7 @@ const ESTADOS_CASO = ['nuevo', 'asignado', 'programado', 'en-curso', 'resuelto',
 // de ahí lo toman el acta y el informe, que es lo que firma el médico y recibe la empresa.
 const TIPOS_CONTROL = {
   ausentismo:       'Control de ausentismo',
+  seguimiento_medico: 'Seguimiento médico',
   examen_periodico: 'Seguimiento por examen periódico'
 };
 const TIPO_CONTROL_DEFECTO = 'ausentismo';
