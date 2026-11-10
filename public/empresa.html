@@ -916,7 +916,7 @@ function renderCasosEmpresa(){
       ? `<div style="font-size:12px;color:var(--text2);margin-top:4px;">Entrevista: ${String(c.turno_fecha).split('T')[0].split('-').reverse().join('/')}${c.turno_hora?' a las '+c.turno_hora+' hs':''}</div>`
       : '';
     const prof = c.profesional_nombre
-      ? `<div style="font-size:12px;color:var(--azul);font-weight:600;margin-top:4px;">${c.profesional_nombre}${c.profesional_especialidad?' · '+c.profesional_especialidad:''}</div>`
+      ? `<div style="font-size:12px;color:var(--azul);font-weight:600;margin-top:4px;">${escEmp(c.profesional_nombre)}${escEmp(c.profesional_especialidad?' · '+c.profesional_especialidad:'')}</div>`
       : '';
     // Un caso puede no ser por ausencia (p. ej. seguimiento por examen periódico): en ese caso
     // se aclara, porque el acta y el informe van a salir con ese nombre.
@@ -1046,7 +1046,7 @@ async function abrirModalInformes(urlBase, nombre, dictamenes){
     const filas = [];
     for(const dict of (dictamenes||[])){
       filas.push(`<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">Informe médico${dict.medico?' — '+dict.medico:''}</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">Informe médico${escEmp(dict.medico?' — '+dict.medico:'')}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">Emitido por MEDGRUP</div></div>
         <a class="btn btn-primary" style="text-decoration:none;" href="${dict.pdf_firmado ? '/api/dictamenes/'+dict.id+'/pdf-firmado' : '/api/dictamenes/'+dict.id+'/pdf'}" target="_blank" rel="noopener">Ver</a>
       </div>`);
@@ -1054,7 +1054,7 @@ async function abrirModalInformes(urlBase, nombre, dictamenes){
     for(const inf of (d.informes||[])){
       const cuando = inf.creado_en ? new Date(inf.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
       filas.push(`<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${inf.titulo || inf.nombre_archivo}</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${escEmp(inf.titulo || inf.nombre_archivo)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">Emitido por MEDGRUP${cuando?' · '+cuando:''}</div></div>
         <button class="btn btn-primary" onclick="verInformeAdjuntoEmpresa(${inf.id})">Ver</button>
       </div>`);
@@ -1114,7 +1114,7 @@ async function recargarCertificadosEmpresa(){
     lista.innerHTML = data.certificados.map(cert => {
       const peso = cert.tamano_bytes ? (cert.tamano_bytes/1024 < 1024 ? Math.round(cert.tamano_bytes/1024)+' KB' : (cert.tamano_bytes/1024/1024).toFixed(1)+' MB') : '';
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${cert.nombre_archivo}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}</div></div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;word-break:break-all;">${escEmp(cert.nombre_archivo)}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}</div></div>
         <button class="btn btn-ghost" onclick="verCertificadoEmpresa(${cert.id})">Ver</button>
       </div>`;
     }).join('');
@@ -1277,7 +1277,7 @@ function renderTabla(turnos){
             <div class="paciente-cell">
               <div class="avatar">${iniciales(t.paciente)}</div>
               <div>
-                <div class="paciente-nombre">${t.paciente}</div>
+                <div class="paciente-nombre">${escEmp(t.paciente)}</div>
                 <div class="paciente-sub">${t.hora||'—'} hs</div>
               </div>
             </div>
@@ -1314,7 +1314,7 @@ async function verDetalle(t){
       <div class="informe-card">
         <div class="informe-head">
           <div>
-            <div class="informe-medico">${d.medico}</div>
+            <div class="informe-medico">${escEmp(d.medico)}</div>
             <div class="informe-numero">${d.numero}</div>
           </div>
         </div>
@@ -1390,7 +1390,7 @@ async function verDetalle(t){
         return `<div class="informe-card" style="margin-top:8px;">
           <div class="informe-head">
             <div>
-              <div class="informe-medico">${inf.titulo || inf.nombre_archivo}</div>
+              <div class="informe-medico">${escEmp(inf.titulo || inf.nombre_archivo)}</div>
               <div class="informe-numero">${cuando}</div>
             </div>
           </div>

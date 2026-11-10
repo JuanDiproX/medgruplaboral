@@ -928,7 +928,7 @@ td.no-label::before{display:none;}
   <div class="modal" style="max-width:400px;">
     <div class="modal-title">Elegí una nueva contraseña</div>
     <div id="nueva-pass-paso-form">
-      <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="nueva-pass-input" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')confirmarNuevaPassword()"/></div>
+      <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="nueva-pass-input" placeholder="Mínimo 10 caracteres, con letras y números" onkeydown="if(event.key==='Enter')confirmarNuevaPassword()"/></div>
       <div class="form-group full"><label class="form-lbl">Confirmar contraseña</label><input type="password" id="nueva-pass-confirmar" placeholder="Repetí la contraseña" onkeydown="if(event.key==='Enter')confirmarNuevaPassword()"/></div>
       <div id="nueva-pass-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--rosa-dark);"></div>
       <div class="modal-footer">
@@ -1289,7 +1289,7 @@ td.no-label::before{display:none;}
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre</label><input type="text" id="new-admin-nombre" placeholder="Ej: Demo MEDGRUP"/></div>
               <div class="form-group"><label class="form-lbl">Email de acceso</label><input type="text" id="new-admin-email" placeholder="demo@medgrup.com"/></div>
-              <div class="form-group"><label class="form-lbl">Contraseña</label><input type="text" id="new-admin-password" placeholder="Mínimo 6 caracteres"/></div>
+              <div class="form-group"><label class="form-lbl">Contraseña</label><input type="text" id="new-admin-password" placeholder="Mínimo 10 caracteres, con letras y números"/></div>
             </div>
             <button class="btn btn-ghost btn-full" onclick="agregarAdmin()">Crear acceso de admin</button>
             <div id="admin-nuevo-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:0.75rem;font-size:13px;color:var(--azul);">✓ Acceso creado</div>
@@ -1309,7 +1309,7 @@ td.no-label::before{display:none;}
             <div style="background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:1rem;font-size:13px;color:var(--azul);">Reemplazá tu contraseña temporal por una segura.</div>
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Contraseña actual</label><input type="password" id="pwd-actual" placeholder="Tu contraseña actual"/></div>
-              <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="pwd-nueva" placeholder="Mínimo 6 caracteres"/></div>
+              <div class="form-group full"><label class="form-lbl">Nueva contraseña</label><input type="password" id="pwd-nueva" placeholder="Mínimo 10 caracteres, con letras y números"/></div>
               <div class="form-group full"><label class="form-lbl">Confirmar nueva</label><input type="password" id="pwd-confirmar" placeholder="Repetí la nueva contraseña"/></div>
             </div>
             <button class="btn btn-primary btn-full" onclick="cambiarPassword()">Cambiar contraseña</button>
@@ -1376,7 +1376,7 @@ td.no-label::before{display:none;}
             <div class="form-grid">
               <div class="form-group full"><label class="form-lbl">Nombre de la empresa</label><input type="text" id="emp-nombre" placeholder="Ej: LOGANT S.A." /><div class="au-ayuda">Tiene que coincidir exactamente con el nombre que figura en los turnos.</div></div>
               <div class="form-group full"><label class="form-lbl">Email de acceso</label><input type="text" id="emp-email-new" placeholder="rrhh@empresa.com"/></div>
-              <div class="form-group"><label class="form-lbl">Contraseña inicial</label><input type="text" id="emp-pass-new" placeholder="Mín. 6 caracteres"/></div>
+              <div class="form-group"><label class="form-lbl">Contraseña inicial</label><input type="text" id="emp-pass-new" placeholder="Mín. 10, con letras y números"/></div>
               <div class="form-group"><label class="form-lbl">Contacto (opcional)</label><input type="text" id="emp-contacto-new" placeholder="Nombre del responsable"/></div>
             </div>
             <button class="btn btn-primary btn-full" onclick="crearEmpresa()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Crear cuenta de empresa</button>
@@ -3243,7 +3243,7 @@ async function confirmarNuevaPassword(){
   const p2 = document.getElementById('nueva-pass-confirmar').value;
   const errEl = document.getElementById('nueva-pass-err');
   errEl.style.display = 'none';
-  if(!p1 || p1.length < 6){ errEl.textContent='Mínimo 6 caracteres'; errEl.style.display='block'; return; }
+  if(!p1 || p1.length < 10){ errEl.textContent='Mínimo 10 caracteres, con letras y números'; errEl.style.display='block'; return; }
   if(p1 !== p2){ errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
   const btn = document.getElementById('btn-confirmar-nueva-pass');
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -3433,7 +3433,7 @@ function iniciales(nombre){
 function avatarChip(nombre){
   const grads=['var(--grad-azul)','var(--grad-rosa)','var(--grad-celeste)'];
   let h=0; for(const c of (nombre||'')) h=(h*31+c.charCodeAt(0))>>>0;
-  return `<div class="row-avatar" style="background:${grads[h%grads.length]};">${iniciales(nombre)}</div>`;
+  return `<div class="row-avatar" style="background:${grads[h%grads.length]};">${escaparHtml(iniciales(nombre))}</div>`;
 }
 // Aviso arriba de la lista: médicos cuyos turnos y firmas quedaron con un nombre distinto al
 // de su perfil. Se muestra acá y no solo dentro de "Editar" para que se vea sin buscarlo.
@@ -3447,7 +3447,7 @@ async function chequearMedicosDesincronizados(){
     caja.innerHTML = data.desincronizados.map(m => `
       <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
-          <strong>⚠ ${m.nombre} figura con otro nombre en sus documentos</strong><br/>
+          <strong>⚠ ${escaparHtml(m.nombre)} figura con otro nombre en sus documentos</strong><br/>
           Sus turnos, firmas y acceso quedaron guardados como ${m.alternativos.map(a=>`"${a}"`).join(', ')}.
           Por eso en el informe y el acta no se ve su matrícula, y puede fallarle la firma.
         </div>
@@ -3461,11 +3461,11 @@ function renderMedicos(){
   chequearMedicosDesincronizados();
   if(!medicosData.length){document.getElementById('medicos-lista').innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3);">Sin médicos.</div>';return;}
   document.getElementById('medicos-lista').innerHTML=`<table><thead><tr><th>Médico</th><th>Especialidad</th><th>Estado</th><th></th></tr></thead><tbody>`+
-    medicosData.map(m=>`<tr><td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(m.nombre)}<div><div style="font-weight:600;">${m.nombre}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${m.matricula||'Sin matrícula'}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado'}</div></div></div></td><td data-label="Especialidad"><span style="color:var(--azul-dark);font-weight:600;font-size:12.5px;line-height:1.4;">${m.especialidad}</span></td><td data-label="Estado"><span class="badge b-green">● Activo</span></td><td class="no-label" style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
+    medicosData.map(m=>`<tr><td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(m.nombre)}<div><div style="font-weight:600;">${escaparHtml(m.nombre)}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">${escaparHtml(m.matricula||'Sin matrícula')}</div><div style="font-size:11px;color:${m.telefono?'var(--text3)':'var(--rosa-dark)'};margin-top:1px;">${escaparHtml(m.telefono?'📱 '+m.telefono:'Sin WhatsApp cargado')}</div></div></div></td><td data-label="Especialidad"><span style="color:var(--azul-dark);font-weight:600;font-size:12.5px;line-height:1.4;">${escaparHtml(m.especialidad)}</span></td><td data-label="Estado"><span class="badge b-green">● Activo</span></td><td class="no-label" style="display:flex;gap:6px;"><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarMedicoModal(${m.id})">Editar</button><button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="eliminarMedico(${m.id})">Eliminar</button></td></tr>`).join('')+`</tbody></table>`;
 }
 function renderMedicosCheck(){
   document.getElementById('medicos-check-list').innerHTML=medicosData.map(m=>
-    `<label class="medico-check selected" id="chk-${m.id}"><input type="checkbox" value="${m.nombre}" checked onchange="document.getElementById('chk-${m.id}').classList.toggle('selected',this.checked)"/><span class="medico-check-nombre">${m.nombre}</span><span class="medico-check-mat">${m.matricula||''}</span></label>`
+    `<label class="medico-check selected" id="chk-${m.id}"><input type="checkbox" value="${escaparHtml(m.nombre)}" checked onchange="document.getElementById('chk-${m.id}').classList.toggle('selected',this.checked)"/><span class="medico-check-nombre">${escaparHtml(m.nombre)}</span><span class="medico-check-mat">${m.matricula||''}</span></label>`
   ).join('');
 }
 async function agregarMedico(){
@@ -3553,9 +3553,9 @@ async function chequearNombresAlternativos(id){
         <div style="min-width:0;">
           <strong>Hay documentos a nombre de "${alt}"</strong><br/>
           Sus turnos, firmas y su acceso quedaron guardados con ese nombre, distinto al del perfil
-          ("${data.nombre}"). Por eso puede no verse su matrícula en los documentos y hasta fallarle la firma.
+          ("${escaparHtml(data.nombre)}"). Por eso puede no verse su matrícula en los documentos y hasta fallarle la firma.
         </div>
-        <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;flex-shrink:0;" onclick="unificarNombreMedico(${id}, ${JSON.stringify(alt).replace(/"/g,'&quot;')})">Unificar con "${data.nombre}"</button>
+        <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;flex-shrink:0;" onclick="unificarNombreMedico(${id}, ${JSON.stringify(alt).replace(/"/g,'&quot;')})">Unificar con "${escaparHtml(data.nombre)}"</button>
       </div>`).join('<div style="height:10px;"></div>');
     caja.style.display='block';
   }catch(e){ caja.style.display='none'; }
@@ -3960,7 +3960,7 @@ async function abrirModalEditar(id){
   document.getElementById('edit-medicos-check-list').innerHTML = medicosData.map(m=>{
     const checked = asignados.includes(m.nombre) ? 'checked' : '';
     const sel = checked ? 'selected' : '';
-    return `<label class="medico-check ${sel}" id="edit-chk-${m.id}"><input type="checkbox" value="${m.nombre}" ${checked} onchange="document.getElementById('edit-chk-${m.id}').classList.toggle('selected',this.checked)"/><span class="medico-check-nombre">${m.nombre}</span><span class="medico-check-mat">${m.matricula||''}</span></label>`;
+    return `<label class="medico-check ${sel}" id="edit-chk-${m.id}"><input type="checkbox" value="${escaparHtml(m.nombre)}" ${checked} onchange="document.getElementById('edit-chk-${m.id}').classList.toggle('selected',this.checked)"/><span class="medico-check-nombre">${escaparHtml(m.nombre)}</span><span class="medico-check-mat">${m.matricula||''}</span></label>`;
   }).join('');
 
   document.getElementById('modal-editar-turno').classList.add('open');
@@ -4114,7 +4114,7 @@ function confirmar(mensaje, opts={}){
 }
 
 // ===== MODAL DE TEXTO GENÉRICO (reemplaza prompt() nativo para un solo campo) =====
-// Uso: const valor = await promptTexto('Nueva contraseña:', {valorInicial:'', validar: v => v.length>=6 ? null : 'Mínimo 6 caracteres'});
+// Uso: const valor = await promptTexto('Nueva contraseña:', {valorInicial:'', validar: v => v.length>=10 ? null : 'Mínimo 10 caracteres, con letras y números'});
 // Devuelve el texto ingresado, o null si se canceló.
 let _promptResolver = null;
 function promptTexto(label, opts={}){
@@ -4379,7 +4379,7 @@ async function onEmpresaTurnoChange(){
     const res = await fetch('/api/pacientes-empresa?empresa='+encodeURIComponent(empresa), {headers:apiHeaders()});
     const data = await res.json();
     pacientesTurnoActual = data.pacientes || [];
-    datalist.innerHTML = pacientesTurnoActual.map(p=>`<option value="${p.nombre}">`).join('');
+    datalist.innerHTML = pacientesTurnoActual.map(p=>`<option value="${escaparHtml(p.nombre)}">`).join('');
   }catch(e){ datalist.innerHTML=''; }
 }
 
@@ -4979,7 +4979,7 @@ function renderDictamenesExistentes(dictamenes){
     const esMio=d.medico===usuarioActual?.nombre;
     return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${d.medico} ${esMio?'<span class="badge b-blue" style="margin-left:4px;">vos</span>':''}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${escaparHtml(d.medico)} ${esMio?'<span class="badge b-blue" style="margin-left:4px;">vos</span>':''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">${d.numero}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -5009,7 +5009,7 @@ function cargarDictamenEnFormulario(d){
   dictamenActualCreado=d.creado_en;
   document.getElementById('cert-ok').style.display='block';
   document.getElementById('cert-info').innerHTML=`
-    <div>${d.numero} · ${d.paciente}</div>
+    <div>${escaparHtml(d.numero)} · ${escaparHtml(d.paciente)}</div>
   `;
   document.getElementById('cert-pdf-links').innerHTML=`
     <a href="/api/dictamenes/${d.id}/pdf?download=1" data-descarga-pdf class="btn btn-primary" style="padding:8px 14px;font-size:12.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
@@ -5161,7 +5161,7 @@ function abrirFirmaExpress(){
     return `
     <div style="border:1.5px solid var(--border2);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;">
       <div style="min-width:0;">
-        <div style="font-size:15px;font-weight:600;">${p.apellido_nombre || p.paciente}</div>
+        <div style="font-size:15px;font-weight:600;">${escaparHtml(p.apellido_nombre || p.paciente)}</div>
         <div style="font-size:12px;color:var(--text3);margin-top:3px;">${p.empresa||'—'} · ${fecha} · Informe de ${p.autor}</div>
         <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${p.numero}</div>
       </div>
@@ -5188,7 +5188,7 @@ function abrirFirmaExpress(){
       return `
       <div id="fe-acta-row-${p.id}" style="border:1.5px solid var(--border2);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
-          <div style="font-size:14px;font-weight:600;">${p.paciente}</div>
+          <div style="font-size:14px;font-weight:600;">${escaparHtml(p.paciente)}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:3px;">${p.empresa||'—'} · ${fecha} · ${p.tipo||'Consulta'}</div>
           ${detalle}
         </div>
@@ -5472,7 +5472,7 @@ function fpRenderPaso(){
     const rol = omitido ? 'Firma desde su cuenta' : p.es_paciente ? 'Paciente evaluado/a' : 'Médico interviniente';
     return `<div style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:${color};font-weight:${peso};">
       <span style="width:19px;height:19px;flex:none;border-radius:50%;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'DM Mono',monospace;">${icono}</span>
-      <span>${p.nombre}</span><span style="color:var(--text3);font-weight:400;font-size:11px;">· ${rol}</span>
+      <span>${escaparHtml(p.nombre)}</span><span style="color:var(--text3);font-weight:400;font-size:11px;">· ${rol}</span>
     </div>`;
   }).join('');
 
@@ -5756,7 +5756,7 @@ async function recargarFirmasActa(){
             ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;flex-shrink:0;" onclick="importarFirmaActa(${nombreJs})">Usar su firma del informe</button>`
             : '');
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${f.nombre}</div><div style="font-size:11px;color:var(--text3);">${f.rol}</div>${detalle}</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${escaparHtml(f.nombre)}</div><div style="font-size:11px;color:var(--text3);">${f.rol}</div>${detalle}</div>
         ${boton}
       </div>`;
     }).join('') || '<div style="font-size:12.5px;color:var(--text3);">Este turno no tiene médicos asignados.</div>';
@@ -5976,9 +5976,9 @@ function renderReuniones(){
     return `<div class="turno-item">
       <div class="turno-time"><div class="turno-hora">${r.hora}</div><div class="turno-fecha">${fl}</div></div>
       <div class="turno-info">
-        <div class="turno-paciente"><span>${r.titulo}</span>${eb}</div>
+        <div class="turno-paciente"><span>${escaparHtml(r.titulo)}</span>${eb}</div>
         <div class="turno-meta"><span>${invitadosTxt}</span></div>
-        ${r.motivo?`<div style="font-size:12px;color:var(--text3);margin-top:3px;">${r.motivo}</div>`:''}
+        ${r.motivo?`<div style="font-size:12px;color:var(--text3);margin-top:3px;">${escaparHtml(r.motivo)}</div>`:''}
       </div>
       <div class="turno-actions">${bi}${bj}${bfin}${bcancel}${belim}</div>
     </div>`;
@@ -6033,7 +6033,7 @@ async function programarReunion(){
         data.invitados.map((i,idx)=>{
           const key = 'reu_'+idx;
           window._reunionMensajesWA[key] = `Hola ${i.nombre}, te invitamos a "${data.reunion.titulo}" el ${new Date(data.reunion.fecha+'T12:00').toLocaleDateString('es-AR')} a las ${data.reunion.hora} hs. Ingresá acá: ${i.link}`;
-          const wa = i.telefono ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;color:#1e9d5a;" onclick="abrirWANumero('${i.telefono.replace(/'/g,'')}',window._reunionMensajesWA['${key}'])">WhatsApp</button>` : '';
+          const wa = i.telefono ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:11.5px;color:#1e9d5a;" onclick="abrirWANumero('${escaparHtml(i.telefono.replace(/[^0-9+ ()-]/g,''))}',window._reunionMensajesWA['${key}'])">WhatsApp</button>` : '';
           const emailInfo = i.email ? (i.email_enviado ? '<span class="badge b-green" style="font-size:10px;margin-left:6px;">✓ Email enviado</span>' : '<span class="badge b-gray" style="font-size:10px;margin-left:6px;">Email no enviado</span>') : '';
           return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
             <div style="font-size:12.5px;">${escaparHtml(i.nombre)}${emailInfo}</div>
@@ -6771,8 +6771,8 @@ async function recargarInformesCaso(){
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;">${iconPath}</svg>
           </div>
           <div style="min-width:0;">
-            <div style="font-size:13px;font-weight:600;word-break:break-word;">${inf.titulo || inf.nombre_archivo}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Informe ${i+1}${inf.titulo?' · '+inf.nombre_archivo:''}${peso?' · '+peso:''}${cuando?' · '+cuando:''}${inf.subido_por?' · '+inf.subido_por:''}</div>
+            <div style="font-size:13px;font-weight:600;word-break:break-word;">${escaparHtml(inf.titulo || inf.nombre_archivo)}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Informe ${i+1}${escaparHtml(inf.titulo?' · '+inf.nombre_archivo:'')}${peso?' · '+peso:''}${cuando?' · '+cuando:''}${escaparHtml(inf.subido_por?' · '+inf.subido_por:'')}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -6914,8 +6914,8 @@ async function recargarCertificadosCaso(){
       const cuando = cert.creado_en ? new Date(cert.creado_en).toLocaleDateString('es-AR',{day:'numeric',month:'short'}) : '';
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
         <div style="min-width:0;">
-          <div style="font-size:13px;font-weight:600;word-break:break-all;">${cert.nombre_archivo}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}${cuando?' · '+cuando:''}${cert.subido_por?' · '+cert.subido_por:''}</div>
+          <div style="font-size:13px;font-weight:600;word-break:break-all;">${escaparHtml(cert.nombre_archivo)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${peso}${cuando?' · '+cuando:''}${escaparHtml(cert.subido_por?' · '+cert.subido_por:'')}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;" onclick="verCertificado(${cert.id})">Ver</button>
@@ -7030,7 +7030,7 @@ function abrirAsignarCaso(id){
   document.getElementById('asig-caso-info').textContent = `${c.trabajador_nombre} · ${c.empresa_nombre}`;
   const sel = document.getElementById('asig-profesional');
   sel.innerHTML = '<option value="">Elegí un profesional...</option>' +
-    (medicosData||[]).map(m => `<option value="${m.id}"${m.id===c.profesional_id?' selected':''}>${m.nombre}</option>`).join('');
+    (medicosData||[]).map(m => `<option value="${m.id}"${m.id===c.profesional_id?' selected':''}>${escaparHtml(m.nombre)}</option>`).join('');
   document.getElementById('modal-asignar-caso').classList.add('open');
 }
 
@@ -7284,7 +7284,7 @@ async function recargarFirmasDictamen(){
         ? `<button class="btn btn-ghost" style="padding:6px 11px;font-size:12px;color:var(--rosa-dark);flex-shrink:0;" onclick="quitarFirmaDictamen(${JSON.stringify(f.nombre).replace(/"/g,'&quot;')})">Quitar firma</button>`
         : '';
       return `<div style="border:1px solid var(--border2);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
-        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${f.nombre}</div><div style="font-size:11px;color:var(--text3);">${f.es_autor?'Autor del informe':'Médico interviniente'}</div>${detalle}</div>
+        <div style="min-width:0;"><div style="font-size:13px;font-weight:600;">${escaparHtml(f.nombre)}</div><div style="font-size:11px;color:var(--text3);">${f.es_autor?'Autor del informe':'Médico interviniente'}</div>${detalle}</div>
         ${boton}
       </div>`;
     }).join('');
@@ -7629,7 +7629,7 @@ async function cambiarPassword(){
   document.getElementById('pwd-ok').style.display='none';document.getElementById('pwd-err').style.display='none';
   if(!actual||!nueva||!confirmar){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Completá todos los campos';return;}
   if(nueva!==confirmar){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Las contraseñas no coinciden';return;}
-  if(nueva.length<6){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Mínimo 6 caracteres';return;}
+  if(nueva.length<10){document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-err').textContent='Mínimo 10 caracteres, con letras y números';return;}
   try{
     const res=await fetch('/api/cambiar-password',{method:'POST',headers:apiHeaders(),body:JSON.stringify({passwordActual:actual,passwordNueva:nueva})});
     const data=await res.json();
@@ -7676,13 +7676,13 @@ function renderEmpresas() {
   }
   document.getElementById('empresas-lista').innerHTML = `<table><thead><tr><th>Empresa</th><th>Email de acceso</th><th>Contacto</th><th>Estado</th><th></th></tr></thead><tbody>` +
     empresasData.map(e => `<tr>
-      <td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(e.nombre)}<div style="font-weight:600;">${e.nombre}</div></div></td>
-      <td data-label="Email"><div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${e.email}</div></td>
+      <td class="no-label"><div style="display:flex;align-items:center;gap:11px;">${avatarChip(e.nombre)}<div style="font-weight:600;">${escaparHtml(e.nombre)}</div></div></td>
+      <td data-label="Email"><div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);">${escaparHtml(e.email)}</div></td>
       <td data-label="Contacto"><div style="font-size:12.5px;color:var(--text2);">${e.contacto||'—'}</div></td>
       <td data-label="Estado">${e.activo ? '<span class="badge b-green">● Activa</span>' : '<span class="badge b-gray">Inactiva</span>'}</td>
       <td class="no-label" style="display:flex;gap:6px;">
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="resetPasswordEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')" title="Cambiar contraseña">Contraseña</button>
-        <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="desactivarEmpresa(${e.id},'${e.nombre.replace(/'/g,"\\'")}')">Desactivar</button>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="resetPasswordEmpresa(${e.id},'${escaparHtml(e.nombre.replace(/\\/g,'').replace(/'/g,"\\'"))}')" title="Cambiar contraseña">Contraseña</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:11px;" onclick="desactivarEmpresa(${e.id},'${escaparHtml(e.nombre.replace(/\\/g,'').replace(/'/g,"\\'"))}')">Desactivar</button>
       </td>
     </tr>`).join('') + '</tbody></table>';
 }
@@ -7698,8 +7698,8 @@ async function crearEmpresa() {
     document.getElementById('emp-err').textContent = 'Nombre, email y contraseña son obligatorios';
     document.getElementById('emp-err').style.display = 'block'; return;
   }
-  if (password.length < 6) {
-    document.getElementById('emp-err').textContent = 'La contraseña debe tener al menos 6 caracteres';
+  if (password.length < 10) {
+    document.getElementById('emp-err').textContent = 'La contraseña debe tener al menos 10 caracteres, con letras y números';
     document.getElementById('emp-err').style.display = 'block'; return;
   }
   try {
@@ -7725,7 +7725,7 @@ async function crearEmpresa() {
 async function resetPasswordEmpresa(id, nombre) {
   const nueva = await promptTexto(`Nueva contraseña para ${nombre}:`, {
     titulo: 'Restablecer contraseña',
-    validar: v => v.length >= 6 ? null : 'Mínimo 6 caracteres'
+    validar: v => v.length >= 10 ? null : 'Mínimo 10 caracteres, con letras y números'
   });
   if (nueva === null) return;
   try{
@@ -7797,7 +7797,7 @@ function renderPacientesEmpresa(){
   }
   lista.innerHTML = `<table><thead><tr><th>Nombre</th><th>WhatsApp</th><th></th></tr></thead><tbody>` +
     pacientesEmpresaData.map(p=>`<tr>
-      <td class="no-label"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.nombre)}<span>${p.nombre}</span></div></td>
+      <td class="no-label"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.nombre)}<span>${escaparHtml(p.nombre)}</span></div></td>
       <td data-label="WhatsApp" style="font-family:'DM Mono',monospace;font-size:12px;">${p.telefono||'—'}</td>
       <td class="no-label" style="display:flex;gap:6px;">
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="editarPacienteEmpresa(${p.id})">Editar</button>
@@ -7894,7 +7894,7 @@ function renderPresupuestos(){
       const fecha = new Date(p.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Argentina/Buenos_Aires'});
       return `<tr>
         <td class="no-label" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--azul);font-weight:600;">${p.numero}</td>
-        <td data-label="Empresa"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.empresa)}<span>${p.empresa}</span></div></td>
+        <td data-label="Empresa"><div style="display:flex;align-items:center;gap:10px;">${avatarChip(p.empresa)}<span>${escaparHtml(p.empresa)}</span></div></td>
         <td data-label="Fecha" style="font-family:'DM Mono',monospace;font-size:12px;">${fecha}</td>
         <td data-label="Total" style="font-weight:600;">${fmtMonedaJS(p.total)}</td>
         <td data-label="Estado">
@@ -8040,7 +8040,7 @@ async function cargarServiciosCatalogo(){
     const data = await res.json();
     catalogoServicios = data.servicios || [];
     const datalist = document.getElementById('pr-catalogo-datalist');
-    if(datalist) datalist.innerHTML = catalogoServicios.map(s=>`<option value="${s.nombre}">`).join('');
+    if(datalist) datalist.innerHTML = catalogoServicios.map(s=>`<option value="${escaparHtml(s.nombre)}">`).join('');
     renderCatalogoLista();
   }catch(e){}
 }
@@ -8053,7 +8053,7 @@ function renderCatalogoLista(){
   }
   cont.innerHTML = catalogoServicios.map(s=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;">
-      <span>${s.nombre}</span>
+      <span>${escaparHtml(s.nombre)}</span>
       <span style="display:flex;align-items:center;gap:10px;">
         <span style="font-family:'DM Mono',monospace;color:var(--text2);">${fmtMonedaJS(s.precio)}</span>
         <button onclick="eliminarServicioCatalogo(${s.id})" style="background:none;border:none;color:var(--rosa);cursor:pointer;font-size:14px;padding:0;line-height:1;" title="Eliminar">✕</button>

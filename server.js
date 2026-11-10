@@ -31,8 +31,16 @@ const RESEND_FROM = process.env.RESEND_FROM || 'MEDGRUP <onboarding@resend.dev>'
 const SESSION_SECRET = process.env.SESSION_SECRET || 'medgrup-secret-2026';
 if (!process.env.SESSION_SECRET) console.warn('⚠ SESSION_SECRET no está definido: las contraseñas usan el secreto por defecto');
 
-app.use(cors());
-app.use(express.json({ limit: '10mb', verify: (req, res, buf) => {
+const seguridad = require('./lib/security');
+const {fallo, claveDebil, clientIp} = seguridad;
+const EN_PRODUCCION = Boolean(process.env.RAILWAY_PUBLIC_DOMAIN || process.env.NODE_ENV === 'production');
+// Railway pone un proxy delante: con esto req.ip es la IP real del visitante y no la del proxy,
+// y nadie puede falsearla mandando su propio X-Forwarded-For.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(seguridad.headers({ production: EN_PRODUCCION }));
+app.use(cors(seguridad.corsOptions(process.env.ORIGENES_PERMITIDOS)));
+app.use(express.json({ limit: '10mb', type: ['application/json', 'application/csp-report'], verify: (req, res, buf) => {
   if (req.originalUrl.startsWith('/api/webhooks/')) req.cuerpoCrudo = buf.toString('utf8');
 } }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -67,6 +75,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 pool.on('connect', c => c.query(`SET TIME ZONE '${ZONA_ARG}'`));
 
 const {hashPassword,verifyPassword}=require('./lib/passwords');
+const nombreArchivoSeguro = n => String(n || 'archivo').replace(/[<>"'`&\\\u0000-\u001f]/g, '').trim().slice(0, 300) || 'archivo';
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
 // A pesar de la instrucción de no usar markdown, la IA a veces desliza un **texto** o __texto__
@@ -597,6 +606,34 @@ app.use((req,res,next)=>{
   if(authAttempts.size>5000)for(const [k,v] of authAttempts)if(v.until<=now)authAttempts.delete(k);
   next();
 });
+// Además del límite por cuenta, uno por IP: frena a quien prueba muchas cuentas distintas.
+const limiteAcceso = seguridad.rateLimit({ name: 'acceso', windowMs: 10 * 60 * 1000, max: 40 });
+app.use(['/api/login', '/api/empresa/login', '/api/forgot-password', '/api/empresa/forgot-password', '/api/reset-password'], limiteAcceso);
+// Los enlaces personales no tienen usuario ni contraseña: el límite evita que se prueben al azar.
+const limiteEnlaces = seguridad.rateLimit({ name: 'enlaces', windowMs: 5 * 60 * 1000, max: 120,
+  message: 'Demasiados intentos desde esta conexión. Esperá unos minutos y volvé a abrir tu enlace.' });
+app.use(['/api/ingreso', '/api/chat/paciente', '/api/acceso-medico', '/verificar', '/i'], limiteEnlaces);
+app.post('/api/csp-informe', seguridad.rateLimit({ name: 'csp', windowMs: 60 * 1000, max: 30 }), (req, res) => {
+  const r = req.body?.['csp-report'] || {};
+  if (r['violated-directive']) console.warn('csp_informe', String(r['violated-directive']).slice(0, 80), String(r['blocked-uri'] || '').slice(0, 120));
+  res.status(204).end();
+});
+const auditoria = seguridad.createAudit({ pool, identify: req => {
+  const u = sessions[req.headers['x-session-token']]; if (u) return { tipo: u.rol === 'admin' ? 'admin' : 'medico', id: u.id, nombre: u.nombre };
+  const e = empresaSessions[req.headers['x-empresa-token']]; if (e) return { tipo: 'empresa', id: e.id, nombre: e.nombre };
+  if (req.headers['x-medico-invitacion']) return { tipo: 'medico_invitado' };
+  if (req.headers['x-chat-token'] || req.path.startsWith('/api/ingreso/')) return { tipo: 'paciente' };
+  return null;
+} });
+app.use(auditoria.middleware);
+app.get('/api/admin/auditoria', adminMiddleware, async (req, res) => {
+  try {
+    const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 100, 1), 500);
+    const r = await pool.query('SELECT id,creado_en,actor_tipo,actor,accion,ruta,estado,ip FROM auditoria ORDER BY id DESC LIMIT $1', [limite]);
+    res.json({ ok: true, registros: r.rows });
+  } catch (err) { fallo(res, err); }
+});
+
 // ===== AUTH MEDGRUP =====
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -608,7 +645,7 @@ app.post('/api/login', async (req, res) => {
     if(!u.password_hash.startsWith('scrypt$')) await pool.query('UPDATE usuarios SET password_hash=$1 WHERE id=$2',[hashPassword(password.trim()),u.id]);
     const token = await sessionStore.create('staff',{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol});
     res.json({ ok: true, token, usuario: { nombre: u.nombre, email: u.email, rol: u.rol } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/logout', async (req,res)=>{try{if(req.headers['x-session-token'])await sessionStore.remove('staff',req.headers['x-session-token']);res.json({ok:true});}catch{res.status(500).json({error:'No se pudo cerrar la sesión'});}});
 app.get('/api/me', authMiddleware, (req, res) => res.json({ ok: true, usuario: req.usuario }));
@@ -624,7 +661,7 @@ app.post('/api/empresa/login', async (req, res) => {
     if(!e.password_hash.startsWith('scrypt$')) await pool.query('UPDATE empresas_clientes SET password_hash=$1 WHERE id=$2',[hashPassword(password.trim()),e.id]);
     const token = await sessionStore.create('company',{id:e.id,nombre:e.nombre,email:e.email});
     res.json({ ok: true, token, empresa: { nombre: e.nombre, email: e.email } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/empresa/logout', async(req,res)=>{try{if(req.headers['x-empresa-token'])await sessionStore.remove('company',req.headers['x-empresa-token']);res.json({ok:true});}catch{res.status(500).json({error:'No se pudo cerrar la sesión'});}});
 
@@ -633,13 +670,16 @@ function baseUrlApp() {
   return process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:' + PORT;
 }
 
+const huellaToken = t => crypto.createHash('sha256').update(String(t)).digest('hex');
 async function iniciarResetPassword(tipo, tabla, email) {
   const r = await pool.query(`SELECT nombre, email FROM ${tabla} WHERE LOWER(email)=LOWER($1) AND activo=true`, [email.trim()]);
   if (!r.rows.length) return; // no revelamos si el email existe o no
   const u = r.rows[0];
   const token = generateToken();
   const expira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
-  await pool.query('INSERT INTO reset_tokens (tipo,email,token,expira_en) VALUES ($1,$2,$3,$4)', [tipo, u.email, token, expira]);
+  // En la base queda solo la huella del token: quien lea la tabla no puede usar el enlace.
+  await pool.query('UPDATE reset_tokens SET usado=true WHERE LOWER(email)=LOWER($1) AND tipo=$2 AND usado=false', [u.email, tipo]);
+  await pool.query('INSERT INTO reset_tokens (tipo,email,token,expira_en) VALUES ($1,$2,$3,$4)', [tipo, u.email, huellaToken(token), expira]);
   const link = `${baseUrlApp()}/?reset_token=${token}`;
   await enviarEmail(u.email, 'Recuperar contraseña — MEDGRUP', `
     <div style="font-family:sans-serif;color:#1a2433;">
@@ -668,16 +708,22 @@ app.post('/api/empresa/forgot-password', async (req, res) => {
 
 app.post('/api/reset-password', async (req, res) => {
   const { token, password } = req.body;
-  if (!token || !password || password.length < 6) return res.status(400).json({ error: 'Completá una contraseña de al menos 6 caracteres' });
+  if (!token || typeof token !== 'string') return res.status(400).json({ error: 'El link expiró o ya fue usado. Pedí uno nuevo.' });
+  const debil = claveDebil(password);
+  if (debil) return res.status(400).json({ error: debil });
   try {
-    const r = await pool.query(`SELECT * FROM reset_tokens WHERE token=$1 AND usado=false AND expira_en > NOW()`, [token]);
+    // Acepta también los tokens emitidos antes de guardar la huella, hasta que venzan (1 hora).
+    const r = await pool.query(`SELECT * FROM reset_tokens WHERE token IN ($1,$2) AND usado=false AND expira_en > NOW()`, [huellaToken(token), token]);
     if (!r.rows.length) return res.status(400).json({ error: 'El link expiró o ya fue usado. Pedí uno nuevo.' });
     const row = r.rows[0];
     const tabla = row.tipo === 'empresa' ? 'empresas_clientes' : 'usuarios';
     await pool.query(`UPDATE ${tabla} SET password_hash=$1 WHERE LOWER(email)=LOWER($2)`, [hashPassword(password), row.email]);
     await pool.query('UPDATE reset_tokens SET usado=true WHERE id=$1', [row.id]);
+    // Quien recupera la contraseña suele hacerlo porque la perdió o se la robaron: se cierran
+    // las sesiones abiertas de esa cuenta para que nadie siga adentro con la clave anterior.
+    await sessionStore.removeByEmail(row.tipo === 'empresa' ? 'company' : 'staff', row.email).catch(() => {});
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Turnos de la empresa (por nombre que ya está en el campo empresa del turno)
@@ -696,7 +742,7 @@ app.get('/api/empresa/mis-turnos', empresaAuthMiddleware, async (req, res) => {
       ORDER BY t.fecha DESC, t.hora DESC
     `, [nombre]);
     res.json({ ok: true, turnos: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Lista simple de nombres de empresas activas (para selects, accesible a cualquier usuario logueado)
@@ -704,7 +750,7 @@ app.get('/api/empresas-nombres', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT nombre FROM empresas_clientes WHERE activo=true ORDER BY nombre');
     res.json({ ok: true, empresas: r.rows.map(x => x.nombre) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== PACIENTES / TRABAJADORES POR EMPRESA =====
@@ -716,7 +762,7 @@ app.get('/api/pacientes-empresa', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM pacientes_empresa WHERE empresa=$1 AND activo=true ORDER BY nombre', [empresa]);
     res.json({ ok: true, pacientes: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/admin/pacientes-empresa', adminMiddleware, async (req, res) => {
@@ -728,7 +774,7 @@ app.post('/api/admin/pacientes-empresa', adminMiddleware, async (req, res) => {
       [empresa.trim(), nombre.trim(), (telefono||'').trim()]
     );
     res.json({ ok: true, paciente: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.patch('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res) => {
@@ -739,14 +785,14 @@ app.patch('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res) 
       [nombre||null, telefono!==undefined?telefono:null, req.params.id]
     );
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/admin/pacientes-empresa/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE pacientes_empresa SET activo=false WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CATÁLOGO DE SERVICIOS (para armar presupuestos) =====
@@ -754,7 +800,7 @@ app.get('/api/servicios-catalogo', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM servicios_catalogo WHERE activo=true ORDER BY nombre');
     res.json({ ok: true, servicios: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/admin/servicios-catalogo', adminMiddleware, async (req, res) => {
   const { nombre, precio } = req.body;
@@ -762,20 +808,20 @@ app.post('/api/admin/servicios-catalogo', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query('INSERT INTO servicios_catalogo (nombre,precio) VALUES ($1,$2) RETURNING *', [nombre.trim(), parseFloat(precio)||0]);
     res.json({ ok: true, servicio: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.patch('/api/admin/servicios-catalogo/:id', adminMiddleware, async (req, res) => {
   const { nombre, precio } = req.body;
   try {
     await pool.query('UPDATE servicios_catalogo SET nombre=COALESCE($1,nombre), precio=COALESCE($2,precio) WHERE id=$3', [nombre||null, precio!==undefined?parseFloat(precio):null, req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.delete('/api/admin/servicios-catalogo/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE servicios_catalogo SET activo=false WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== PRESUPUESTOS =====
@@ -783,14 +829,14 @@ app.get('/api/presupuestos', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM presupuestos ORDER BY creado_en DESC');
     res.json({ ok: true, presupuestos: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.get('/api/presupuestos/:id/datos', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM presupuestos WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true, presupuesto: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/presupuestos', authMiddleware, async (req, res) => {
   const { empresa, contacto, validez_dias, items, notas } = req.body;
@@ -809,7 +855,7 @@ app.post('/api/presupuestos', authMiddleware, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [numero, empresa, contacto||'', parseInt(validez_dias)||15, JSON.stringify(itemsCalc), total, total, notas||'', req.usuario.nombre]).then(r => r.rows[0]));
     res.json({ ok: true, presupuesto });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.patch('/api/presupuestos/:id/estado', authMiddleware, async (req, res) => {
   const { estado } = req.body;
@@ -817,13 +863,13 @@ app.patch('/api/presupuestos/:id/estado', authMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE presupuestos SET estado=$1 WHERE id=$2', [estado, req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.delete('/api/presupuestos/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('DELETE FROM presupuestos WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // PDF del presupuesto (público, igual que los informes — para que se pueda mandar el link directo a la empresa)
@@ -929,7 +975,7 @@ ${p.notas ? `<div class="notas">${p.notas}</div>` : ''}
 </body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CRUD EMPRESAS (solo admin) =====
@@ -937,12 +983,13 @@ app.get('/api/admin/empresas', adminMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT id,nombre,email,contacto,activo,creado_en FROM empresas_clientes ORDER BY nombre');
     res.json({ ok: true, empresas: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/admin/empresas', adminMiddleware, async (req, res) => {
   const { nombre, email, password, contacto } = req.body;
   if (!nombre || !email || !password) return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
+  { const debil = claveDebil(password.trim()); if (debil) return res.status(400).json({ error: debil }); }
   try {
     const r = await pool.query(
       'INSERT INTO empresas_clientes (nombre,email,password_hash,contacto) VALUES ($1,$2,$3,$4) RETURNING id,nombre,email,contacto,creado_en',
@@ -951,31 +998,32 @@ app.post('/api/admin/empresas', adminMiddleware, async (req, res) => {
     res.json({ ok: true, empresa: r.rows[0] });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Ya existe una empresa con ese nombre o email' });
-    res.status(500).json({ error: err.message });
+    fallo(res, err);
   }
 });
 
 app.patch('/api/admin/empresas/:id', adminMiddleware, async (req, res) => {
   const { password, contacto, activo } = req.body;
   try {
+    if (password) { const debil = claveDebil(password); if (debil) return res.status(400).json({ error: debil }); }
     if (password) await pool.query('UPDATE empresas_clientes SET password_hash=$1 WHERE id=$2', [hashPassword(password), req.params.id]);
     if (contacto !== undefined) await pool.query('UPDATE empresas_clientes SET contacto=$1 WHERE id=$2', [contacto, req.params.id]);
     if (activo !== undefined) await pool.query('UPDATE empresas_clientes SET activo=$1 WHERE id=$2', [activo, req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/admin/empresas/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE empresas_clientes SET activo=false WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== MÉDICOS =====
 app.get('/api/medicos', authMiddleware, async (req, res) => {
   try { const r = await pool.query('SELECT * FROM medicos WHERE activo=true ORDER BY id'); res.json(r.rows); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 // Un email que ya usa otra cuenta (un admin, u otra persona) no se pisa: antes, cargar un
 // médico con el email del administrador le cambiaba la contraseña al administrador.
@@ -1006,7 +1054,7 @@ app.post('/api/medicos', adminMiddleware, async (req, res) => {
       accesoCreado = true;
     }
     res.json({ ok: true, medico: r.rows[0], accesoCreado });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Contraseñas que estuvieron escritas en el código cuando el repositorio ya era público: si
@@ -1022,7 +1070,7 @@ app.get('/api/admin/seguridad', adminMiddleware, async (req, res) => {
     res.json({ ok: true, cuentas_con_contrasena_publica: r.rows.filter(x=>CONTRASENAS_PUBLICADAS.some(p=>verifyPassword(p,x.password_hash,SESSION_SECRET))).map(x => x.email),
       falta_session_secret: !process.env.SESSION_SECRET,
       dictamenes_numero_repetido: rep.rows.map(x => x.numero) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Crear otro acceso de administrador (ej. una cuenta aparte para hacer demos, sin prestar la
@@ -1030,7 +1078,7 @@ app.get('/api/admin/seguridad', adminMiddleware, async (req, res) => {
 app.post('/api/usuarios/admin', adminMiddleware, async (req, res) => {
   const { nombre, email, password } = req.body;
   if (!nombre || !email || !password) return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
-  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  { const debil = claveDebil(password); if (debil) return res.status(400).json({ error: debil }); }
   try {
     const hash = hashPassword(password);
     await pool.query(
@@ -1038,7 +1086,7 @@ app.post('/api/usuarios/admin', adminMiddleware, async (req, res) => {
        ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3, rol='admin'`,
       [nombre, email.toLowerCase().trim(), hash]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== FIRMA EXPRESS PARA JUNTAS MÉDICAS =====
@@ -1075,7 +1123,7 @@ app.get('/api/firmas/pendientes', authMiddleware, async (req, res) => {
         AND NOT EXISTS (SELECT 1 FROM firmas_dictamen f WHERE f.dictamen_id = d.id AND f.medico_nombre = $1)
       ORDER BY d.creado_en DESC`, [nombre]);
     res.json({ ok: true, pendientes: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== FIRMA GUARDADA DEL MÉDICO (se dibuja una sola vez y se reutiliza) =====
@@ -1083,7 +1131,7 @@ app.get('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT firma_guardada FROM medicos WHERE nombre=$1 AND activo=true LIMIT 1', [req.usuario.nombre]);
     res.json({ ok: true, firma: r.rows[0]?.firma_guardada || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
   const { firma_base64 } = req.body;
@@ -1093,7 +1141,7 @@ app.post('/api/medicos/mi-firma', authMiddleware, async (req, res) => {
     const r = await pool.query('UPDATE medicos SET firma_guardada=$1 WHERE nombre=$2 AND activo=true', [limpia, req.usuario.nombre]);
     if (!r.rowCount) return res.status(404).json({ error: 'No se encontró tu perfil en el equipo médico' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== FIRMA DEL ACTA DE ASISTENCIA (un clic, usa la firma guardada) =====
@@ -1122,7 +1170,7 @@ app.get('/api/firmas-acta/pendientes', authMiddleware, async (req, res) => {
         )
       ORDER BY t.fecha DESC, t.hora DESC`, [nombre, FIRMA_ACTA_DESDE]);
     res.json({ ok: true, pendientes: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
   try {
@@ -1151,7 +1199,7 @@ app.post('/api/turnos/:id/firmar-acta', authMiddleware, async (req, res) => {
       await pool.query('UPDATE medicos SET firma_guardada=$1 WHERE nombre=$2', [dibujada, nombre]);
     }
     res.json({ ok: true, firma_guardada_ahora: !!(dibujada && !firma_guardada) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== GESTIÓN DE FIRMAS DEL INFORME (solo admin) =====
@@ -1186,7 +1234,7 @@ app.get('/api/dictamenes/:id/firmas', adminMiddleware, async (req, res) => {
       };
     });
     res.json({ ok: true, numero: d.numero, autor: d.medico, firmantes });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/dictamenes/:id/firmas/:nombre', adminMiddleware, async (req, res) => {
@@ -1206,7 +1254,7 @@ app.delete('/api/dictamenes/:id/firmas/:nombre', adminMiddleware, async (req, re
       return res.status(404).json({ error: 'Esa persona no tiene firma en este informe' });
     }
     res.json({ ok: true, nombre });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== GESTIÓN DE FIRMAS DEL ACTA (solo admin) =====
@@ -1229,7 +1277,7 @@ app.get('/api/turnos/:id/firmas-acta', adminMiddleware, async (req, res) => {
       medicos,
       firmas
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Aplica al acta la firma que el médico ya usó en el informe de este mismo turno (o, si no
@@ -1270,7 +1318,7 @@ app.post('/api/turnos/:id/firmas-acta/importar', adminMiddleware, async (req, re
        VALUES ($1,$2,$3,$4,$5,false,$6)`,
       [req.params.id, nombre, perfil.rows[0]?.matricula || '', perfil.rows[0]?.especialidad || '', firma, req.usuario.nombre]);
     res.json({ ok: true, nombre, origen });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/turnos/:id/firmas-acta/:nombre', adminMiddleware, async (req, res) => {
@@ -1279,7 +1327,7 @@ app.delete('/api/turnos/:id/firmas-acta/:nombre', adminMiddleware, async (req, r
       [req.params.id, req.params.nombre]);
     if (!r.rows.length) return res.status(404).json({ error: 'Esa firma no existe en el acta' });
     res.json({ ok: true, nombre: r.rows[0].medico_nombre });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.patch('/api/turnos/:id/firma-paciente', adminMiddleware, async (req, res) => {
@@ -1291,7 +1339,7 @@ app.patch('/api/turnos/:id/firma-paciente', adminMiddleware, async (req, res) =>
     // Si se deja de pedir la firma de la paciente, se retira la que hubiera quedado registrada
     if (!pide) await pool.query('DELETE FROM firmas_acta WHERE turno_id=$1 AND es_paciente=true', [req.params.id]);
     res.json({ ok: true, firma_paciente: pide });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== FIRMA PRESENCIAL EN CADENA =====
@@ -1325,7 +1373,7 @@ app.get('/api/turnos/:id/firmantes-pendientes', authMiddleware, async (req, res)
     if (t.rows[0].paciente_presencial && t.rows[0].firma_paciente !== false && !yaFirmoPaciente) pendientes.push({ nombre: t.rows[0].paciente, es_paciente: true });
 
     res.json({ ok: true, pendientes });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/turnos/:id/firmar-acta-presencial', authMiddleware, async (req, res) => {
@@ -1360,7 +1408,7 @@ app.post('/api/turnos/:id/firmar-acta-presencial', authMiddleware, async (req, r
     await pool.query(`INSERT INTO firmas_acta (turno_id,medico_nombre,matricula,especialidad,firma_base64,es_paciente,capturada_por) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [req.params.id, nombreFinal, matricula, especialidad, limpia, !!es_paciente, req.usuario.nombre]);
     res.json({ ok: true, nombre: nombreFinal });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Firmar un dictamen (junta médica)
@@ -1390,7 +1438,7 @@ app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
     const matricula = perfil.rows[0]?.matricula || '';
     const especialidad = perfil.rows[0]?.especialidad || '';
 
-    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '';
+    const ip = clientIp(req);
 
     await pool.query(`INSERT INTO firmas_dictamen
       (dictamen_id, medico_nombre, matricula, especialidad, firma_base64, hash_contenido, ip)
@@ -1405,11 +1453,11 @@ app.post('/api/dictamenes/:id/firmar', authMiddleware, async (req, res) => {
       [d.turno_id, d.medico, req.params.id]);
 
     res.json({ ok: true, firmasFaltantes: faltan.rows.map(x=>x.medico_nombre) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.delete('/api/medicos/:id', adminMiddleware, async (req, res) => {
   try { await pool.query('UPDATE medicos SET activo=false WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 // Editar médico (nombre, matrícula, especialidad)
 // El nombre del médico funciona como clave: identifica su login, su asignación a turnos, su
@@ -1472,7 +1520,7 @@ app.get('/api/medicos-nombres-desincronizados', adminMiddleware, async (req, res
     }).filter(x => x.alternativos.length);
 
     res.json({ ok: true, desincronizados });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/medicos/:id/nombres-alternativos', adminMiddleware, async (req, res) => {
@@ -1495,7 +1543,7 @@ app.get('/api/medicos/:id/nombres-alternativos', adminMiddleware, async (req, re
       n !== actual && claveNombre(n) === clave && !otrosMedicos.includes(n));
 
     res.json({ ok: true, nombre: actual, alternativos });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Unifica los registros históricos que quedaron con el nombre viejo
@@ -1517,7 +1565,7 @@ app.post('/api/medicos/:id/unificar-nombre', adminMiddleware, async (req, res) =
     res.json({ ok: true, de: nombre_anterior, a: actual });
   } catch (err) {
     await client.query('ROLLBACK').catch(()=>{});
-    res.status(500).json({ error: err.message });
+    fallo(res, err);
   } finally { client.release(); }
 });
 
@@ -1544,7 +1592,7 @@ app.patch('/api/medicos/:id', adminMiddleware, async (req, res) => {
     res.json({ ok: true, renombrado: renombra });
   } catch (err) {
     await client.query('ROLLBACK').catch(()=>{});
-    res.status(500).json({ error: err.message });
+    fallo(res, err);
   } finally { client.release(); }
 });
 
@@ -1552,7 +1600,7 @@ app.patch('/api/medicos/:id', adminMiddleware, async (req, res) => {
 app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Faltan email y contraseña' });
-  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  { const debil = claveDebil(password); if (debil) return res.status(400).json({ error: debil }); }
   try {
     const m = await pool.query('SELECT nombre FROM medicos WHERE id=$1', [req.params.id]);
     if (!m.rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
@@ -1564,7 +1612,7 @@ app.post('/api/medicos/:id/acceso', adminMiddleware, async (req, res) => {
        ON CONFLICT (email) DO UPDATE SET nombre=$1, password_hash=$3`,
       [m.rows[0].nombre, email.toLowerCase().trim(), hashPassword(password)]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 
@@ -1587,7 +1635,7 @@ app.get('/api/turnos', authMiddleware, async (req, res) => {
       GROUP BY t.id ORDER BY t.fecha ASC, t.hora ASC
     `, esAdmin ? [] : [req.usuario.nombre]);
     res.json(r.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 // Si el turno viene de un caso de ausentismo, el caso acompaña al turno solo. Siempre avanza,
 // nunca retrocede, y no toca los casos ya resueltos o cancelados.
@@ -1614,7 +1662,7 @@ app.patch('/api/turnos/:id/estado', authMiddleware, async (req, res) => {
     if (req.body.estado === 'en-curso') await avanzarCasoDelTurno(req.params.id, 'en-curso');
     res.json({ ok: true });
   }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 
 // ===== EDITAR TURNO (solo admin) =====
@@ -1657,7 +1705,7 @@ app.patch('/api/turnos/:id', adminMiddleware, async (req, res) => {
     }
 
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== ELIMINAR TURNO (solo admin) =====
@@ -1694,7 +1742,7 @@ app.delete('/api/turnos/:id', adminMiddleware, async (req, res) => {
 
     res.json({ ok: true, paciente: chk.rows[0].paciente,
       caso_desenganchado: caso.rows[0] || null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CREAR SALA =====
@@ -1822,7 +1870,7 @@ app.post('/api/reuniones', authMiddleware, async (req, res) => {
 
     const invitadosFinales = (await pool.query('SELECT * FROM reunion_invitados WHERE reunion_id=$1 ORDER BY id', [reunionId])).rows;
     res.json({ ok: true, reunion: { id: reunionId, titulo, fecha, hora, motivo, estado: 'pendiente' }, invitados: invitadosFinales });
-  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
+  } catch (err) { fallo(res, err, { detalle: err.detalle }); }
 });
 
 app.get('/api/reuniones', authMiddleware, async (req, res) => {
@@ -1832,7 +1880,7 @@ app.get('/api/reuniones', authMiddleware, async (req, res) => {
     const porReunion = {};
     for (const i of invitados) { (porReunion[i.reunion_id] ||= []).push(i); }
     res.json({ ok: true, reuniones: reuniones.map(r => ({ ...r, invitados: porReunion[r.id] || [] })) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // El link del organizador es siempre el mismo (quien programó la reunión) — cualquier otro
@@ -1853,7 +1901,7 @@ app.get('/api/reuniones/:id/mi-link', authMiddleware, async (req, res) => {
     const token = await crearMeetingToken(reunion.sala, req.usuario.nombre, true);
     const linkPropio = `${reunion.link_organizador.split('?')[0]}?t=${token}`;
     res.json({ ok: true, link: linkPropio });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.patch('/api/reuniones/:id/estado', authMiddleware, async (req, res) => {
@@ -1863,14 +1911,14 @@ app.patch('/api/reuniones/:id/estado', authMiddleware, async (req, res) => {
     const r = await pool.query('UPDATE reuniones SET estado=$1 WHERE id=$2 RETURNING id', [estado, req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Reunión no encontrada' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/reuniones/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('DELETE FROM reuniones WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/crear-sala', authMiddleware, async (req, res) => {
@@ -1878,7 +1926,7 @@ app.post('/api/crear-sala', authMiddleware, async (req, res) => {
     const r = await crearTurnoConVideollamada(req.body);
     res.json({ ok: true, sala: r.sala, url: r.url, url_medico: r.linkMedicoGenerico,
       links_medicos: r.linksMedicos, turno_id: r.turnoId, paciente: req.body.paciente });
-  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
+  } catch (err) { fallo(res, err, { detalle: err.detalle }); }
 });
 
 // ===== LINK DE VIDEOLLAMADA DEL USUARIO AUTENTICADO =====
@@ -1915,7 +1963,7 @@ app.get('/api/turnos/:id/mi-link', authMiddleware, async (req, res) => {
     links.push({ nombre: req.usuario.nombre, link });
     await pool.query('UPDATE turnos SET links_medicos=$1 WHERE id=$2', [JSON.stringify(links), req.params.id]);
     res.json({ ok: true, link, generado: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== TURNO PRESENCIAL (consulta en consultorio, sin videollamada de Daily) =====
@@ -1931,20 +1979,21 @@ app.post('/api/crear-turno-presencial', authMiddleware, async (req, res) => {
     for (const m of (ml||[])) await pool.query('INSERT INTO turno_medicos (turno_id,medico_nombre) VALUES ($1,$2) ON CONFLICT DO NOTHING', [turnoId, m]);
     await vincularASeguimientosAbiertos({ turnoId, nombre: paciente });
     res.json({ ok: true, turno_id: turnoId, paciente });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CAMBIAR PASSWORD =====
 app.post('/api/cambiar-password', authMiddleware, async (req, res) => {
   const { passwordActual, passwordNueva } = req.body;
   if (!passwordActual || !passwordNueva) return res.status(400).json({ error: 'Faltan datos' });
-  if (passwordNueva.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
+  { const debil = claveDebil(passwordNueva); if (debil) return res.status(400).json({ error: debil }); }
   try {
     const u = await pool.query('SELECT * FROM usuarios WHERE id=$1', [req.usuario.id]);
     if (!u.rows.length || !verifyPassword(passwordActual,u.rows[0].password_hash,SESSION_SECRET)) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
     await pool.query('UPDATE usuarios SET password_hash=$1 WHERE id=$2', [hashPassword(passwordNueva), req.usuario.id]);
+    await sessionStore.removeByEmail('staff', req.usuario.email, req.headers['x-session-token']).catch(() => {});
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== EVENTOS =====
@@ -1959,11 +2008,11 @@ app.post('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
     if(!allowed.includes(req.body.tipo)) return res.status(400).json({error:'Tipo de evento no permitido'});
     const evento = await insertEvent(pool,req.params.id,req.body.tipo,req.body.participante||req.usuario.nombre);
     res.json({ok:true,evento});
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.get('/api/turnos/:id/eventos', authMiddleware, async (req, res) => {
   try { const r = await pool.query('SELECT * FROM eventos_turno WHERE turno_id=$1 ORDER BY creado_en ASC', [req.params.id]); res.json({ ok: true, eventos: r.rows }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 
 // Un tercero que no es médico ni paciente pero necesita estar en la videollamada (ej. un
@@ -1981,7 +2030,7 @@ app.post('/api/turnos/:id/invitados', authMiddleware, async (req, res) => {
     const token = await crearMeetingToken(t.rows[0].sala, nombre, false, 'invitado');
     const base = (t.rows[0].link_paciente || '').split('?')[0];
     res.json({ ok: true, nombre, link: `${base}?t=${token}` });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Editar hora/participante de un evento (solo admin)
@@ -2004,7 +2053,7 @@ app.patch('/api/eventos/:id', adminMiddleware, async (req, res) => {
       await pool.query('UPDATE eventos_turno SET participante=$1 WHERE id=$2', [participante, req.params.id]);
     }
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Eliminar un evento del acta (solo admin)
@@ -2012,23 +2061,23 @@ app.delete('/api/eventos/:id', adminMiddleware, async (req, res) => {
   try {
     await pool.query('DELETE FROM eventos_turno WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== DICTÁMENES =====
 app.get('/api/dictamenes', authMiddleware, async (req, res) => {
   try { const r = await pool.query(`SELECT d.* FROM dictamenes d ${req.usuario.rol === 'admin' ? '' : 'WHERE EXISTS (SELECT 1 FROM turno_medicos tm WHERE tm.turno_id=d.turno_id AND tm.medico_nombre=$1)'} ORDER BY d.creado_en DESC LIMIT 50`, req.usuario.rol === 'admin' ? [] : [req.usuario.nombre]); res.json(r.rows); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 app.get('/api/dictamenes/turno/:turnoId', authMiddleware, async (req, res) => {
   try { const r = await pool.query('SELECT * FROM dictamenes WHERE turno_id=$1 ORDER BY creado_en DESC', [req.params.turnoId]); res.json({ ok: true, dictamenes: r.rows }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { fallo(res, err); }
 });
 app.get('/api/dictamenes/turno/:turnoId/medico', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM dictamenes WHERE turno_id=$1 AND medico=$2 ORDER BY creado_en DESC LIMIT 1', [req.params.turnoId, req.query.medico||'']);
     res.json({ ok: !r.rows.length?false:true, dictamen: r.rows[0]||null });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 // Número correlativo por año que nunca se repite. Antes salía de contar las filas: si se borraba
 // un turno con dictamen, el siguiente repetía un número ya impreso (y /verificar mostraba otro
@@ -2082,7 +2131,7 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
     // Emitir el informe es lo que cierra un caso de ausentismo: es lo que se factura
     await avanzarCasoDelTurno(turno_id, 'resuelto');
     res.json({ ok: true, dictamen, numero: dictamen.numero });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
   const db=await pool.connect();
@@ -2175,7 +2224,7 @@ app.get('/api/dictamenes/:id/datos', authMiddleware, async (req, res) => {
     const r = await pool.query('SELECT * FROM dictamenes WHERE id=$1', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true, dictamen: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== VERIFICACIÓN PÚBLICA DE DOCUMENTOS (QR en los PDFs) =====
@@ -2658,7 +2707,7 @@ ${trazaFirmasHtml}
 </body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     await sendDocument(req, res, html, 'informe-'+req.params.id+'.pdf');
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== ACTA =====
@@ -2905,7 +2954,7 @@ ${firmasActaHtml ? `<div class="firmas-row">${firmasActaHtml}</div>` : ''}
 <script>window.onload=function(){window.print();}</script></body></html>`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     await sendDocument(req, res, html, 'acta-'+req.params.id+'.pdf');
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== WEBHOOK DAILY =====
@@ -3013,7 +3062,7 @@ app.post('/api/dictamenes/:id/firma', authMiddleware, async (req, res) => {
     const limpia = firma_base64.replace(/^data:image\/[a-z]+;base64,/, '');
     await pool.query('UPDATE dictamenes SET firma_doctor=$1 WHERE id=$2', [limpia, req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== INFORME COMPLETO EDITADO =====
@@ -3032,7 +3081,7 @@ app.post('/api/dictamenes/:id/informe-completo', authMiddleware, async (req, res
     await db.query('DELETE FROM firmas_dictamen WHERE dictamen_id=$1',[d.id]);
     await db.query('COMMIT');
     res.json({ ok: true });
-  } catch (err) { await db.query('ROLLBACK');res.status(500).json({ error: err.message }); }finally{db.release();}
+  } catch (err) { await db.query('ROLLBACK');fallo(res, err); }finally{db.release();}
 });
 
 // ===== PROXY ANTHROPIC =====
@@ -3133,7 +3182,7 @@ app.post('/api/ia/generar-informe', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Proxy IA error:', err.message);
     if (res.headersSent) { res.write(JSON.stringify({ error: err.message }) + '\n'); return res.end(); }
-    res.status(500).json({ error: err.message });
+    fallo(res, err);
   } finally { clearTimeout(corte); }
 });
 
@@ -3170,7 +3219,7 @@ app.post('/api/dictamenes/:id/pdf-firmado', authMiddleware, async (req, res) => 
       [base64puro, nombre||'informe-firmado.pdf', req.params.id]
     );
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Servir el PDF firmado (si existe) o el generado
@@ -3183,7 +3232,7 @@ app.get('/api/dictamenes/:id/pdf-firmado', authMedgrupOEmpresa, async (req, res)
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `${req.query.download === '1' ? 'attachment' : 'inline'}; filename="${pdfFilename(r.rows[0].pdf_firmado_nombre||'informe-firmado.pdf')}"`);
     res.send(buf);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CONTROL DE AUSENTISMO =====
@@ -3285,7 +3334,7 @@ app.get('/api/ausentismo/casos', authMiddleware, async (req, res) => {
     const where = cond.length ? ' WHERE ' + cond.join(' AND ') : '';
     const r = await pool.query(`${SELECT_CASO}${where} ORDER BY c.creado_en DESC`, params);
     res.json({ ok: true, casos: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
@@ -3294,7 +3343,7 @@ app.get('/api/ausentismo/casos/:id', authMiddleware, async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: 'Caso no encontrado' });
     if (!(await puedeVerCaso(r.rows[0], req))) return res.status(403).json({ error: 'Este caso no está asignado a vos' });
     res.json({ ok: true, caso: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 require('./lib/ausentismo-workflow').registerWorkflow({app,pool,adminMiddleware,geocodificar,
@@ -3363,7 +3412,7 @@ app.patch('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
       await turnoChat.resetVerification(chk.rows[0].turno_id);
     }
     res.json({ ok: true, domicilio_ubicado: tocaCoords ? lat != null : undefined, motivo_geocode: motivoGeo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Borra el caso de verdad, para limpiar pruebas o altas cargadas por error. Cancelar es lo
@@ -3381,7 +3430,7 @@ app.delete('/api/ausentismo/casos/:id', adminMiddleware, async (req, res) => {
     if (turno_id) await borrarTurnoEnCascada(turno_id);
 
     res.json({ ok: true, trabajador: trabajador_nombre, turno_borrado: !!turno_id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Qué se va a perder si se borra el caso: se lo muestra antes de confirmar
@@ -3400,7 +3449,7 @@ app.get('/api/ausentismo/casos/:id/impacto-borrado', adminMiddleware, async (req
         `SELECT COUNT(*) FROM firmas_dictamen WHERE dictamen_id IN (SELECT id FROM dictamenes WHERE turno_id=$1)`, [turno_id]);
     }
     res.json({ ok: true, trabajador: trabajador_nombre, tiene_turno: !!turno_id, certificados, informes, firmas });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Asignar o reasignar el profesional ---
@@ -3424,7 +3473,7 @@ app.post('/api/ausentismo/casos/:id/asignar', adminMiddleware, async (req, res) 
     await pool.query('UPDATE casos_ausentismo SET profesional_id=$1, estado=$2 WHERE id=$3',
       [profesional_id, nuevoEstado, req.params.id]);
     res.json({ ok: true, profesional: m.rows[0].nombre, estado: nuevoEstado });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Cambio de estado, respetando el circuito ---
@@ -3449,7 +3498,7 @@ app.patch('/api/ausentismo/casos/:id/estado', authMiddleware, async (req, res) =
       `UPDATE casos_ausentismo SET estado=$1::varchar, resuelto_en = CASE WHEN $1::varchar='resuelto' THEN NOW() ELSE NULL END WHERE id=$2`,
       [estado, req.params.id]);
     res.json({ ok: true, estado });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== CONTROL DOMICILIARIO POR UBICACIÓN =====
@@ -3534,12 +3583,12 @@ app.get('/api/ingreso/:token', async (req, res) => {
       domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null, excepcion_geo: c.excepcion_geo,
       tipo_control: c.tipo_control || TIPO_CONTROL_DEFECTO, control: etiquetaControl(c.tipo_control),
       cerrado: ['resuelto','cancelado'].includes(c.estado) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/ingreso/:token/verificar', async (req, res) => {
   const { lat, lng, precision } = req.body || {};
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '';
+  const ip = clientIp(req);
   let caso = null;
   const registrar = (resultado, distancia) => pool.query(
     `INSERT INTO ingresos_ubicacion (caso_id, turno_id, lat, lng, precision_metros, distancia_metros, resultado, ip)
@@ -3593,7 +3642,7 @@ app.post('/api/ingreso/:token/verificar', async (req, res) => {
 
     await registrar('aceptado', distancia);
     res.json({ ok: true, link: await turnoChat.verifiedLink(caso.turno_id,caso.link_paciente), distancia: Math.round(distancia) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Historial de intentos: es la prueba de que el trabajador estaba (o no) en su domicilio,
@@ -3607,7 +3656,7 @@ app.get('/api/ausentismo/casos/:id/ingresos', authMiddleware, async (req, res) =
       `SELECT id, lat, lng, precision_metros, distancia_metros, resultado, ip, creado_en
        FROM ingresos_ubicacion WHERE caso_id=$1 ORDER BY creado_en DESC`, [req.params.id]);
     res.json({ ok: true, ingresos: r.rows, radio: c.rows[0].radio_metros || RADIO_POR_DEFECTO });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Certificados médicos adjuntos al caso ---
@@ -3655,9 +3704,9 @@ app.post('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (r
     const r = await pool.query(
       `INSERT INTO certificados_ausentismo (caso_id, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, creado_en`,
-      [req.params.id, String(nombre_archivo).slice(0, 300), tipo_mime || '', bytes, limpio, quien]);
+      [req.params.id, nombreArchivoSeguro(nombre_archivo), tipo_mime || '', bytes, limpio, quien]);
     res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (req, res) => {
@@ -3670,7 +3719,7 @@ app.get('/api/ausentismo/casos/:id/certificados', authMedgrupOEmpresa, async (re
       `SELECT id, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
        FROM certificados_ausentismo WHERE caso_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
     res.json({ ok: true, certificados: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Lo que la empresa cargó al abrir el caso, visto desde la videollamada. Durante el control
@@ -3706,7 +3755,7 @@ app.get('/api/turnos/:id/caso', authMiddleware, async (req, res) => {
               motivo: caso.motivo, documentacion: caso.documentacion, domicilio: caso.domicilio,
               radio_metros: caso.radio_metros || RADIO_POR_DEFECTO,
               tipo_control: caso.tipo_control || TIPO_CONTROL_DEFECTO } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/ausentismo/certificados/:certId', authMedgrupOEmpresa, async (req, res) => {
@@ -3721,7 +3770,7 @@ app.get('/api/ausentismo/certificados/:certId', authMedgrupOEmpresa, async (req,
     res.setHeader('Content-Type', cert.tipo_mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${(cert.nombre_archivo||'certificado').replace(/"/g,'')}"`);
     res.send(buf);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Informes del caso ---
@@ -3748,10 +3797,10 @@ app.post('/api/ausentismo/casos/:id/informes', authMiddleware, async (req, res) 
     const r = await pool.query(
       `INSERT INTO informes_ausentismo (caso_id, titulo, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
-      [req.params.id, (titulo || '').slice(0, 300), String(nombre_archivo).slice(0, 300),
+      [req.params.id, (titulo || '').slice(0, 300), nombreArchivoSeguro(nombre_archivo),
        tipo_mime || '', bytes, limpio, req.usuario.nombre]);
     res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Lo lee también la empresa: es el resultado por el que abrió el caso
@@ -3764,7 +3813,7 @@ app.get('/api/ausentismo/casos/:id/informes', authMedgrupOEmpresa, async (req, r
       `SELECT id, titulo, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
        FROM informes_ausentismo WHERE caso_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
     res.json({ ok: true, informes: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Informes adicionales de un turno cualquiera (junta médica, seguimiento, control de
@@ -3791,10 +3840,10 @@ app.post('/api/turnos/:id/informes', authMiddleware, async (req, res) => {
     const r = await pool.query(
       `INSERT INTO informes_ausentismo (turno_id, titulo, nombre_archivo, tipo_mime, tamano_bytes, archivo_base64, subido_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, creado_en`,
-      [req.params.id, (titulo || '').slice(0, 300), String(nombre_archivo).slice(0, 300),
+      [req.params.id, (titulo || '').slice(0, 300), nombreArchivoSeguro(nombre_archivo),
        tipo_mime || '', bytes, limpio, req.usuario.nombre]);
     res.json({ ok: true, id: r.rows[0].id, creado_en: r.rows[0].creado_en });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Lo lee también la empresa dueña del turno
@@ -3808,7 +3857,7 @@ app.get('/api/turnos/:id/informes', authMedgrupOEmpresa, async (req, res) => {
       `SELECT id, titulo, nombre_archivo, tipo_mime, tamano_bytes, subido_por, creado_en
        FROM informes_ausentismo WHERE turno_id=$1 ORDER BY creado_en ASC`, [req.params.id]);
     res.json({ ok: true, informes: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/ausentismo/informes/:informeId', authMedgrupOEmpresa, async (req, res) => {
@@ -3821,7 +3870,7 @@ app.get('/api/ausentismo/informes/:informeId', authMedgrupOEmpresa, async (req, 
     res.setHeader('Content-Type', inf.tipo_mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${(inf.nombre_archivo||'informe').replace(/"/g,'')}"`);
     res.send(Buffer.from(inf.archivo_base64, 'base64'));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/ausentismo/informes/:informeId', adminMiddleware, async (req, res) => {
@@ -3829,7 +3878,7 @@ app.delete('/api/ausentismo/informes/:informeId', adminMiddleware, async (req, r
     const r = await pool.query('DELETE FROM informes_ausentismo WHERE id=$1 RETURNING nombre_archivo', [req.params.informeId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Informe no encontrado' });
     res.json({ ok: true, nombre: r.rows[0].nombre_archivo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/ausentismo/certificados/:certId', adminMiddleware, async (req, res) => {
@@ -3837,7 +3886,7 @@ app.delete('/api/ausentismo/certificados/:certId', adminMiddleware, async (req, 
     const r = await pool.query('DELETE FROM certificados_ausentismo WHERE id=$1 RETURNING nombre_archivo', [req.params.certId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Certificado no encontrado' });
     res.json({ ok: true, nombre: r.rows[0].nombre_archivo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Programar la entrevista: crea la videollamada y engancha el caso al flujo de turnos ---
@@ -3929,7 +3978,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     // cuando el trabajador confirma que está en su domicilio.
     const notification=await invitationResult(creado.turnoId);
     res.json({ ok: true, turno_id: creado.turnoId, link_paciente: notification.link, correo_invitacion:notification.correo, estado: 'programado', hora, fecha });
-  } catch (err) { res.status(500).json({ error: err.message, detalle: err.detalle }); }
+  } catch (err) { fallo(res, err, { detalle: err.detalle }); }
 });
 
 // --- Informe de inasistencia ---
@@ -3970,7 +4019,7 @@ app.get('/api/turnos/:id/informe-inasistencia', authMedgrupOEmpresa, async (req,
 <div class="firmas"><div class="linea"></div><strong>Profesional interviniente</strong><br><span style="font-size:11px;color:#666">MEDGRUP Servicio Médico Laboral</span></div>
 <div class="wm">MEDGRUP Servicio Médico Laboral · Informe de inasistencia · ${turno.id}</div><script>window.onload=function(){window.print()}</script></body></html>`;
     return await sendDocument(req, res, html, 'informe-inasistencia-'+req.params.id+'.pdf');
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Cierre por inasistencia ---
@@ -4161,7 +4210,7 @@ app.get('/api/seguimientos/pacientes', adminMiddleware, async (req, res) => {
       p.seguimiento = s ? { id: s.id, estado: s.estado, vacio: vacio(s) } : null;
     }
     res.json({ ok: true, pacientes: lista });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.get('/api/seguimientos', authMiddleware, async (req, res) => {
@@ -4189,7 +4238,7 @@ app.get('/api/seguimientos', authMiddleware, async (req, res) => {
         ultima_consulta: hechos[0] ? { fecha: fechaDeColumna(hechos[0].fecha), hora: hechos[0].hora, tipo: hechos[0].tipo } : null,
         proximo_turno: proximos[0] ? { id: proximos[0].id, fecha: fechaDeColumna(proximos[0].fecha), hora: proximos[0].hora, tipo: proximos[0].tipo } : null };
     }) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Para la agenda: qué turnos son de un paciente en seguimiento (para marcarlos). Solo se
@@ -4206,7 +4255,7 @@ app.get('/api/seguimientos/turnos', authMiddleware, async (req, res) => {
       ${esAdmin ? '' : 'AND EXISTS (SELECT 1 FROM turno_medicos tm WHERE tm.turno_id = COALESCE(v.turno_id, c.turno_id) AND tm.medico_nombre = $1)'}`,
       esAdmin ? [] : [req.usuario.nombre]);
     res.json({ ok: true, turnos: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Turnos y casos que podrían ser de este paciente y todavía no están en el legajo.
@@ -4256,7 +4305,7 @@ app.get('/api/seguimientos/sugerencias', adminMiddleware, async (req, res) => {
       .filter(t => t.motivo_sugerencia);
 
     res.json({ ok: true, turnos: turnosSug.slice(0, 50), casos: casosSug.slice(0, 50) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/seguimientos', adminMiddleware, async (req, res) => {
@@ -4273,7 +4322,7 @@ app.post('/api/seguimientos', adminMiddleware, async (req, res) => {
     for (const c of casos) await pool.query(
       'INSERT INTO seguimiento_vinculos (seguimiento_id, caso_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, c]);
     res.json({ ok: true, id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.patch('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
@@ -4292,7 +4341,7 @@ app.patch('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
        estado || null, req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Seguimiento no encontrado' });
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Borra el legajo, no los turnos ni los casos: esos siguen viviendo en la agenda y en ausentismo
@@ -4301,7 +4350,7 @@ app.delete('/api/seguimientos/:id', adminMiddleware, async (req, res) => {
     const r = await pool.query('DELETE FROM seguimientos WHERE id=$1 RETURNING paciente_nombre', [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Seguimiento no encontrado' });
     res.json({ ok: true, paciente: r.rows[0].paciente_nombre });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/seguimientos/:id/vinculos', adminMiddleware, async (req, res) => {
@@ -4312,14 +4361,14 @@ app.post('/api/seguimientos/:id/vinculos', adminMiddleware, async (req, res) => 
       'INSERT INTO seguimiento_vinculos (seguimiento_id, turno_id, caso_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
       [req.params.id, turno_id || null, caso_id || null]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.delete('/api/seguimientos/:id/vinculos/:vinculoId', adminMiddleware, async (req, res) => {
   try {
     await pool.query('DELETE FROM seguimiento_vinculos WHERE id=$1 AND seguimiento_id=$2', [req.params.vinculoId, req.params.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- La historia del legajo: todos los hitos de sus turnos y casos, en orden ---
@@ -4449,7 +4498,7 @@ app.get('/api/seguimientos/:id', authMiddleware, async (req, res) => {
       desactualizado: seg.resumen_ia_firma !== firmaDelLegajo(legajo) } : null;
     delete legajo.seguimiento.resumen_ia;
     res.json({ ok: true, ...legajo });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // Archivos del legajo. Los endpoints de ausentismo solo se los dan al profesional del caso;
@@ -4471,7 +4520,7 @@ app.get('/api/seguimientos/:id/archivo/:clase/:archivoId', authMiddleware, async
     res.setHeader('Content-Type', a.tipo_mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${(a.nombre_archivo || 'archivo').replace(/"/g, '')}"`);
     res.send(Buffer.from(a.archivo_base64, 'base64'));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // ===== IA DEL LEGAJO =====
@@ -4586,7 +4635,7 @@ app.post('/api/seguimientos/:id/lecturas', authMiddleware, async (req, res) => {
     if (!seg) return res.status(404).json({ error: 'Seguimiento no encontrado' });
     const { hitos } = await armarLegajo(seg);
     res.json({ ok: true, ...(await leerPendientes(hitos)) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // El resumen se rehace solo si cambió algo que lo alimenta: qué hitos hay (y sus dictámenes),
@@ -4669,7 +4718,7 @@ app.post('/api/seguimientos/:id/resumen', authMiddleware, async (req, res) => {
     res.json({ ok: true, errores, resumen_ia: { texto, generado_en: r.rows[0].resumen_ia_en, desactualizado: false } });
   } catch (err) {
     console.error('IA resumen:', err.message);
-    res.status(500).json({ error: err.message });
+    fallo(res, err);
   }
 });
 
@@ -4698,7 +4747,7 @@ app.get('/api/ausentismo/facturacion', adminMiddleware, async (req, res) => {
       porEmpresa[c.empresa_nombre].cantidad++;
     }
     res.json({ ok: true, mes, total_casos: r.rows.length, empresas: Object.values(porEmpresa) });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 // --- Portal de la empresa: abre casos y sigue los suyos ---
@@ -4744,7 +4793,7 @@ app.get('/api/empresa/ausentismo/casos', empresaAuthMiddleware, async (req, res)
       WHERE c.empresa_nombre = $1
       ORDER BY c.creado_en DESC`, [req.empresa.nombre]);
     res.json({ ok: true, casos: r.rows });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, async (req, res) => {
@@ -4756,7 +4805,7 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
     if (r.rows[0].estado === 'cancelado') return res.json({ ok: true, estado: 'cancelado' });
     await pool.query(`UPDATE casos_ausentismo SET estado='cancelado' WHERE id=$1`, [req.params.id]);
     res.json({ ok: true, estado: 'cancelado' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { fallo(res, err); }
 });
 
 const participantAccess = require('./lib/participant-access').createParticipantAccess({
@@ -4773,6 +4822,7 @@ initDB().then(async () => {
   await caseNotifications.init();
   await doctorReminders.init();
   await sessionStore.init();
+  await auditoria.init();
   await participantAccess.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }
