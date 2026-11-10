@@ -15,7 +15,9 @@ test('paneles de alta: acceso, teclado, conservación de datos y móvil',async()
     await page.addStyleTag({path:path.resolve('public/claude-demo.css')});
     await page.addStyleTag({content:'body{display:block!important}.app-page{display:block!important}.login-page{display:none!important}.main{margin:0!important}'});
     await page.addScriptTag({content:html.slice(html.indexOf('let panelLateralAbierto ='),html.indexOf('function showSection('))});
-    const panels={'pl-reunion':'reuniones','pl-medico':'medicos','pl-admin':'medicos','pl-empresa':'empresas','pl-presupuesto':'presupuestos','pl-catalogo':'presupuestos'};
+    const panels={'pl-reunion':'reuniones','pl-medico':'medicos','pl-admin':'medicos','pl-empresa':'empresas'};
+    // Los paneles de presupuestos se retiraron: el catálogo de servicios quedó en su propia sección.
+    assert.equal(await page.$('#pl-presupuesto'),null);assert.ok(await page.$('#sec-presupuestos #catalogo-lista'));
     fs.mkdirSync('output/paneles-preview',{recursive:true});
     for(const [id,section] of Object.entries(panels)){
       await page.evaluate(section=>{
@@ -42,8 +44,8 @@ test('paneles de alta: acceso, teclado, conservación de datos y móvil',async()
       await page.evaluate(()=>cerrarPanelLateral());
     }
     await page.setViewport({width:390,height:844});
-    await page.evaluate(()=>abrirPanelLateral('pl-presupuesto'));
-    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#pl-presupuesto .pl-hoja')).transform==='none');
+    await page.evaluate(()=>abrirPanelLateral('pl-empresa'));
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#pl-empresa .pl-hoja')).transform==='none');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:'output/paneles-preview/celular.png'});
   }finally{await browser.close();}

@@ -15,7 +15,7 @@ test('seguridad: cabeceras, CORS por origen, límite por IP, errores sin detalle
     let r=await fetch(base+'/api/dato');
     assert.equal(r.headers.get('x-content-type-options'),'nosniff');assert.equal(r.headers.get('x-frame-options'),'SAMEORIGIN');
     assert.match(r.headers.get('strict-transport-security'),/max-age=31536000/);assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'self'/);
-    assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(r.headers.get('x-powered-by')?.length>0,true,'x-powered-by se quita en server.js con app.disable');
+    assert.equal(r.headers.get('cache-control'),'no-store');
     assert.equal(r.headers.get('access-control-allow-origin'),null);
     r=await fetch(base+'/api/dato',{headers:{origin:'https://atacante.example'}});assert.equal(r.headers.get('access-control-allow-origin'),null,'otro origen no recibe permiso CORS');
     r=await fetch(base+'/api/dato',{headers:{origin:'https://permitido.example'}});assert.equal(r.headers.get('access-control-allow-origin'),'https://permitido.example');

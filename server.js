@@ -612,7 +612,10 @@ app.use(['/api/login', '/api/empresa/login', '/api/forgot-password', '/api/empre
 // Los enlaces personales no tienen usuario ni contraseña: el límite evita que se prueben al azar.
 const limiteEnlaces = seguridad.rateLimit({ name: 'enlaces', windowMs: 5 * 60 * 1000, max: 120,
   message: 'Demasiados intentos desde esta conexión. Esperá unos minutos y volvé a abrir tu enlace.' });
-app.use(['/api/ingreso', '/api/chat/paciente', '/api/acceso-medico', '/verificar', '/i'], limiteEnlaces);
+app.use(['/api/ingreso', '/verificar', '/i'], limiteEnlaces);
+// El chat consulta mensajes nuevos cada pocos segundos y puede haber varias personas detrás de
+// una misma conexión (una oficina, una clínica): el tope es alto y solo frena un abuso evidente.
+app.use(['/api/chat/paciente', '/api/acceso-medico'], seguridad.rateLimit({ name: 'atencion', windowMs: 5 * 60 * 1000, max: 3000 }));
 app.post('/api/csp-informe', seguridad.rateLimit({ name: 'csp', windowMs: 60 * 1000, max: 30 }), (req, res) => {
   const r = req.body?.['csp-report'] || {};
   if (r['violated-directive']) console.warn('csp_informe', String(r['violated-directive']).slice(0, 80), String(r['blocked-uri'] || '').slice(0, 120));
