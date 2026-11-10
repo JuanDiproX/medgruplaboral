@@ -683,7 +683,7 @@ async function iniciarResetPassword(tipo, tabla, email) {
   const link = `${baseUrlApp()}/?reset_token=${token}`;
   await enviarEmail(u.email, 'Recuperar contraseña — MEDGRUP', `
     <div style="font-family:sans-serif;color:#1a2433;">
-      <p>Hola ${u.nombre},</p>
+      <p>Hola ${escapeHtml(u.nombre)},</p>
       <p>Recibimos un pedido para restablecer tu contraseña en MEDGRUP. Hacé clic en el siguiente link para elegir una nueva (válido por 1 hora):</p>
       <p><a href="${link}" style="background:#3a6ea8;color:white;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Elegir nueva contraseña</a></p>
       <p style="font-size:12px;color:#5a6575;">Si no fuiste vos, ignorá este email — tu contraseña actual sigue funcionando.</p>
@@ -1853,15 +1853,16 @@ app.post('/api/reuniones', authMiddleware, async (req, res) => {
 
     // Invitación por email a quien tenga email cargado — si falla uno no se corta el resto
     const fechaTexto = new Date(fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    for (const inv of invitadosCreados) inv.link = await shortLinks.shorten(inv.link, { days: 35 });
     for (const inv of invitadosCreados) {
       if (!inv.email) continue;
       const ok = await enviarEmail(inv.email, `Invitación: ${titulo}`, `
         <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <h2 style="color:#3a6ea8;">${titulo}</h2>
-          <p>Hola ${inv.nombre},</p>
+          <h2 style="color:#3a6ea8;">${escapeHtml(titulo)}</h2>
+          <p>Hola ${escapeHtml(inv.nombre)},</p>
           <p>Te invitamos a una videollamada con MEDGRUP:</p>
           <p><strong>Fecha:</strong> ${fechaTexto}<br/><strong>Hora:</strong> ${hora} hs</p>
-          ${motivo ? `<p><strong>Motivo:</strong> ${motivo}</p>` : ''}
+          ${motivo ? `<p><strong>Motivo:</strong> ${escapeHtml(motivo)}</p>` : ''}
           <p style="margin:24px 0;"><a href="${inv.link}" style="background:#3a6ea8;color:white;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Ingresar a la reunión</a></p>
           <p style="font-size:12px;color:#888;">Este link es personal, no lo compartas.</p>
         </div>`);
@@ -1869,7 +1870,9 @@ app.post('/api/reuniones', authMiddleware, async (req, res) => {
     }
 
     const invitadosFinales = (await pool.query('SELECT * FROM reunion_invitados WHERE reunion_id=$1 ORDER BY id', [reunionId])).rows;
-    res.json({ ok: true, reunion: { id: reunionId, titulo, fecha, hora, motivo, estado: 'pendiente' }, invitados: invitadosFinales });
+    const cortos = new Map(invitadosCreados.map(i => [i.id, i.link]));
+    res.json({ ok: true, reunion: { id: reunionId, titulo, fecha, hora, motivo, estado: 'pendiente' },
+      invitados: invitadosFinales.map(i => ({ ...i, link: cortos.get(i.id) || i.link })) });
   } catch (err) { fallo(res, err, { detalle: err.detalle }); }
 });
 
@@ -3572,7 +3575,7 @@ app.get('/ingreso/:token', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/api/ingreso/:token', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, c.tipo_control, c.excepcion_geo, t.fecha, t.hora
+      SELECT c.trabajador_nombre, c.domicilio, c.domicilio_lat, c.estado, c.tipo_control, c.excepcion_geo, c.radio_metros, t.fecha, t.hora
       FROM casos_ausentismo c LEFT JOIN turnos t ON t.id = c.turno_id
       WHERE c.token_ingreso=$1`, [req.params.token]);
     if (!r.rows.length) return res.status(404).json({ error: 'Este link no es válido o ya venció.' });
@@ -3582,6 +3585,7 @@ app.get('/api/ingreso/:token', async (req, res) => {
     res.json({ ok: true, trabajador: c.trabajador_nombre, fecha: c.fecha, hora: c.hora,
       domicilio: c.domicilio || null, tiene_domicilio: c.domicilio_lat != null, excepcion_geo: c.excepcion_geo,
       tipo_control: c.tipo_control || TIPO_CONTROL_DEFECTO, control: etiquetaControl(c.tipo_control),
+      radio: c.radio_metros || RADIO_POR_DEFECTO,
       cerrado: ['resuelto','cancelado'].includes(c.estado) });
   } catch (err) { fallo(res, err); }
 });
@@ -3920,7 +3924,7 @@ app.post('/api/ausentismo/casos/:id/programar', authMiddleware, async (req, res)
     caso.trabajador_email=destinatario;
     await pool.query('UPDATE casos_ausentismo SET trabajador_email=$1 WHERE id=$2',[destinatario,caso.id]);
     async function invitationResult(turnoId){
-      const link=new URL(await turnoChat.invitationLink(turnoId,linkIngreso),baseUrlApp()).href;
+      const link=await shortLinks.shorten(new URL(await turnoChat.invitationLink(turnoId,linkIngreso),baseUrlApp()).href);
       const fingerprint=crypto.createHash('sha256').update(JSON.stringify([fecha,hora,destinatario])).digest('hex');
       const revision=(await pool.query(`UPDATE casos_ausentismo SET visita_mail_version=CASE WHEN visita_mail_fingerprint IS DISTINCT FROM $1 THEN visita_mail_version+1 ELSE visita_mail_version END,
         visita_mail_fingerprint=$1 WHERE id=$2 RETURNING visita_mail_version`,[fingerprint,caso.id])).rows[0];
@@ -4808,11 +4812,20 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
   } catch (err) { fallo(res, err); }
 });
 
+// Enlaces cortos: lo que se comparte por WhatsApp o correo es /i/código, no la dirección larga.
+const shortLinks = require('./lib/short-links').createShortLinks({
+  pool, secret: process.env.PARTICIPANT_ACCESS_SECRET || process.env.SESSION_SECRET, baseUrl: baseUrlApp, allowedHosts: ['daily.co'] });
+shortLinks.mount(app, path.join(__dirname, 'public', 'enlace-vencido.html'));
+app.post('/api/enlaces/acortar', authMiddleware, async (req, res) => {
+  const url = req.body?.url;
+  if (!shortLinks.destinoPermitido(url)) return res.status(400).json({ error: 'Ese enlace no se puede acortar.' });
+  res.json({ ok: true, link: await shortLinks.shorten(url) });
+});
 const participantAccess = require('./lib/participant-access').createParticipantAccess({
-  app,pool,authMiddleware,secret:process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET,patient:(req,db)=>turnoChat.authorizePatient(req,db),hashDictamen
+  app,pool,authMiddleware,shorten:u=>shortLinks.shorten(u),secret:process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET,patient:(req,db)=>turnoChat.authorizePatient(req,db),hashDictamen
 });
 const turnoChat = require('./lib/turno-chat').createTurnoChat({
-  app, pool, authMiddleware, enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET, externalDoctor:participantAccess.authorize
+  app, pool, authMiddleware, shorten: u => shortLinks.shorten(u), enabled: process.env.ENABLE_TURNO_CHAT !== 'false', stableSecret: process.env.PARTICIPANT_ACCESS_SECRET||process.env.SESSION_SECRET, externalDoctor:participantAccess.authorize
 });
 
 app.get('/empresa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'empresa.html')));
@@ -4823,6 +4836,7 @@ initDB().then(async () => {
   await doctorReminders.init();
   await sessionStore.init();
   await auditoria.init();
+  await shortLinks.init().catch(err => console.error('Enlaces cortos no disponibles; se usan los enlaces completos:', err.message));
   await participantAccess.init();
   try { await turnoChat.init(); }
   catch (err) { console.error('Chat no disponible; se conserva el ingreso habitual:', err.message); }

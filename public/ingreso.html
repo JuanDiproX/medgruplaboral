@@ -19,22 +19,41 @@
 <main class="ingreso">
   <ol class="pasos" aria-label="Pasos para ingresar">
     <li id="paso-validar" aria-current="step"><span class="paso-numero">1</span><span id="paso-validar-texto">Validar ubicación</span></li>
-    <li id="paso-ingresar"><span class="paso-numero">2</span>Ingresar</li>
+    <li id="paso-ingresar"><span class="paso-numero">2</span>Ingresar a la videollamada</li>
   </ol>
   <div class="ingreso-contenido">
-    <h1 id="titulo">Prepará tu ingreso</h1>
     <p id="saludo" class="saludo" hidden></p>
+    <h1 id="titulo">Prepará tu ingreso</h1>
     <p id="subtitulo" class="sub">Estamos consultando los datos de tu entrevista.</p>
+    <div id="turno" class="turno" hidden>
+      <div class="turno-hora" id="turno-hora"></div>
+      <div class="turno-detalle"><span id="turno-fecha"></span><span id="turno-falta" class="turno-falta" hidden></span></div>
+    </div>
     <dl id="datos" class="datos" hidden></dl>
-    <div id="aviso" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="navegador" class="aviso aviso-alerta" hidden>Estás viendo esta página dentro de otra aplicación, que puede bloquear la ubicación. Tocá los tres puntos del menú y elegí <strong>Abrir en el navegador</strong>.</div>
     <section id="preparacion" class="preparacion" hidden aria-labelledby="preparacion-titulo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      <div><h2 id="preparacion-titulo">Validá desde tu domicilio</h2><p>Activá la ubicación de tu teléfono y elegí <strong>Permitir</strong> cuando el navegador te lo pida.</p></div>
+      <div class="dial" id="dial" data-estado="esperando" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <circle class="dial-zona" cx="60" cy="60" r="34"/>
+          <circle class="dial-onda" cx="60" cy="60" r="34"/>
+          <circle class="dial-borde" cx="60" cy="60" r="34"/>
+          <path class="dial-casa" d="M51 61.5 60 53l9 8.5V70a1.5 1.5 0 0 1-1.5 1.5h-4.2v-6h-6.6v6h-4.2A1.5 1.5 0 0 1 51 70Z"/>
+          <g class="dial-punto" id="dial-punto"><circle r="7.5" class="dial-punto-halo"/><circle r="4"/></g>
+        </svg>
+      </div>
+      <div>
+        <h2 id="preparacion-titulo">Validá desde tu domicilio</h2>
+        <p id="preparacion-texto">Activá la ubicación de tu teléfono y elegí <strong>Permitir</strong> cuando el navegador te lo pida.</p>
+      </div>
     </section>
+    <div id="aviso" role="status" aria-live="polite" aria-atomic="true"></div>
     <details id="ayuda" class="ayuda" hidden>
       <summary>¿Necesitás ayuda con la ubicación?</summary>
-      <ul><li>Comprobá que la ubicación del teléfono esté activada.</li><li>Permití el acceso a la ubicación de este sitio en los permisos del navegador.</li><li>Si la señal es débil, acercate a una ventana y volvé a intentar.</li><li>Si abriste el enlace desde otra app y no podés dar permiso, abrilo en el navegador del teléfono.</li></ul>
-      <p>Si el domicilio informado no es correcto, contactá a quien coordinó la entrevista.</p>
+      <div class="ayuda-cuerpo">
+        <p id="ayuda-sistema" class="ayuda-sistema"></p>
+        <ul><li>Comprobá que la ubicación del teléfono esté activada.</li><li>Permití el acceso a la ubicación de este sitio en los permisos del navegador.</li><li>Si la señal es débil, acercate a una ventana y volvé a intentar.</li><li>Si abriste el enlace desde otra app y no podés dar permiso, abrilo en el navegador del teléfono.</li></ul>
+        <p>Si el domicilio informado no es correcto, contactá a quien coordinó la entrevista.</p>
+      </div>
     </details>
   </div>
   <div class="ingreso-acciones" id="acciones-ingreso">

@@ -4153,9 +4153,37 @@ function promptTexto(label, opts={}){
 
 const mensajesLinks = {};
 
+// "Pérez, Juan Carlos" -> "Juan": el mensaje saluda por el nombre de pila, como lo haría una persona.
+function nombreDePila(nombre){
+  const limpio=String(nombre||'').replace(/\(.*?\)/g,'').replace(/^(dr|dra|lic|sr|sra)\.?\s+/i,'').trim();
+  const parte=limpio.includes(',')?limpio.split(',')[1]:limpio;
+  const primero=(parte||limpio).trim().split(/\s+/)[0]||'';
+  return primero?primero.charAt(0).toUpperCase()+primero.slice(1).toLowerCase():'';
+}
+// Un solo formato para todas las invitaciones por WhatsApp o correo: saludo, qué es, cuándo,
+// el enlace en su propia línea (así WhatsApp lo muestra completo y tocable) y las indicaciones.
+function mensajeInvitacion({nombre,link,tipo,cuando,domiciliario=false,ahora=false,recordatorio=false,profesional=false}){
+  const pila=nombreDePila(nombre),lineas=[`Hola${pila?' '+pila:''} 👋`,`Te escribimos de MEDGRUP Servicio Médico.`,''];
+  const que=tipo?`*${tipo}*`:'*Consulta médica*';
+  if(ahora)lineas.push(`${que} · estamos listos para atenderte ahora.`);
+  else lineas.push(recordatorio?`Te recordamos tu turno: ${que}`:que);
+  if(cuando&&!ahora)lineas.push(`📅 ${cuando}`);
+  lineas.push('',profesional?'Tu acceso personal a la consulta:':'Ingresá desde tu celular con este enlace:',link,'');
+  if(domiciliario)lineas.push('📍 Es un control domiciliario: tenés que estar en tu domicilio y tocar *Permitir* cuando el teléfono te pida la ubicación.');
+  lineas.push(profesional?'Desde ahí entrás a la videollamada, al chat y a los documentos para firmar.':'No hace falta instalar nada. El enlace es personal: no lo compartas.');
+  return lineas.join('\n');
+}
+// Cuando el enlace que hay para compartir es el de la sala (largo), se pide uno corto.
+async function acortarEnlace(url){
+  try{
+    const r=await fetch('/api/enlaces/acortar',{method:'POST',headers:apiHeaders(),body:JSON.stringify({url})});
+    const d=await r.json();return r.ok&&d.link?d.link:url;
+  }catch{return url;}
+}
+
 async function linkPacienteConChat(t){
   await window.chatTurnoConfig;
-  if(!window.chatTurnoDisponible)return t.linkPaciente;
+  if(!window.chatTurnoDisponible)return acortarEnlace(t.linkPaciente);
   const response=await fetch('/api/turnos/'+encodeURIComponent(t.id)+'/chat/invitacion',{method:'POST',headers:apiHeaders()});
   const data=await response.json();
   if(!response.ok)throw new Error(data.error||'No se pudo generar la invitación');
@@ -4169,12 +4197,12 @@ async function buildLinksHtml(t){
   }
   catch(e){return `<p>No se pudo preparar el enlace personal. ${escaparHtml(e.message||'Volvé a abrir las invitaciones para reintentar.')}</p>`;}
   const fl=new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  const makeMsg=(link,nombre)=>`Hola ${nombre}, te enviamos el link para tu consulta médica con MEDGRUP.\n\n🎥 Link: ${link}\n\nFecha: ${fl} a las ${t.hora} hs\n\nNo necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+  const makeMsg=(link,nombre,profesional=false)=>mensajeInvitacion({nombre,link,tipo:t.tipo,cuando:`${fl} · ${t.hora} hs`,profesional});
 
   let html='';
   (t.linksMedicos||[]).forEach((lm,i)=>{
     const key=`med_${t.id}_${i}`;
-    mensajesLinks[key]=makeMsg(lm.link,lm.nombre);
+    mensajesLinks[key]=makeMsg(lm.link,lm.nombre,true);
     html+=`<div class="participante-link">
       <div class="participante-nombre">${escaparHtml(lm.nombre)} <span class="participante-rol rol-medico">Médico</span></div>
       <div class="link-row"><div class="link-url">${lm.link}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${lm.link}')">Copiar</button></div>
@@ -4288,7 +4316,7 @@ async function recordarTurnoWA(id){
   let link;
   try{link=await linkPacienteConChat(t);}catch(e){ventana.close();mostrarError(e.message);return;}
   const fl = new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-  const mensaje = `Hola ${t.paciente}, te recordamos tu turno de ${t.tipo||'consulta'} con MEDGRUP.\n\n📅 ${fl} a las ${t.hora} hs\n🎥 Link: ${link}\n\nNo necesitás instalar nada, se ingresa directo desde el celular.\n\nSaludos,\nMEDGRUP Servicio Médico`;
+  const mensaje = mensajeInvitacion({nombre:t.paciente,link,tipo:t.tipo,cuando:`${fl} · ${t.hora} hs`,recordatorio:true});
   const digitos=normalizarTelefonoAR(t.telefono);
   if(t.telefono&&!telefonoARValido(digitos)){ventana.close();mostrarError('Corregí el teléfono del turno antes de enviar el recordatorio.');return;}
   // La pestaña se abrió en el clic inicial para no interrumpir una llamada activa.
@@ -4319,7 +4347,8 @@ async function generarLinkInvitado(){
     const t = turnos.find(x=>x.id===linksTurnoActualId);
     const fl = t ? new Date(t.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}) : '';
     const key = 'inv_'+Date.now();
-    mensajesLinks[key] = `Hola ${data.nombre}, te enviamos el link para la videollamada con MEDGRUP.\n\n🎥 Link: ${data.link}\n\n${t?`Fecha: ${fl} a las ${t.hora} hs\n\n`:''}No necesitás instalar nada.\n\nSaludes,\nMEDGRUP Servicio Médico`;
+    data.link = await acortarEnlace(data.link);
+    mensajesLinks[key] = mensajeInvitacion({nombre:data.nombre,link:data.link,tipo:t?.tipo,cuando:t?`${fl} · ${t.hora} hs`:''});
     document.getElementById('links-invitados-extra').insertAdjacentHTML('beforeend', `<div class="participante-link">
       <div class="participante-nombre">${escaparHtml(data.nombre)} <span class="participante-rol rol-medico">Invitado</span></div>
       <div class="link-row"><div class="link-url">${data.link}</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="copiar('${data.link}')">Copiar</button></div>
@@ -7112,7 +7141,7 @@ async function iniciarControlAhora(id){
     // Sin teléfono cargado el WhatsApp no sirve de nada, así que queda el link a la vista
     const wa = document.getElementById('prog-whatsapp');
     if(c.trabajador_telefono){
-      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Estamos realizando en este momento un control médico domiciliario. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
+      const msg = mensajeInvitacion({nombre:c.trabajador_nombre,link:data.link_paciente,tipo:'Control médico domiciliario',ahora:true,domiciliario:true});
       const tel = normalizarTelefonoAR(c.trabajador_telefono);
       wa.href = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
       wa.style.display = '';
@@ -7194,7 +7223,7 @@ async function confirmarProgramarCaso(){
       // Al trabajador se le nombra el control solo cuando no es el de ausentismo: si viene por
       // un examen periódico, un mensaje que no lo aclare lo deja pensando que se le imputa una falta.
       const porQue = tipo_control === 'examen_periodico' ? ' de seguimiento por examen periódico' : '';
-      const msg = `Hola ${c.trabajador_nombre}, te escribimos de MEDGRUP. Tenés una entrevista médica${porQue} el ${fl} a las ${hora} hs. Ingresá desde este link: ${data.link_paciente}\n\nIMPORTANTE: es un control domiciliario, así que tenés que estar en tu domicilio y permitir el acceso a la ubicación cuando el navegador te lo pida. Sin eso no vas a poder entrar a la videollamada.`;
+      const msg = mensajeInvitacion({nombre:c.trabajador_nombre,link:data.link_paciente,tipo:'Entrevista médica'+porQue,cuando:`${fl} · ${hora} hs`,domiciliario:true});
       const tel = normalizarTelefonoAR(c.trabajador_telefono);
       document.getElementById('prog-whatsapp').href = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
       if(!telefonoARValido(tel)){

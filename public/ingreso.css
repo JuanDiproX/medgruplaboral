@@ -1,55 +1,120 @@
-:root{--ink:#13233a;--ink-2:#4a586b;--paper:#fbfaf6;--rule:#e4e3da;--blue:#2c5d92;--green:#1e6640;--magenta:#95124a;--sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--display:"Libre Caslon Display",Georgia,serif;color-scheme:light;}
+/* Ingreso del paciente. Se abre casi siempre desde un celular, con una mano y a veces con
+   apuro: una sola columna, la hora del turno bien grande y la acción siempre al alcance del pulgar. */
+:root{--ink:#13233a;--ink-2:#4a586b;--paper:#fbfaf6;--paper-2:#f3f2ec;--rule:#e4e3da;--blue:#2c5d92;--wash:#e6f1f5;--green:#1e6640;--green-wash:#e5f1e9;--magenta:#95124a;--amber:#805000;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--display:"Libre Caslon Display",Georgia,serif;--ease:cubic-bezier(.16,1,.3,1);color-scheme:light;}
 *{box-sizing:border-box;}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;min-height:100dvh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;}
 ::selection{background:#acdcec;color:var(--ink);}
-:focus-visible{outline:2px solid var(--blue);outline-offset:4px;}
-.marca{max-width:620px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:32px 0 26px;}
-.marca img{width:140px;height:auto;display:block;}
-.marca span{font-size:12px;color:var(--ink-2);text-align:right;}
-.ingreso{max-width:620px;margin:0 auto;background:#fff;border:1px solid var(--rule);border-radius:12px;overflow:clip;}
-.pasos{display:flex;gap:26px;list-style:none;margin:0;padding:22px 32px;border-bottom:1px solid var(--rule);font-size:12px;color:var(--ink-2);}
-.pasos li{display:flex;align-items:center;gap:8px;}
-.paso-numero{display:grid;place-items:center;width:25px;height:25px;border:1px solid #c4c8cb;border-radius:50%;font-size:11px;flex-shrink:0;}
-.pasos [aria-current=step]{color:var(--ink);font-weight:600;}
-.pasos [aria-current=step] .paso-numero{background:var(--ink);color:white;border-color:var(--ink);}
-.pasos .listo{color:var(--green);}
-.pasos .listo .paso-numero{border-color:var(--green);background:#e5f1e9;color:var(--green);}
-.ingreso-contenido{padding:30px 32px 0;}
-h1{font-family:var(--display);font-size:38px;line-height:1.08;font-weight:400;letter-spacing:-.01em;margin:0 0 18px;overflow-wrap:anywhere;}
-.saludo{margin:0 0 8px;font-weight:500;overflow-wrap:anywhere;}
-.sub{margin:0;color:var(--ink-2);font-size:14px;line-height:1.65;}
-.datos{display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;margin:26px 0;padding:22px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);}
-.dato{min-width:0;}.dato.ancho{grid-column:1/-1;}
-dt{font-size:12px;color:var(--ink-2);margin-bottom:4px;}
-dd{margin:0;font-size:15px;font-weight:500;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
-#aviso:empty{display:none;}
-.aviso{display:flex;gap:12px;align-items:flex-start;margin:22px 0 0;padding:16px;border:1px solid var(--rule);border-radius:6px;font-size:14px;line-height:1.6;}
-.aviso::before{content:"";width:8px;height:8px;flex-shrink:0;margin-top:7px;border-radius:50%;background:currentColor;}
-.aviso-error{color:var(--magenta);background:#fcf3f6;border-color:#efccd9;}
-.aviso-alerta{color:#805000;background:#fcf7eb;border-color:#e8d9b7;}
-.aviso-ok{color:var(--green);background:#edf6f0;border-color:#c5dece;}
-.aviso-info{color:var(--blue);background:#f0f6fa;border-color:#cddfea;}
-.preparacion{display:flex;gap:14px;margin:0;padding:0 0 6px;}
-.preparacion svg{width:26px;height:26px;stroke:var(--blue);flex-shrink:0;margin-top:2px;}
-.preparacion h2{font-size:15px;font-weight:600;line-height:1.4;margin:0 0 6px;}
-.preparacion p{font-size:14px;line-height:1.65;color:var(--ink-2);margin:0;}
-.ayuda{font-size:13px;margin-top:22px;color:var(--ink-2);}
-.ayuda summary{min-height:44px;padding:10px 0;color:var(--blue);font-weight:500;cursor:pointer;}
-.ayuda ul{margin:8px 0;padding-left:20px;}.ayuda li{margin:8px 0;}
-.ingreso-acciones{padding:24px 32px max(24px,env(safe-area-inset-bottom));background:#fff;}
-button,.link-llamada{font:inherit;font-size:15px;font-weight:600;min-height:54px;width:100%;padding:14px 18px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--ink);border-radius:5px;background:var(--ink);color:#fff;text-decoration:none;cursor:pointer;transition:background .15s;touch-action:manipulation;}
-button:hover:not(:disabled),.link-llamada:hover{background:#213e62;}
-button:disabled{opacity:.65;cursor:wait;}.link-llamada svg{width:20px;height:20px;}
-.btn-secundario{background:#fff;border-color:#c4c8cb;color:var(--ink);}.btn-secundario:hover:not(:disabled){background:var(--paper);}
-.pie{font-size:11.5px;color:var(--ink-2);text-align:center;margin:14px 0 0;line-height:1.6;}
-.cargando{display:flex;align-items:center;justify-content:center;gap:12px;min-height:54px;font-size:14px;color:var(--ink-2);}
-.spin{height:19px;width:19px;border:2px solid #d2dde7;border-top-color:var(--blue);border-radius:50%;animation:girar .8s linear infinite;flex-shrink:0;}
-.firma{text-align:center;padding:22px 20px 30px;font-size:11px;color:var(--ink-2);}
-@keyframes girar{to{transform:rotate(360deg);}}
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px;}
 [hidden]{display:none!important;}
-@media(max-width:680px){
- .marca{padding:calc(20px + env(safe-area-inset-top)) 22px 22px;gap:14px;}.marca img{width:128px;}.marca span{max-width:110px;line-height:1.5;}
- .ingreso{border-left:0;border-right:0;border-radius:0;}.pasos{padding:18px 22px;gap:22px;}.ingreso-contenido{padding:26px 22px 0;}h1{font-size:34px;}
- .ingreso-acciones{padding:22px 22px max(22px,env(safe-area-inset-bottom));}.firma{padding-bottom:calc(22px + env(safe-area-inset-bottom));}
+
+.marca{width:100%;max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(18px + env(safe-area-inset-top)) 22px 16px;}
+.marca img{width:124px;height:auto;display:block;}
+.marca span{font-size:12.5px;color:var(--ink-2);text-align:right;line-height:1.4;}
+
+.ingreso{width:100%;max-width:560px;margin:0 auto;flex:1;display:flex;flex-direction:column;background:#fff;border-top:1px solid var(--rule);}
+
+/* Los pasos son una secuencia real: primero se valida, después se entra. */
+.pasos{display:grid;grid-template-columns:1fr 1fr;gap:10px;list-style:none;margin:0;padding:18px 22px 0;font-size:12.5px;line-height:1.35;color:var(--ink-2);}
+.pasos li{display:flex;align-items:center;gap:8px;padding-top:11px;border-top:3px solid var(--rule);transition:border-color .4s var(--ease),color .3s;}
+.paso-numero{display:grid;place-items:center;width:22px;height:22px;border:1px solid #c4c8cb;border-radius:50%;font-size:11px;font-weight:600;flex-shrink:0;font-variant-numeric:tabular-nums;transition:background .3s,border-color .3s,color .3s;}
+.pasos [aria-current=step]{color:var(--ink);font-weight:600;border-top-color:var(--ink);}
+.pasos [aria-current=step] .paso-numero{background:var(--ink);color:#fff;border-color:var(--ink);}
+.pasos .listo{color:var(--green);border-top-color:var(--green);}
+.pasos .listo .paso-numero{border-color:var(--green);background:var(--green-wash);color:transparent;position:relative;}
+.pasos .listo .paso-numero::after{content:"";position:absolute;width:9px;height:5px;border-left:2px solid var(--green);border-bottom:2px solid var(--green);transform:translateY(-1px) rotate(-45deg);}
+
+.ingreso-contenido{padding:22px 22px 8px;flex:1;}
+.saludo{margin:0 0 6px;font-size:15px;color:var(--ink-2);overflow-wrap:anywhere;}
+h1{font-family:var(--display);font-size:clamp(30px,8.6vw,38px);line-height:1.08;font-weight:400;letter-spacing:-.01em;margin:0 0 12px;overflow-wrap:anywhere;text-wrap:balance;}
+.sub{margin:0;color:var(--ink-2);font-size:15px;line-height:1.6;max-width:46ch;}
+
+/* La hora es lo que el paciente vino a confirmar: va en el tamaño más grande de la pantalla. */
+.turno{display:flex;align-items:center;gap:16px;margin:18px 0 0;padding:14px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);}
+.turno-hora{font-family:var(--display);font-size:54px;line-height:1;letter-spacing:-.02em;font-variant-numeric:lining-nums tabular-nums;flex-shrink:0;}
+.turno-hora:empty{display:none;}
+.turno-detalle{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;font-size:14px;line-height:1.4;color:var(--ink-2);}
+.turno-detalle span:first-child::first-letter{text-transform:uppercase;}
+.turno-falta{font-size:12.5px;font-weight:600;color:var(--amber);background:#f8eedb;padding:3px 9px;border-radius:99px;}
+.turno-falta.ahora{color:#fff;background:var(--magenta);}
+
+.datos{margin:0;padding:12px 0;border-bottom:1px solid var(--rule);}
+.dato{min-width:0;}
+dt{font-size:12.5px;color:var(--ink-2);margin-bottom:3px;}
+dd{margin:0;font-size:16px;font-weight:500;line-height:1.45;overflow-wrap:anywhere;}
+
+#aviso:empty{display:none;}
+.aviso{display:flex;gap:12px;align-items:flex-start;margin:18px 0 0;padding:14px 16px;border:1px solid var(--rule);border-left-width:3px;border-radius:6px;font-size:15px;line-height:1.55;animation:entrar .35s var(--ease);}
+#aviso .aviso::before{content:"";width:8px;height:8px;flex-shrink:0;margin-top:8px;border-radius:50%;background:currentColor;}
+.aviso-error{color:var(--magenta);background:#fcf3f6;border-color:#efccd9;border-left-color:var(--magenta);}
+.aviso-alerta{color:var(--amber);background:#fcf7eb;border-color:#e8d9b7;border-left-color:#b9801a;}
+.aviso-ok{color:var(--green);background:#edf6f0;border-color:#c5dece;border-left-color:var(--green);}
+.aviso-info{color:var(--blue);background:#f0f6fa;border-color:#cddfea;border-left-color:var(--blue);}
+#navegador{display:block;}
+
+/* El dial: la casa en el centro y el radio permitido alrededor. Late mientras el teléfono
+   busca señal, se pone verde al validar y muestra el punto afuera cuando la lectura quedó lejos. */
+.preparacion{display:flex;align-items:center;gap:16px;margin:16px 0 0;scroll-margin-top:12px;}
+.preparacion h2{font-size:16px;font-weight:600;line-height:1.35;margin:0 0 4px;}
+.preparacion p{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0;}
+.dial{width:96px;height:96px;flex-shrink:0;color:var(--blue);transition:color .4s;}
+.dial svg{width:100%;height:100%;display:block;overflow:visible;}
+.dial-zona{fill:currentColor;opacity:.1;}
+.dial-borde{fill:none;stroke:currentColor;stroke-width:1.5;stroke-dasharray:3 4;}
+.dial-onda{fill:none;stroke:currentColor;stroke-width:1.5;opacity:0;transform-origin:60px 60px;}
+.dial-casa{fill:currentColor;}
+.dial-punto{opacity:0;transition:opacity .3s,transform .6s var(--ease);}
+.dial-punto circle{fill:var(--magenta);}
+.dial-punto-halo{opacity:.2;}
+.dial[data-estado=buscando] .dial-onda{animation:onda 1.6s ease-out infinite;}
+.dial[data-estado=buscando] .dial-borde{animation:girar 9s linear infinite;transform-origin:60px 60px;}
+.dial[data-estado=dentro]{color:var(--green);}
+.dial[data-estado=dentro] .dial-borde{stroke-dasharray:none;stroke-width:2;}
+.dial[data-estado=dentro] .dial-punto{opacity:1;}
+.dial[data-estado=dentro] .dial-punto circle{fill:var(--green);}
+.dial[data-estado=fuera]{color:#8d99a8;}
+.dial[data-estado=fuera] .dial-punto{opacity:1;}
+
+.ayuda{font-size:14.5px;margin-top:14px;color:var(--ink-2);border-top:1px solid var(--rule);}
+.ayuda summary{min-height:48px;padding:12px 0;color:var(--blue);font-weight:500;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ayuda summary::-webkit-details-marker{display:none;}
+.ayuda summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);transition:transform .25s var(--ease);flex-shrink:0;margin-right:4px;}
+.ayuda[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px);}
+.ayuda ul{margin:0 0 10px;padding-left:20px;}.ayuda li{margin:7px 0;}
+.ayuda p{margin:0 0 12px;}
+.ayuda-sistema{padding:12px 14px;background:var(--wash);border-radius:6px;color:var(--ink);}
+
+/* La acción queda fija abajo: se alcanza con el pulgar sin tener que desplazar la página. */
+.ingreso-acciones{position:sticky;bottom:0;padding:14px 22px calc(14px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--rule);}
+button,.link-llamada{font:inherit;font-size:16.5px;font-weight:600;min-height:56px;width:100%;padding:14px 18px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--ink);border-radius:8px;background:var(--ink);color:#fff;text-decoration:none;cursor:pointer;transition:background .15s,transform .12s;touch-action:manipulation;}
+button:hover:not(:disabled),.link-llamada:hover{background:#213e62;}
+button:active:not(:disabled),.link-llamada:active{transform:scale(.985);}
+button:disabled{opacity:.65;cursor:wait;}
+.link-llamada{background:var(--green);border-color:var(--green);}.link-llamada:hover{background:#17532f;}
+.link-llamada svg{width:20px;height:20px;}
+.btn-secundario{background:#fff;border-color:#c4c8cb;color:var(--ink);}.btn-secundario:hover:not(:disabled){background:var(--paper);}
+.pie{font-size:12.5px;color:var(--ink-2);text-align:center;margin:10px 0 0;line-height:1.5;}
+.cargando{display:flex;align-items:center;justify-content:center;gap:12px;min-height:56px;font-size:15px;color:var(--ink-2);}
+.spin{height:20px;width:20px;border:2px solid #d2dde7;border-top-color:var(--blue);border-radius:50%;animation:girar .8s linear infinite;flex-shrink:0;}
+.firma{width:100%;text-align:center;padding:16px 20px calc(18px + env(safe-area-inset-bottom));font-size:12px;color:var(--ink-2);}
+
+/* Página de enlace vencido: usa esta misma hoja */
+.centro{flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 22px;}
+.centro .icono{width:52px;height:52px;margin-bottom:22px;color:var(--amber);}
+.centro .sub+.sub{margin-top:12px;}
+
+@keyframes girar{to{transform:rotate(360deg);}}
+@keyframes onda{0%{opacity:.55;transform:scale(1);}100%{opacity:0;transform:scale(1.55);}}
+@keyframes entrar{from{opacity:0;transform:translateY(6px);}}
+@media(min-width:620px){
+ body{padding:0 20px 20px;}
+ .marca{padding:34px 0 22px;}.marca img{width:140px;}
+ .ingreso{flex:none;border:1px solid var(--rule);border-radius:12px;overflow:clip;}
+ .pasos{padding:26px 34px 0;}.ingreso-contenido{padding:30px 34px 14px;}
+ .ingreso-acciones{position:static;padding:22px 34px 26px;background:#fff;}
+ .turno-hora{font-size:64px;}
+ .centro{padding:56px 34px;}
 }
-@media(prefers-reduced-motion:reduce){.spin{animation:none;border-color:var(--blue);border-style:dotted;}button,.link-llamada{transition:none;}}
+@media(max-width:350px){.turno-hora{font-size:44px;}.dial{width:76px;height:76px;}.pasos{font-size:11.5px;}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;}.spin{border-style:dotted;border-color:var(--blue);}}
