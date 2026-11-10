@@ -838,7 +838,11 @@ app.get('/api/presupuestos/:id/datos', authMiddleware, async (req, res) => {
     res.json({ ok: true, presupuesto: r.rows[0] });
   } catch (err) { fallo(res, err); }
 });
+// El armado de presupuestos se retiró del portal (noviembre 2026). Los ya emitidos se conservan:
+// se pueden consultar, descargar y verificar por QR. Para volver a habilitar la emisión,
+// definir PRESUPUESTOS_HABILITADOS=true.
 app.post('/api/presupuestos', authMiddleware, async (req, res) => {
+  if (process.env.PRESUPUESTOS_HABILITADOS !== 'true') return res.status(410).json({ error: 'Los presupuestos ya no se emiten desde el portal.' });
   const { empresa, contacto, validez_dias, items, notas } = req.body;
   if (!empresa) return res.status(400).json({ error: 'Falta la empresa' });
   if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Agregá al menos un ítem' });
@@ -3197,7 +3201,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, anthropic: !!ANTHROPIC
 // cambia la huella y no molesta a nadie.
 const VERSION_PORTAL = (() => {
   const h = crypto.createHash('sha256');
-  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'empresa.html', 'claude-portal.css', 'ingreso.html', 'ingreso.css', 'ingreso.js', 'atencion.html', 'atencion.css', 'atencion.js', 'participant-signature.js']) {
+  for (const f of ['index.html', 'llamada.js', 'chat-medico.js', 'descargas.js', 'ausentismo-flow.js', 'ausentismo-flow.css', 'claude-demo.css', 'medgrup-ui.css', 'importar.js', 'empresa.html', 'claude-portal.css', 'ingreso.html', 'ingreso.css', 'ingreso.js', 'atencion.html', 'atencion.css', 'atencion.js', 'participant-signature.js']) {
     try { h.update(require('fs').readFileSync(path.join(__dirname, 'public', f))); } catch {}
   }
   return h.digest('hex').slice(0, 16);
@@ -4812,6 +4816,7 @@ app.post('/api/empresa/ausentismo/casos/:id/cancelar', empresaAuthMiddleware, as
   } catch (err) { fallo(res, err); }
 });
 
+const importador = require('./lib/importador').createImportador({ app, pool, adminMiddleware, fallo, vincular: vincularASeguimientosAbiertos });
 // Enlaces cortos: lo que se comparte por WhatsApp o correo es /i/código, no la dirección larga.
 const shortLinks = require('./lib/short-links').createShortLinks({
   pool, secret: process.env.PARTICIPANT_ACCESS_SECRET || process.env.SESSION_SECRET, baseUrl: baseUrlApp, allowedHosts: ['daily.co'] });
@@ -4836,6 +4841,7 @@ initDB().then(async () => {
   await doctorReminders.init();
   await sessionStore.init();
   await auditoria.init();
+  await importador.init();
   await shortLinks.init().catch(err => console.error('Enlaces cortos no disponibles; se usan los enlaces completos:', err.message));
   await participantAccess.init();
   try { await turnoChat.init(); }

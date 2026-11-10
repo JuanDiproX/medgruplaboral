@@ -855,6 +855,7 @@ td.no-label::before{display:none;}
 </style>
 <link rel="stylesheet" href="/ausentismo-flow.css">
 <link rel="stylesheet" href="/claude-demo.css">
+<link rel="stylesheet" href="/medgrup-ui.css">
 </head>
 <body>
 
@@ -954,7 +955,8 @@ td.no-label::before{display:none;}
       <div class="nav-item" id="nav-reuniones" onclick="showSection('reuniones',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Reuniones</div>
       <div class="nav-item" id="nav-medicos" onclick="showSection('medicos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></svg>Médicos</div>
       <div class="nav-item" id="nav-empresas" onclick="showSection('empresas',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>Empresas</div>
-      <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>Presupuestos</div>
+      <div class="nav-item" id="nav-presupuestos" onclick="showSection('presupuestos',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>Servicios</div>
+      <div class="nav-item" id="nav-importar" onclick="showSection('importar',this)" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-7"/><path d="m9 14 3-3 3 3"/></svg>Importar planilla</div>
       <div class="nav-item" id="nav-ausentismo" onclick="showSection('ausentismo',this)" style="align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>Ausentismo<span id="nav-ausentismo-badge" style="display:none;margin-left:auto;background:var(--rosa);color:white;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;">0</span></div>
       <div class="nav-item" id="nav-seguimientos" onclick="showSection('seguimientos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Seguimientos</div>
       <div class="nav-item" id="nav-firmas" onclick="abrirFirmaExpress()" style="display:none;align-items:center;">
@@ -1523,53 +1525,23 @@ td.no-label::before{display:none;}
   </div>
 
   <div id="sec-presupuestos" style="display:none;">
-    <div class="two-col con-panel">
-      <div>
-        <div class="card">
-          <div class="card-hdr"><div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;stroke:var(--azul);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Presupuestos emitidos</div><div class="pl-cab-acciones"><span class="badge b-blue" id="badge-presupuestos">0</span><button type="button" class="btn btn-ghost pl-abrir" onclick="abrirPanelLateral('pl-catalogo')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Catálogo de servicios</button><button type="button" class="btn btn-primary pl-abrir" onclick="abrirPanelLateral('pl-presupuesto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo presupuesto</button></div></div>
-          <div id="presupuestos-lista"><div style="text-align:center;padding:2rem;color:var(--text3);">Cargando...</div></div>
+    <div class="card" style="max-width:640px;">
+      <div class="card-hdr"><div class="card-title">Catálogo de servicios</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;max-width:56ch;">Las prestaciones que ofrece el servicio médico, con su valor de referencia.</p>
+        <datalist id="pr-catalogo-datalist"></datalist>
+        <div id="catalogo-lista" style="margin-bottom:14px;"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-lbl" for="cat-nombre">Servicio</label><input type="text" id="cat-nombre" placeholder="Ej: Junta médica"/></div>
+          <div class="form-group"><label class="form-lbl" for="cat-precio">Precio</label><input type="text" id="cat-precio" placeholder="0" inputmode="decimal"/></div>
         </div>
-      </div>
-      <div>
-        <div class="panel-lateral" id="pl-presupuesto"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Nuevo presupuesto"><div class="card">
-          <div class="card-hdr"><div class="card-title">Nuevo presupuesto</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="form-group full"><label class="form-lbl">Empresa</label>
-                <select id="pr-empresa" onchange="onEmpresaPresupuestoChange()"><option value="">Elegí una empresa...</option><option value="Otra">Otra empresa</option></select>
-              </div>
-              <div class="form-group full" id="pr-empresa-otra-wrap" style="display:none;"><label class="form-lbl">Nombre de la empresa</label><input type="text" id="pr-empresa-otra" placeholder="Ej: Nueva Empresa S.A."/></div>
-              <div class="form-group"><label class="form-lbl">Contacto (opcional)</label><input type="text" id="pr-contacto" placeholder="Nombre del responsable"/></div>
-              <div class="form-group"><label class="form-lbl">Validez (días)</label><input type="text" id="pr-validez" value="15"/></div>
-            </div>
-            <div class="divider">Ítems del presupuesto</div>
-            <datalist id="pr-catalogo-datalist"></datalist>
-            <div id="pr-items"></div>
-            <button class="btn btn-ghost" style="margin-top:8px;" onclick="agregarItemPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;pointer-events:none;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Agregar ítem</button>
-            <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-              <div class="pr-total-wrap"><div class="pr-total-lbl">Total</div><div class="pr-total" id="pr-total">$ 0,00</div></div>
-            </div>
-            <div class="form-group full" style="margin-top:10px;"><label class="form-lbl">Notas (opcional)</label><textarea id="pr-notas" placeholder="Condiciones, forma de pago, etc."></textarea></div>
-            <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="guardarPresupuesto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>Generar presupuesto</button>
-            <div id="pr-err" style="display:none;margin-top:10px;background:var(--rosa-light);border:1px solid var(--rosa-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--rosa-dark);"></div>
-            <div id="pr-ok" style="display:none;margin-top:10px;background:var(--azul-light);border:1px solid var(--azul-mid);border-radius:var(--r);padding:.75rem;font-size:13px;color:var(--azul);"></div>
-          </div>
-        </div></div></div>
-
-        <div class="panel-lateral" id="pl-catalogo"><div class="pl-fondo" onclick="cerrarPanelLateral()"></div><div class="pl-hoja" role="dialog" aria-modal="true" aria-label="Catálogo de servicios"><div class="card">
-          <div class="card-hdr"><div class="card-title">Catálogo de servicios</div><button type="button" class="pl-cerrar" onclick="cerrarPanelLateral()" aria-label="Cerrar sin perder lo cargado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-          <div class="card-body">
-            <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">Los servicios cargados acá aparecen como sugerencia al escribir el concepto de un ítem.</div>
-            <div id="catalogo-lista" style="margin-bottom:10px;"></div>
-            <div class="form-grid">
-              <div class="form-group"><label class="form-lbl">Servicio</label><input type="text" id="cat-nombre" placeholder="Ej: Junta médica"/></div>
-              <div class="form-group"><label class="form-lbl">Precio</label><input type="text" id="cat-precio" placeholder="0"/></div>
-            </div>
-            <button class="btn btn-ghost btn-full" style="margin-top:8px;" onclick="agregarServicioCatalogo()">Agregar al catálogo</button>
-          </div>
-        </div></div></div>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="agregarServicioCatalogo()">Agregar al catálogo</button>
       </div>
     </div>
+  </div>
+
+  <div id="sec-importar" style="display:none;">
+    <div id="importar-app"></div>
   </div>
 </main>
 </div>
@@ -3288,6 +3260,7 @@ function mostrarApp(){
     document.getElementById('nav-empresas').style.display='flex';
     document.getElementById('nav-medicos').style.display='flex';
     document.getElementById('nav-presupuestos').style.display='flex';
+    document.getElementById('nav-importar').style.display='flex';
     document.getElementById('card-log-actividad').style.display='block';
     document.getElementById('agenda-cols').classList.remove('sin-log-lateral');
   }
@@ -3376,7 +3349,7 @@ document.addEventListener('keydown', e => {
 
 function showSection(id,el){
   cerrarPanelLateral();
-  ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo','seguimientos'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
+  ['agenda','reuniones','medicos','perfil','empresas','presupuestos','ausentismo','seguimientos','importar'].forEach(s=>{const sec=document.getElementById('sec-'+s);if(sec){sec.style.display='none';sec.classList.remove('sec-anim');}});
   const secActiva=document.getElementById('sec-'+id);
   if(!secActiva){console.error('Sección no encontrada:',id);return;}
   secActiva.style.display='block';
@@ -3385,7 +3358,7 @@ function showSection(id,el){
   secActiva.classList.add('sec-anim');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
-  const info={agenda:['Agenda','Turnos programados y videoconsultas'],reuniones:['Reuniones','Videollamadas de empresa y negocios'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Presupuestos','Cotizaciones para empresas clientes'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral'],seguimientos:['Seguimientos','Pacientes crónicos y casos camino a junta médica']};
+  const info={agenda:['Agenda','Turnos programados y videoconsultas'],reuniones:['Reuniones','Videollamadas de empresa y negocios'],medicos:['Médicos','Gestión del equipo médico'],perfil:['Mi perfil','Configuración de cuenta'],empresas:['Empresas','Portal de acceso para empresas clientes'],presupuestos:['Servicios','Catálogo de prestaciones'],importar:['Importar planilla','Cargá casos o trabajadores desde Excel'],ausentismo:['Ausentismo','Casos de control de ausentismo laboral'],seguimientos:['Seguimientos','Pacientes crónicos y casos camino a junta médica']};
   document.getElementById('page-title').textContent=info[id][0];
   document.getElementById('page-sub').textContent=info[id][1];
   if(id==='reuniones')cargarReuniones();
@@ -3394,7 +3367,8 @@ function showSection(id,el){
   if(id==='empresas'){cargarEmpresas();cargarPacientesEmpresaSelectOptions();}
   if(id==='ausentismo'){cargarCasosAusentismo();cargarEmpresasSelectAusentismo();}
   if(id==='seguimientos') mostrarListaSeguimientos();
-  if(id==='presupuestos'){cargarPresupuestos();cargarServiciosCatalogo();cargarEmpresasSelectPresupuesto();if(!document.getElementById('pr-items').children.length)agregarItemPresupuesto();}
+  if(id==='presupuestos')cargarServiciosCatalogo();
+  if(id==='importar'&&window.medgrupImportar)window.medgrupImportar.abrir();
   window.scrollTo({top:0,behavior:'smooth'});
   if(esMobile()){
     const sb = document.querySelector('.sidebar');
@@ -8921,5 +8895,6 @@ chequearTokenReset();
 <script src="/llamada.js"></script>
 <script src="/ausentismo-flow.js"></script>
 <script src="/chat-medico.js"></script>
+<script src="/importar.js"></script>
 </body>
 </html>
