@@ -2508,7 +2508,10 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
 // no arranca de cero — sigue la conversación guardada en window._iaConversacion (dictado
 // original + informe ya generado) y le suma el pedido de ajuste, así la IA corrige sobre lo
 // que ya escribió en vez de redactar todo de nuevo a ciegas.
+let revisionEditorInforme = 0;
+
 async function generarInformeIA(mensajeCorreccion){
+  const revision = revisionEditorInforme;
   const esCorreccion = !!mensajeCorreccion;
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
   const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
@@ -2635,6 +2638,10 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     let resto = '';
     while(true){
       const { done, value } = await lector.read();
+      if(revision !== revisionEditorInforme){
+        await lector.cancel();
+        return;
+      }
       if(done) break;
       resto += decoder.decode(value, { stream: true });
       const lineas = resto.split('\n');
@@ -2784,6 +2791,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
 
   }catch(err){
+    if(revision !== revisionEditorInforme) return;
     const msg = (err.name === 'AbortError')
       ? 'La generación tardó demasiado y se cortó. Tus notas siguen guardadas: volvé a intentar.'
       : 'Error: ' + err.message;
@@ -4586,12 +4594,9 @@ async function unirseTurno(id){
     document.getElementById('link-invitado-nombre').value='';
     document.getElementById('links-box').style.display='block';
   }
-  consultaActual=t;
+  prepararNotasTurno(t);
   clearInterval(timerInterval);startTimer();
   cargarCasoDeLlamada(id);
-  // El cuadro de dictado no debería seguir colapsado de una consulta anterior.
-  mostrarPaso1('notas');
-  window._iaCorreccionesHistorial = [];
   const nAdj = t.informesExtra || 0;
   document.getElementById('btn-adjuntos-llamada-txt').textContent = nAdj ? `Adjuntos (${nAdj})` : 'Adjuntos';
   addLog('blue','Médico se unió a la consulta',usuarioActual?.nombre+' · '+t.paciente);
@@ -4600,6 +4605,39 @@ async function unirseTurno(id){
 
 function registrarEventoTurno(turnoId,tipo,participante){
   fetch('/api/turnos/'+turnoId+'/eventos',{method:'POST',headers:apiHeaders(),body:JSON.stringify({tipo,participante})}).catch(()=>{});
+}
+
+function cambiarContextoInforme(conservarInformeEnVivo = false){
+  revisionEditorInforme++;
+  cerrarVistaPreviaInforme();
+  vpDestinoActual = null;
+  document.getElementById('vp-informe-texto').value = '';
+  window._iaSnapshotAnterior = null;
+  for(const id of ['btn-deshacer-ia', 'btn-deshacer-ia-dict']){
+    document.getElementById(id).style.display = 'none';
+  }
+  if(!conservarInformeEnVivo){
+    window._informeIAEnVivo = null;
+    window._informeIA = null;
+    window._iaConversacion = null;
+    window._iaCorreccionesHistorial = [];
+    document.querySelectorAll('[id^="ia-campo-"]').forEach(el => { el.value = ''; });
+  }
+}
+
+function prepararNotasTurno(turno){
+  cambiarContextoInforme();
+  turnoDictamenActual = null;
+  consultaActual = turno;
+  const panel = document.getElementById('notas-panel');
+  panel.querySelectorAll('textarea, input').forEach(el => { el.value = ''; });
+  document.getElementById('notas-reposo').value = '0';
+  document.getElementById('notas-preview-wrap').style.display = 'none';
+  document.getElementById('notas-preview-hint').style.display = 'none';
+  mostrarAlertaDiagnostico('notas-alerta-diag', '');
+  mostrarPaso1('notas');
+  renderChatCorreccion('notas');
+  cargarNotaBorrador();
 }
 
 function notaKey(){
@@ -4613,7 +4651,6 @@ function toggleNotasPanel(){
   if(visible){
     panel.style.display='none';
   }else{
-    cargarNotaBorrador();
     panel.style.display='flex';
   }
   document.getElementById('btn-notas-ninja')?.setAttribute('aria-pressed', String(!visible));
@@ -4718,11 +4755,9 @@ async function iniciarTurno(id){
     document.getElementById('link-invitado-nombre').value='';
     document.getElementById('links-box').style.display='block';
   }
-  consultaActual=t;startTimer();
+  prepararNotasTurno(t);
+  startTimer();
   cargarCasoDeLlamada(id);
-  // El cuadro de dictado no debería seguir colapsado de una consulta anterior.
-  mostrarPaso1('notas');
-  window._iaCorreccionesHistorial = [];
   const nAdj = t.informesExtra || 0;
   document.getElementById('btn-adjuntos-llamada-txt').textContent = nAdj ? `Adjuntos (${nAdj})` : 'Adjuntos';
   addLog('blue','Consulta iniciada',t.paciente+' · '+t.hora);
@@ -4862,14 +4897,31 @@ async function finalizarConsulta(){
   document.getElementById('metrics-row').style.display='none';
   document.getElementById('turnos-card').style.display='none';
   addLog('blue','Consulta finalizada','Duración: '+dur);
-  await abrirDictamenParaTurno(consultaActual, dur);
+  await abrirDictamenParaTurno(consultaActual, dur, true);
   addLog('amber','Completá tu dictamen médico','');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-async function abrirDictamenParaTurno(t, dur){
+async function abrirDictamenParaTurno(t, dur, desdeLlamada = false){
+  if(!t) return;
+  const notasDelTurno = desdeLlamada && consultaActual?.id === t.id;
+  const informeEnVivo = notasDelTurno && window._iaConversacion?.turnoId === t.id
+    ? window._informeIAEnVivo : null;
+  const textoLibre = notasDelTurno ? document.getElementById('notas-libre').value : '';
+  cambiarContextoInforme(!!informeEnVivo);
+  const revision = revisionEditorInforme;
   turnoDictamenActual=t;
-  document.getElementById('form-dictamen').style.display='block';
+  dictamenActualId = null;
+  document.getElementById('form-dictamen').style.display='none';
+  document.getElementById('dictamenes-existentes').style.display='none';
+  document.getElementById('dict-texto-libre').value = '';
+  document.getElementById('dict-correccion-texto').value = '';
+  document.getElementById('informe-preview-text').value = '';
+  document.getElementById('informe-preview-wrap').style.display = 'none';
+  document.getElementById('firma-wrap').style.display = 'none';
+  limpiarFirma();
+  mostrarAlertaDiagnostico('dict-alerta-diag', '');
+  renderChatCorreccion('dict');
   document.getElementById('dict-paciente-input').value=t?.paciente||'';
   document.getElementById('dict-duracion').textContent=dur||t?.duracion||'—';
   document.getElementById('dict-empresa').textContent=(t?.empresa||'—') + (t?.diagnosticoPrevio ? ' · Dx previo: '+t.diagnosticoPrevio + (t.diasReposoPrevio>0?' ('+t.diasReposoPrevio+' días reposo)':'') + (t.medicoTratante?' — '+t.medicoTratante:'') : '');
@@ -4881,6 +4933,8 @@ async function abrirDictamenParaTurno(t, dur){
     dictamenes=data.dictamenes||[];
   }catch(e){}
 
+  if(revision !== revisionEditorInforme) return;
+  document.getElementById('form-dictamen').style.display='block';
   renderDictamenesExistentes(dictamenes);
 
   const propio=dictamenes.find(d=>d.medico===usuarioActual?.nombre);
@@ -4910,24 +4964,10 @@ async function abrirDictamenParaTurno(t, dur){
     dictamenActualId=null;
     mostrarPaso1('dict');
 
-    // Transferir el TEXTO LIBRE dictado durante la llamada al cuadro del dictamen.
-    // Funciona tanto si generó el informe con IA como si solo anotó y no generó nada:
-    // el doctor recupera todo lo que escribió y puede generar el informe ahora.
-    const textoLibreDict = document.getElementById('dict-texto-libre');
-    if(textoLibreDict && !textoLibreDict.value){
-      // Prioridad 1: lo que quedó en el panel de notas (si sigue en memoria)
-      const textoLibreNotas = document.getElementById('notas-libre');
-      if(textoLibreNotas && textoLibreNotas.value){
-        textoLibreDict.value = textoLibreNotas.value;
-      }
-      // Prioridad 2: el borrador guardado en localStorage
-      else if(borrador?.textoLibre){
-        textoLibreDict.value = borrador.textoLibre;
-      }
-    }
+    document.getElementById('dict-texto-libre').value = textoLibre || borrador?.textoLibre || '';
 
-    if(window._informeIAEnVivo){
-      const info = window._informeIAEnVivo;
+    if(informeEnVivo){
+      const info = informeEnVivo;
 
       const previewNotas = document.getElementById('notas-preview-text');
       const previewDict = document.getElementById('informe-preview-text');
@@ -5081,6 +5121,7 @@ function cargarDictamenEnFormulario(d){
 }
 
 function cerrarDictamen(){
+  cambiarContextoInforme();
   document.getElementById('form-dictamen').style.display='none';
   document.getElementById('dictamenes-existentes').style.display='none';
   document.getElementById('metrics-row').style.display='grid';
