@@ -152,7 +152,8 @@ input[type=file]{border-style:dashed;border-radius:10px;font-size:14px;padding:1
   h2{font-size:24px;margin-bottom:8px}
   #llamada:has(#video:not([hidden])){padding:0;background:#0d1520;border:0}
   #llamada:has(#video:not([hidden])) h2{display:none}
-  #llamada:has(#video:not([hidden])) #instruccion{color:#c8d3e0;font-size:13.5px;margin:0;padding:10px 16px}
+  #llamada:has(#video:not([hidden])) #instruccion,
+  #llamada:has(#video:not([hidden])) #firma-aviso{color:#c8d3e0;font-size:13.5px;margin:0;padding:10px 16px}
   #llamada:has(#video:not([hidden])) .botonera{padding:0 16px}
   #llamada:has(#video:not([hidden])) .botonera .btn{margin-bottom:10px;min-height:46px;background:transparent;color:#fff;border-color:#42536b}
   #video{height:min(64dvh,560px);margin-top:0;border:0;border-radius:0}
