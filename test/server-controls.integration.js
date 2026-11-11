@@ -71,9 +71,14 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     assert.doesNotMatch(report,/conc-box|Aptitud Laboral Total|Sin reposo indicado/);
     await db.query("UPDATE dictamenes SET turno_id='test' WHERE id=1");
     await db.query("INSERT INTO firmas_dictamen(dictamen_id,medico_nombre,firma_base64) VALUES(1,'Médica de prueba','firma-ficticia')");
-    response=await fetch(base+'/api/dictamenes/1',{method:'PATCH',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({conclusion:'Texto corregido'})});
+    response=await fetch(base+'/api/dictamenes/1',{method:'PATCH',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({conclusion:'Texto corregido',informe_editado:'INFORME\n\nEdición clínica <manual>.\n\nFirma y sello del profesional actuante'})});
     assert.equal(response.status,200);assert.equal((await response.json()).requiere_firma,true);
     const amended=(await db.query('SELECT * FROM dictamenes WHERE id=1')).rows[0];assert.equal(amended.conclusion,'Texto corregido');assert.equal(amended.firma_doctor,null);assert.equal(amended.pdf_firmado,null);
+    assert.match(amended.informe_editado,/Edición clínica <manual>/);
+    await db.exec("ALTER TABLE casos_ausentismo ADD COLUMN tipo_control TEXT; ALTER TABLE ingresos_ubicacion ADD COLUMN distancia_metros INT DEFAULT 20;");
+    response=await get('/api/dictamenes/1/pdf',staff);assert.equal(response.status,200);
+    const pdfEditado=await response.text();assert.match(pdfEditado,/Edición clínica &lt;manual&gt;/);
+    assert.doesNotMatch(pdfEditado,/Texto corregido/);
     const revision=(await db.query('SELECT * FROM dictamen_revisiones')).rows[0];assert.equal(revision.contenido.conclusion,'Original');assert.equal(revision.contenido.pdf_firmado,'pdf-ficticio');assert.equal(revision.firmas.length,1);
     await db.query("UPDATE dictamenes SET firma_doctor='firma-previa',pdf_firmado='pdf-previo' WHERE id=1");
     await db.query("INSERT INTO firmas_dictamen(dictamen_id,medico_nombre,firma_base64) VALUES(1,'Médica de prueba','firma-previa')");

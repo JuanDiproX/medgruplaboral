@@ -477,6 +477,7 @@ async function initDB() {
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS diagnostico_cie VARCHAR(200)`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS firma_doctor TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_completo TEXT`,
+      `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS informe_editado TEXT`,
       `ALTER TABLE IF EXISTS dictamenes ADD COLUMN IF NOT EXISTS pdf_firmado TEXT`,
       `ALTER TABLE IF EXISTS seguimientos ADD COLUMN IF NOT EXISTS resumen_ia TEXT`,
       `ALTER TABLE IF EXISTS casos_ausentismo ADD COLUMN IF NOT EXISTS caso_anterior_id INTEGER REFERENCES casos_ausentismo(id) ON DELETE SET NULL`,
@@ -1104,7 +1105,8 @@ function hashDictamen(d){
     numero: d.numero, paciente: d.paciente, apellido_nombre: d.apellido_nombre,
     antecedentes: d.antecedentes, hallazgos: d.hallazgos, analisis: d.analisis,
     conclusion: d.conclusion, aptitud: d.aptitud, dias_reposo: d.dias_reposo,
-    diagnostico_cie: d.diagnostico_cie, indicaciones: d.indicaciones
+    diagnostico_cie: d.diagnostico_cie, indicaciones: d.indicaciones,
+    ...(d.informe_editado ? {informe_editado:d.informe_editado} : {})
   });
   return crypto.createHash('sha256').update(contenido).digest('hex');
 }
@@ -2146,10 +2148,16 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
 app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
   const db=await pool.connect();
   try {
-    const chk = await db.query('SELECT creado_en FROM dictamenes WHERE id=$1', [req.params.id]);
-    if (!chk.rows.length) return res.status(404).json({ error: 'No encontrado' });
-
+    const { informe_editado } = req.body;
+    if (informe_editado !== undefined && (typeof informe_editado !== 'string' || !informe_editado.trim())) {
+      return res.status(400).json({ error: 'El texto del informe no puede estar vacío' });
+    }
     await db.query('BEGIN');
+    const chk = await db.query('SELECT id FROM dictamenes WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!chk.rows.length) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'No encontrado' });
+    }
     await db.query(`INSERT INTO dictamen_revisiones (dictamen_id,contenido,firmas,editado_por)
       SELECT d.id,to_jsonb(d),COALESCE((SELECT jsonb_agg(to_jsonb(f)) FROM firmas_dictamen f WHERE f.dictamen_id=d.id),'[]'::jsonb),$2
       FROM dictamenes d WHERE d.id=$1`,[req.params.id,req.usuario.nombre]);
@@ -2219,6 +2227,9 @@ app.patch('/api/dictamenes/:id', authMiddleware, async (req, res) => {
          sin_semiologico === undefined ? null : !!sin_semiologico,
          sin_aptitud === undefined ? null : !!sin_aptitud,
          req.params.id]);
+    }
+    if (informe_editado !== undefined) {
+      await db.query('UPDATE dictamenes SET informe_editado=$1 WHERE id=$2', [informe_editado, req.params.id]);
     }
     await db.query('DELETE FROM firmas_dictamen WHERE dictamen_id=$1',[req.params.id]);
     await db.query('UPDATE dictamenes SET firma_doctor=NULL, pdf_firmado=NULL, pdf_firmado_nombre=NULL, pdf_firmado_fecha=NULL WHERE id=$1',[req.params.id]);
@@ -2490,6 +2501,9 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
     const analisis = d.analisis || '';
     const diagCIE = d.diagnostico_cie || '';
 
+    const textoEditado = d.informe_editado?.trim();
+    const bloqueTextoEditado = texto => `<p style="white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(texto)}</p>`;
+
     // ===== FORMATO AUDITORÍA (controles domiciliarios) =====
     if (casoControl) {
       // El control de ausentismo es sorpresa: la hora del turno es solo el casillero que
@@ -2515,7 +2529,8 @@ app.get('/api/dictamenes/:id/pdf', authMedgrupOEmpresa, async (req, res) => {
 
       // El cuerpo se arma con lo que dictó el médico. Lo que no dictó, no se imprime: el
       // informe sale corto antes que relleno.
-      const cuerpo = [d.metodologia, analisis, (d.hallazgos && !d.sin_semiologico) ? d.hallazgos : '', d.conclusion]
+      const cuerpoEditado = textoEditado?.split(/^INFORME\s*$/m).at(-1).replace(/\nFirma y sello del profesional actuante\s*$/i, '').trim();
+      const cuerpo = cuerpoEditado ? bloqueTextoEditado(cuerpoEditado) : [d.metodologia, analisis, (d.hallazgos && !d.sin_semiologico) ? d.hallazgos : '', d.conclusion]
         .filter(x => x && String(x).trim())
         .map(x => `<p style="white-space:pre-wrap;">${escapeHtml(x)}</p>`).join('');
 
@@ -2597,7 +2612,7 @@ ${casoControl?.excepcion_geo ? '' : bloqueUbicacion}
 <h2>Informe</h2>
 ${cuerpo || '<p style="color:#9a9790;font-style:italic;">Sin desarrollo cargado.</p>'}
 ${diagCIE?`<p><strong>Encuadre diagnóstico:</strong></p><p style="white-space:pre-wrap;">${escapeHtml(diagCIE)}</p>`:''}
-${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${escapeHtml(d.indicaciones)}</p>`:''}
+${!cuerpoEditado && d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indicaciones:</strong> ${escapeHtml(d.indicaciones)}</p>`:''}
 ${casoControl?.excepcion_geo ? '' : constanciaGeo}
 
 <div class="bloque-firmas">
@@ -2664,7 +2679,7 @@ li{margin-bottom:5px;}
   </div>
 </div>
 
-<div class="titulo-doc">
+${textoEditado ? bloqueTextoEditado(textoEditado) : `<div class="titulo-doc">
   <h1>Informe de Evaluación${turnoInfo?.tipo ? ' — ' + turnoInfo.tipo : ''}</h1>
   <div class="subtitulo">Medicina del Trabajo</div>
 </div>
@@ -2706,6 +2721,7 @@ ${d.indicaciones?`<p style="margin-top:10px;white-space:pre-wrap;"><strong>Indic
 
 <p style="margin-top:14px;font-style:italic;font-size:12px;">Es todo cuanto puedo afirmar en base al saber médico-legal y mi leal saber y entender.</p>
 
+`}
 <div class="firmas-row">
   ${firmasHtml}
 </div>

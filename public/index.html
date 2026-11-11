@@ -2671,16 +2671,9 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
         // exigir que el texto sea JSON perfecto.
         info = leerCamposInformeIA(rawText);
         if(!info){
-          // Se deja en consola completo para poder ver qué contestó realmente la IA cuando
-          // esto vuelva a pasar — el cartel de error solo alcanza para un fragmento.
-          console.error('Respuesta de la IA que no se pudo interpretar como informe:', rawText);
-          const fragmento = rawText.slice(0, 300) + (rawText.length > 300 ? '…' : '');
-          // Si ni siquiera parece JSON, lo más probable es que haya respondido con una pregunta
-          // en vez de corregir — el aviso al médico tiene que decirle qué hacer, no solo que falló.
-          const pistaCorreccion = (esCorreccion && !rawText.includes('{'))
-            ? ' Parece que te devolvió una pregunta en vez de corregir: probá un pedido más corto y puntual (ej. "cambiá la conclusión a...", "sacá tal certificado del cómputo") en vez de pegar el documento completo, y volvé a tocar Corregir.'
-            : '';
-          throw new Error('No se pudo leer la respuesta de la IA.' + pistaCorreccion + ' Lo que contestó: "' + fragmento + '"');
+          throw new Error(esCorreccion
+            ? 'No se aplicó el ajuste. Se conservó el informe y tu pedido. Podés reformular el pedido o editar el texto del informe directamente.'
+            : 'La IA no devolvió un informe utilizable. Tus notas siguen en el editor.');
         }
         console.warn('Informe rescatado con el lector tolerante (el JSON venía mal formado).');
       }
@@ -2789,6 +2782,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       btn.classList.remove('ia-ok');
     },3000);
     addLog('blue','Informe generado con IA','Revisá los campos antes de guardar');
+    return true;
 
   }catch(err){
     if(revision !== revisionEditorInforme) return;
@@ -2816,8 +2810,10 @@ async function corregirInformeIA(){
   if(!window._iaConversacion){ mostrarError('Generá el informe primero.'); return; }
   if(btnCorregir){ btnCorregir.disabled=true; btnCorregir.textContent='Ajustando…'; }
   try{
-    await generarInformeIA(pedido);
-    if(input) input.value='';
+    const revision = revisionEditorInforme;
+    const aplicado = await generarInformeIA(pedido);
+    if(aplicado && revision === revisionEditorInforme && input?.value?.trim() === pedido) input.value='';
+    return aplicado;
   } finally {
     if(btnCorregir){ btnCorregir.disabled=false; btnCorregir.textContent='Corregir'; }
   }
@@ -5103,7 +5099,8 @@ function cargarDictamenEnFormulario(d){
   const previewWrapExistente = document.getElementById('informe-preview-wrap');
   const previewTextExistente = document.getElementById('informe-preview-text');
   if(previewWrapExistente && previewTextExistente){
-    previewTextExistente.value = armarPreviewInforme(infoReconstruido, turnoDictamenActual);
+    previewTextExistente.value = d.informe_editado || armarPreviewInforme(infoReconstruido, turnoDictamenActual);
+    previewTextExistente.dataset.original = previewTextExistente.value;
     previewWrapExistente.style.display = 'block';
   }
   mostrarAlertaDiagnostico('dict-alerta-diag', '');
@@ -7516,10 +7513,13 @@ async function guardarDictamen(){
       // análisis, el CIE-10 y los datos personales se quedaban con el texto viejo y parecía
       // que el informe no se actualizaba.
       const campoIA = k => document.getElementById('ia-campo-'+k)?.value || undefined;
+      const preview = document.getElementById('informe-preview-text');
+      const informeEditado = preview.value.trim() && preview.value !== preview.dataset.original ? preview.value : undefined;
       res=await fetch('/api/dictamenes/'+dictamenActualId,{
         method:'PATCH',headers:apiHeaders(),
         body:JSON.stringify({
           sin_aptitud:true,dias_reposo:reposo,derivacion,indicaciones,
+          informe_editado: informeEditado,
           paciente_dni:dni,edad,obra_social:obraSocial,profesion,
           antecedentes,hallazgos,conclusion,
           apellido_nombre: campoIA('apellido_nombre') || pacienteNombre,
@@ -7537,6 +7537,7 @@ async function guardarDictamen(){
       });
       data=await res.json();
       if(!data.ok){mostrarError(data.error||'Error al actualizar');return;}
+      if(informeEditado !== undefined) preview.dataset.original = informeEditado;
       addLog('blue','Dictamen actualizado','Cambios guardados');
       if(turnoDictamenActual){
         const resD=await fetch('/api/dictamenes/turno/'+turnoDictamenActual.id,{headers:apiHeaders()});
