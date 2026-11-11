@@ -2510,7 +2510,7 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
 // que ya escribió en vez de redactar todo de nuevo a ciegas.
 const REGLAS_AJUSTE_INFORME = `Para revisar un borrador, aplicá los cambios de redacción que estén respaldados por el texto y preservá los datos y las conclusiones clínicas documentadas.
 Si el pedido combina ajustes de redacción con conclusiones nuevas sin respaldo o pide redactar como un profesional distinto del autor, aplicá solo lo que se pueda: tono pericial general, claridad y distinción entre lo referido por la persona, lo observado y lo documentado. Conservá la autoría. No califiques los dichos como falsos, magnificados o inverosímiles sin un hallazgo documentado.
-Devolvé siempre el JSON completo del borrador revisado. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
+Tomá el texto vigente adjunto como fuente principal, incluidas las ediciones manuales. Conservá sus secciones y todo lo que el pedido no cambia. Devolvé el JSON completo e incluí texto_revisado con el texto íntegro final listo para leer, sin cercos Markdown ni explicación editorial. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
 
 const PEDIDO_SOLO_TONO_PERICIAL = 'Reescribí el borrador vigente en tono pericial claro. Separá lo referido de lo documentado. Conservá todos los hechos, la autoría y las conclusiones clínicas. Aplicá estos cambios de redacción y devolvé el JSON del informe.';
 
@@ -2679,10 +2679,16 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       }
     }
 
-    if(esCorreccion && info?.ajuste_aplicado === false){
+    const textoRevisado = esCorreccion && typeof info?.texto_revisado === 'string' ? info.texto_revisado.trim() : '';
+    if(esCorreccion && document.getElementById(desdeNotas ? 'notas-preview-text' : 'informe-preview-text')?.value !== snapshotParaDeshacer.previewText){
+      mostrarToast('El borrador cambió mientras se procesaba el ajuste. Se conservó el texto que estás editando.', '#2c5d92');
+      if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+      return false;
+    }
+    if(esCorreccion && (info?.ajuste_aplicado === false || !textoRevisado || textoRevisado === snapshotParaDeshacer.previewText.trim())){
       if(permiteReintentoDeTono) return await generarInformeIA(PEDIDO_SOLO_TONO_PERICIAL, true);
       const motivo = typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim();
-      mostrarToast(motivo ? motivo.slice(0, 240) : 'El borrador y el pedido se conservaron.', '#2c5d92');
+      mostrarToast(motivo ? motivo.slice(0, 240) : 'No llegó un texto nuevo. El borrador y el pedido se conservaron.', '#2c5d92');
       if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
       return false;
     }
@@ -2715,7 +2721,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       const previewText = document.getElementById('notas-preview-text');
       const previewHint = document.getElementById('notas-preview-hint');
       if(previewWrap && previewText){
-        previewText.value = armarPreviewInforme(info, consultaActual);
+        previewText.value = esCorreccion ? textoRevisado : armarPreviewInforme(info, consultaActual);
         previewWrap.style.display = 'block';
         if(previewHint) previewHint.style.display = 'block';
       }
@@ -2739,7 +2745,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       const previewText = document.getElementById('informe-preview-text');
       const firmaWrap = document.getElementById('firma-wrap');
       if(previewWrap && previewText){
-        previewText.value = armarPreviewInforme(info, turnoDictamenActual);
+        previewText.value = esCorreccion ? textoRevisado : armarPreviewInforme(info, turnoDictamenActual);
         previewWrap.style.display = 'block';
       }
       mostrarAlertaDiagnostico('dict-alerta-diag', info.alerta_diagnostico_previo);
