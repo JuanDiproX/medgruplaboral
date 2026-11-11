@@ -2508,6 +2508,10 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
 // no arranca de cero — sigue la conversación guardada en window._iaConversacion (dictado
 // original + informe ya generado) y le suma el pedido de ajuste, así la IA corrige sobre lo
 // que ya escribió en vez de redactar todo de nuevo a ciegas.
+const REGLAS_AJUSTE_INFORME = `Para revisar un borrador, aplicá los cambios de redacción que estén respaldados por el texto y preservá los datos y las conclusiones clínicas documentadas.
+Si el pedido combina ajustes de redacción con conclusiones nuevas sin respaldo o pide redactar como un profesional distinto del autor, aplicá solo lo que se pueda: tono pericial general, claridad y distinción entre lo referido por la persona, lo observado y lo documentado. Conservá la autoría. No califiques los dichos como falsos, magnificados o inverosímiles sin un hallazgo documentado.
+Devolvé siempre el JSON completo del borrador revisado. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
+
 let revisionEditorInforme = 0;
 
 async function generarInformeIA(mensajeCorreccion){
@@ -2576,20 +2580,12 @@ async function generarInformeIA(mensajeCorreccion){
 
   const SYSTEM_PROMPT = esAuditoria ? PROMPT_AUDITORIA : PROMPT_PERICIAL;
 
-  // En corrección se sigue la conversación ya guardada (mismo system, mismos mensajes previos)
-  // en vez de armar el prompt inicial de nuevo: así la IA ve el informe que ya escribió.
-  const systemAEnviar = esCorreccion ? window._iaConversacion.system : SYSTEM_PROMPT;
-  // Ante un pedido de corrección largo o con mucho detalle (ej: un impugnatorio completo con
-  // discordancias y cómputos), la IA a veces respondía con una pregunta aclaratoria en vez de
-  // aplicar el cambio — texto que no es JSON y rompe el parseo. Este envoltorio insiste en que
-  // corrija directo y devuelva el JSON completo, nunca una pregunta.
+  const systemBase = esCorreccion ? window._iaConversacion.system : SYSTEM_PROMPT;
+  const systemAEnviar = esCorreccion ? systemBase + '\n\n' + REGLAS_AJUSTE_INFORME : systemBase;
   const mensajesAEnviar = esCorreccion
     ? [...window._iaConversacion.messages, {role:'user', content:
-        'Aplicá vos mismo este ajuste sobre el informe que diste en tu respuesta anterior y ' +
-        'devolvé el JSON COMPLETO actualizado, con la misma forma y todas las claves de siempre ' +
-        '— no un resumen, no una pregunta, no texto conversacional. Si el pedido no aclara algo ' +
-        'puntual, usá tu mejor criterio dentro de las reglas que ya tenés; no pidas más ' +
-        'información. Respondé ÚNICAMENTE con el JSON.\n\nAJUSTE PEDIDO POR EL MÉDICO:\n' + mensajeCorreccion
+        'Texto vigente del borrador para revisar:\n' + snapshotParaDeshacer.previewText +
+        '\n\nPedido de ajuste del médico:\n' + mensajeCorreccion
       }]
     : [{role:'user',content:`DATOS DE${esAuditoria?'L CONTROL':' LA CONSULTA'}:
 - Empresa: ${empresa}
@@ -2679,6 +2675,13 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       }
     }
 
+    if(esCorreccion && info?.ajuste_aplicado === false){
+      const motivo = typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim();
+      mostrarToast(motivo ? motivo.slice(0, 240) : 'El borrador y el pedido se conservaron.', '#2c5d92');
+      if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
+      return false;
+    }
+
     // Pese a la instrucción de no usar markdown, a veces desliza un **texto** o __texto__ de
     // énfasis — como acá no hay intérprete de markdown, quedaban los asteriscos sueltos (o una
     // sola letra "marcada") en el preview y en el informe final. Se limpia antes de usarlo.
@@ -2689,7 +2692,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     window._informeIA = info;
     // Se guarda recién acá, con la respuesta ya confirmada válida: si se guardara antes y la
     // IA devolviera algo ilegible, la próxima corrección arrancaría de un turno roto.
-    window._iaConversacion = { system: systemAEnviar, messages: [...mensajesAEnviar, {role:'assistant', content: rawText}], turnoId: turnoCorrienteId };
+    window._iaConversacion = { system: systemBase, messages: [...mensajesAEnviar, {role:'assistant', content: rawText}], turnoId: turnoCorrienteId };
     const destino = desdeNotas ? 'notas' : 'dict';
     const set = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined && val !== null) el.value = val; };
 
@@ -2771,7 +2774,12 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     renderChatCorreccion(destino);
     // Después de corregir, mostrar de una cómo queda en vez de dejar que el médico tenga que
     // ir a buscar el textarea y leerlo como texto plano.
-    if(esCorreccion) abrirVistaPreviaInforme(destino);
+    if(esCorreccion){
+      abrirVistaPreviaInforme(destino);
+      if(typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim()) {
+        mostrarToast(info.aviso_ajuste.trim().slice(0, 240), '#2c5d92');
+      }
+    }
 
     if(btnText) btnText.textContent='✓ Informe generado';
     // Clase y no style.background: el navegador reescribe ese estilo con espacios y rgb(), y
