@@ -20,25 +20,31 @@ test('médica invitada: llamada, identidad y firma de acta/informe sin sesión d
    return r.respond({contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html',body:fs.readFileSync(path.join('public',file))});
   });
   await page.goto(origin+'/atencion.html#medico='+token,{waitUntil:'load'});
-  await page.waitForFunction(()=>!document.querySelector('.firma-consulta').hidden);
+  await page.waitForFunction(()=>document.querySelector('.firma-modal').open);
   assert.equal(await page.evaluate(()=>localStorage.getItem('medgrup_token')),null);
   assert.match(await page.$eval('#paciente',e=>e.textContent),/Doctora de demostración/);
   assert.equal(await page.$eval('#video',e=>e.hidden),false);
-  assert.match(await page.$eval('#firma-aviso',e=>e.textContent),/revisar y aprobar el informe/);
-  await page.$$eval('#firma-documentos button',buttons=>buttons.find(b=>b.textContent==='Leer y firmar el acta').click());
+  assert.match(await page.$eval('#firma-explicacion',e=>e.textContent),/si aprobás el informe/);
+  assert.equal(await page.$eval('#firma-guardar',e=>e.textContent),'Firmar acta y guardar');
+  fs.mkdirSync('output/participante',{recursive:true});
+  await page.screenshot({path:'output/participante/acta-modal-movil.png'});
+  await page.setViewport({width:1440,height:900});
+  await page.screenshot({path:'output/participante/acta-modal-escritorio.png'});
+  await page.setViewport({width:390,height:900});
   await page.click('#firma-guardar');assert.match(await page.$eval('#firma-estado',e=>e.textContent),/Dibujá/);
   async function draw(){
    await page.$eval('#firma-lienzo',e=>e.scrollIntoView({block:'center'}));const box=await page.$eval('#firma-lienzo',e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y};});
-   await page.mouse.move(box.x+25,box.y+50);await page.mouse.down();await page.mouse.move(box.x+80,box.y+95,{steps:8});await page.mouse.move(box.x+160,box.y+40,{steps:8});await page.mouse.up();await page.click('#firma-aceptar');
+   await page.mouse.move(box.x+25,box.y+50);await page.mouse.down();await page.mouse.move(box.x+80,box.y+95,{steps:8});await page.mouse.move(box.x+160,box.y+40,{steps:8});await page.mouse.up();
   }
-  await draw();await page.click('#firma-recordar-check');await page.click('#firma-guardar');await page.waitForFunction(()=>document.getElementById('firma-estado').textContent.includes('quedó registrada'));
+  await draw();await page.click('#firma-guardar');await page.waitForFunction(()=>document.getElementById('firma-aviso').textContent.includes('Acta firmada'));
   assert.equal(signed.length,1);assert.equal(signed[0].body.consentimiento,true);assert.equal(signed[0].body.guardar_para_informe,true);assert.equal(signed[0].body.nombre,undefined);
-  reports=true;await page.reload({waitUntil:'load'});await page.waitForFunction(()=>document.getElementById('firma-documentos').textContent.includes('DEMO-1'));
-  await page.$$eval('#firma-documentos button',buttons=>buttons.find(b=>b.textContent.includes('DEMO-1')).click());
+  reports=true;await page.reload({waitUntil:'load'});await page.waitForFunction(()=>Array.from(document.querySelectorAll('#llamada button')).some(b=>b.textContent==='Revisar informe'));
+  await page.$$eval('#llamada button',buttons=>buttons.find(b=>b.textContent==='Revisar informe').click());
+  await page.waitForFunction(()=>document.querySelector('.firma-modal').open);
   assert.match(await page.$eval('#firma-preview',e=>e.textContent),/Texto del informe/);
   fs.mkdirSync('output/participante',{recursive:true});await page.screenshot({path:'output/participante/firma-celular.png',fullPage:true});
   assert.equal(await page.$eval('#firma-dibujo',e=>e.hidden),true);
-  await page.click('#firma-aceptar');await page.click('#firma-guardar');await page.waitForFunction(()=>document.getElementById('firma-estado').textContent.includes('quedó registrada'));
+  await page.click('#firma-guardar');await page.waitForFunction(()=>document.getElementById('firma-aviso').textContent==='Informe firmado.');
   assert.equal(signed[1].url,'/api/acceso-medico/informes/1/firma');assert.equal(signed[1].body.revision,'revision-prueba');assert.equal(signed[1].body.usar_firma_guardada,true);assert.equal(signed[1].body.firma_base64,undefined);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  }finally{await browser.close();}

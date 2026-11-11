@@ -169,15 +169,44 @@ input[type=file]{border-style:dashed;border-radius:10px;font-size:14px;padding:1
 /* Tiene que ir al final: varios elementos se muestran y ocultan con el atributo hidden, y sin
    esto los display:flex/grid de arriba lo pisarían. */
 [hidden]{display:none!important}
-.firma-consulta{grid-column:1/-1;}
-.firma-consulta h3{font-size:16px;margin:22px 0 8px;}
-#firma-documentos{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
-#firma-documentos p{flex-basis:100%;font-size:13px;color:var(--text2);}
-#firma-estado{color:var(--azul-dark);font-size:14px;margin:16px 0;}
-#firma-preview{max-height:360px;overflow:auto;white-space:pre-wrap;padding:16px;border:1px solid var(--border);margin:12px 0 20px;line-height:1.65;}
-#firma-lienzo{display:block;width:100%;max-width:640px;height:180px;margin:10px 0;border:1px solid var(--border2);border-radius:5px;background:#fff;touch-action:none;}
-.firma-consentimiento{display:flex;gap:12px;align-items:flex-start;margin:20px 0;max-width:70ch;font-size:14px;}
-.firma-consentimiento input{width:20px;height:20px;flex-shrink:0;}
+
+.firma-modal{
+  width:min(480px,calc(100% - 28px));max-height:calc(100dvh - 32px);
+  border:0;border-radius:16px;padding:0;background:var(--bg);color:var(--text);
+  box-shadow:0 18px 60px #0b1b3566;
+}
+.firma-modal::backdrop{background:#0c1727a8}
+.firma-cabecera{position:relative;background:var(--azul-dark);color:#eef4fa;padding:20px 88px 17px 24px}
+.firma-cabecera h2{color:#fff;margin:0 0 4px;font-size:30px;line-height:1.1}
+.firma-cabecera p{color:#d5e4f2;margin:0;font-size:14px}
+#firma-cerrar{position:absolute;right:14px;top:14px;min-height:44px;padding:0 10px;
+  border:1px solid #7591af;border-radius:7px;background:transparent;color:#fff;font:inherit;cursor:pointer}
+.firma-cuerpo{padding:18px 24px 22px}
+#firma-explicacion{color:var(--text2);margin:0 0 10px}
+#firma-acta-detalle{color:var(--text2);font-size:13px;margin-bottom:10px}
+#firma-acta-detalle summary{width:fit-content;padding:5px 0;color:var(--azul-dark);font-weight:600;cursor:pointer}
+#firma-acta-contenido{padding-top:6px}
+#firma-acta-contenido p{margin-bottom:5px}
+.firma-lienzo-etiqueta{display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.firma-secundaria{background:none;border:0;color:var(--azul-dark);text-decoration:underline;
+  text-underline-offset:3px;min-height:44px;padding:0 4px;font:inherit;font-size:13px;cursor:pointer}
+.firma-secundaria:disabled{opacity:.55;cursor:default}
+#firma-lienzo{display:block;width:100%;height:clamp(110px,23dvh,148px);border:1px solid var(--azul-mid);
+  border-radius:10px;background:linear-gradient(to bottom,transparent 72%,var(--azul-mid) 72%,var(--azul-mid) calc(72% + 1px),transparent calc(72% + 1px)),#f1f6fa;touch-action:none}
+#firma-preview{max-height:min(38dvh,320px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;
+  padding:12px 14px;margin:12px 0;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+#firma-preview p:last-child{margin-bottom:0}
+#firma-estado{margin:10px 0 0;color:var(--rosa-dark);font-size:14px}
+#firma-guardar{width:100%;justify-content:center;min-height:48px;margin-top:14px}
+#firma-documentos{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.firma-modal :focus-visible{outline:2px solid var(--azul);outline-offset:3px}
+.firma-cabecera button:focus-visible{outline-color:#fff}
+#firma-titulo:focus{outline:none}
+@media(max-width:480px){
+  .firma-cabecera{padding-left:18px}
+  .firma-cabecera h2{font-size:27px}
+  .firma-cuerpo{padding:16px 18px 18px}
+}
 
 /* ---------- Celular ---------- */
 @media(max-width:860px){

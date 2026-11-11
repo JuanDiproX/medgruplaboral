@@ -1,83 +1,300 @@
 (() => {
- const context=window.medgrupParticipant;if(!context||context.staff)return;
- const {base,headers,doctor}=context;
- const section=document.createElement('section');section.className='tarjeta firma-consulta';section.hidden=true;
- section.innerHTML='<h2>Tu firma en esta consulta</h2><p class="hint">El enlace es personal. La firma se registra con tu nombre y la fecha de confirmación.</p><button id="firma-actualizar" class="btn btn-borde" type="button">Actualizar documentos</button><p id="firma-estado" role="status" aria-live="polite"></p><div id="firma-documentos"></div><div id="firma-editor" hidden><h3 id="firma-titulo"></h3><p>Leé el documento antes de confirmar.</p><div id="firma-preview" tabindex="0" aria-label="Contenido del documento"></div><div id="firma-dibujo"><label for="firma-lienzo">Dibujá tu firma con el dedo o el mouse</label><canvas id="firma-lienzo" width="640" height="220" aria-label="Área para dibujar tu firma"></canvas><button id="firma-limpiar" class="btn btn-borde" type="button">Limpiar firma</button></div><p id="firma-reutilizar" class="hint" hidden>Se usará la firma que guardaste al firmar el acta de esta consulta. <button id="firma-otra" class="btn btn-borde" type="button">Dibujar otra firma</button></p><label id="firma-recordar" class="firma-consentimiento" hidden><input id="firma-recordar-check" type="checkbox"> Guardar mi firma para usarla cuando revise y apruebe el informe de esta consulta.</label><label class="firma-consentimiento"><input id="firma-aceptar" type="checkbox"> Confirmo que leí este documento y autorizo registrar mi firma en él.</label><button id="firma-guardar" class="btn btn-azul" type="button">Confirmar firma</button></div>';
- document.querySelector('main').append(section);
- const shortcut=document.createElement('button');shortcut.type='button';shortcut.className='btn btn-borde';shortcut.textContent='Mi firma y documentos';shortcut.hidden=true;
- shortcut.onclick=()=>section.scrollIntoView({block:'start'});
- const botonera=document.querySelector('#llamada .botonera');
- botonera.append(shortcut);
- const aviso=document.createElement('p');
- aviso.id='firma-aviso';
- aviso.className='hint';
- aviso.hidden=true;
- botonera.after(aviso);
- const $=id=>section.querySelector('#'+id);let target=null,busy=false,drawn=false,drawing=false,usarGuardada=false;
- const canvas=$('firma-lienzo'),ctx=canvas.getContext('2d');ctx.lineWidth=2.5;ctx.lineCap='round';ctx.strokeStyle='#13233a';
- function reset(){ctx.clearRect(0,0,canvas.width,canvas.height);drawn=false;$('firma-aceptar').checked=false;}
- function point(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)*canvas.width/r.width,(e.clientY-r.top)*canvas.height/r.height];}
- canvas.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;canvas.setPointerCapture(e.pointerId);ctx.beginPath();ctx.moveTo(...point(e));});
- canvas.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();ctx.lineTo(...point(e));ctx.stroke();drawn=true;});
- ['pointerup','pointercancel','lostpointercapture'].forEach(name=>canvas.addEventListener(name,()=>drawing=false));
- $('firma-limpiar').onclick=reset;
- async function api(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers(),...(options.headers||{})},cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'No se pudo completar la operación.');return d;}
- function paragraph(parent,text){const p=document.createElement('p');p.textContent=text;parent.append(p);}
- function modoFirma(usar){
-  usarGuardada=usar;
-  $('firma-dibujo').hidden=usar;
-  $('firma-reutilizar').hidden=!usar;
-  $('firma-guardar').textContent=usar?'Firmar con mi firma guardada':'Confirmar firma';
-  reset();
- }
- $('firma-otra').onclick=()=>modoFirma(false);
- function editor(doc){
-  if(busy)return;target=doc;modoFirma(!!doc.id&&doc.firma_guardada===true);
-  $('firma-recordar').hidden=!doctor||!!doc.id;
-  $('firma-recordar-check').checked=false;$('firma-preview').replaceChildren();$('firma-editor').hidden=false;
-  $('firma-titulo').textContent=doc.id?'Informe '+doc.numero:'Acta de participación';
-  if(doc.id){
-   const labels={numero:'Número',paciente:'Paciente',apellido_nombre:'Nombre',fecha_consulta:'Fecha de consulta',antecedentes:'Antecedentes',hallazgos:'Hallazgos',analisis:'Análisis',conclusion:'Conclusión',aptitud:'Aptitud',dias_reposo:'Días de reposo',diagnostico:'Diagnóstico',diagnostico_desc:'Descripción del diagnóstico',diagnostico_cie:'Código diagnóstico',indicaciones:'Indicaciones',informe_completo:'Informe'};
-   for(const [key,value] of Object.entries(doc.contenido)){if(!['aptitud','dias_reposo'].includes(key)&&value!==null&&value!=='')paragraph($('firma-preview'),`${labels[key]||key.replaceAll('_',' ')}: ${value}`);}
+  const context = window.medgrupParticipant;
+  if (!context || context.staff) return;
+  const {base, headers, doctor} = context;
+  const actions = document.querySelector('#llamada .botonera');
+  const shortcut = document.createElement('button');
+  shortcut.type = 'button';
+  shortcut.className = 'btn btn-borde';
+  shortcut.textContent = 'Firmas';
+  shortcut.hidden = true;
+  actions.append(shortcut);
+
+  const notice = document.createElement('p');
+  notice.id = 'firma-aviso';
+  notice.className = 'hint';
+  notice.setAttribute('role', 'status');
+  notice.hidden = true;
+  actions.after(notice);
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'firma-modal';
+  dialog.setAttribute('aria-labelledby', 'firma-titulo');
+  dialog.innerHTML = `
+    <div class="firma-cabecera">
+      <h2 id="firma-titulo" tabindex="-1"></h2>
+      <p id="firma-persona"></p>
+      <button id="firma-cerrar" type="button" aria-label="Cerrar">Cerrar</button>
+    </div>
+    <div class="firma-cuerpo">
+      <div id="firma-documentos" hidden></div>
+      <p id="firma-explicacion"></p>
+      <details id="firma-acta-detalle" hidden>
+        <summary>Ver datos del acta</summary>
+        <div id="firma-acta-contenido"></div>
+      </details>
+      <div id="firma-preview" tabindex="0" aria-label="Contenido del informe" hidden></div>
+      <div id="firma-dibujo" hidden>
+        <div class="firma-lienzo-etiqueta">
+          <span id="firma-indicacion">Dibujá tu firma</span>
+          <button id="firma-limpiar" class="firma-secundaria" type="button" disabled>Borrar</button>
+        </div>
+        <canvas id="firma-lienzo" width="640" height="220" aria-labelledby="firma-indicacion"></canvas>
+      </div>
+      <button id="firma-otra" class="firma-secundaria" type="button" hidden>Dibujar otra firma</button>
+      <p id="firma-estado" role="status" aria-live="polite" hidden></p>
+      <button id="firma-guardar" class="btn btn-azul" type="button" hidden></button>
+    </div>`;
+  document.body.append(dialog);
+
+  const $ = id => dialog.querySelector('#' + id);
+  const canvas = $('firma-lienzo');
+  const pen = canvas.getContext('2d');
+  pen.lineWidth = 3;
+  pen.lineCap = 'round';
+  pen.strokeStyle = '#13233a';
+  let acta, informes = [], target, loading, saving = false;
+  let drawing = false, drawn = false, useSaved = false, offered = false;
+
+  function status(message = '') {
+    $('firma-estado').textContent = message;
+    $('firma-estado').hidden = !message;
   }
-  else{
-   paragraph($('firma-preview'),`Consulta: ${doc.tipo||'Consulta médica'}. Paciente: ${doc.paciente}. Firmante: ${doc.nombre}.`);
-   paragraph($('firma-preview'),`Fecha: ${String(doc.fecha||'').split('T')[0]} · Hora: ${doc.hora||'No registrada'} (Argentina).`);
-   for(const e of doc.eventos)paragraph($('firma-preview'),`${new Date(e.creado_en).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})} · ${{union_medico:'Ingreso del profesional',union_paciente:'Ingreso del paciente',fin_consulta:'Finalización de consulta',inicio_medico:'Inicio del control'}[e.tipo]||e.tipo} · ${e.participante||''}`);
-   paragraph($('firma-preview'),'Confirmo mi participación en esta consulta. El informe se revisa y se firma por separado cuando esté disponible.');
+
+  function clearSignature() {
+    pen.clearRect(0, 0, canvas.width, canvas.height);
+    drawing = drawn = false;
+    $('firma-limpiar').disabled = true;
   }
-  $('firma-editor').scrollIntoView({block:'start'});
- }
- function button(text,handler,disabled=false){const b=document.createElement('button');b.type='button';b.className='btn btn-borde';b.textContent=text;b.disabled=disabled;b.onclick=handler;$('firma-documentos').append(b);}
- async function load(){
-  if(busy)return;$('firma-actualizar').disabled=true;
-  try{
-   const acta=await api('/firma');section.hidden=false;shortcut.hidden=false;$('firma-documentos').replaceChildren();
-   if(doctor){
-    aviso.hidden=false;
-    aviso.textContent=acta.firmada
-      ? 'El acta está firmada. Cuando el informe esté disponible, podés volver a este enlace para revisarlo y firmarlo.'
-      : 'Después de ingresar a la videollamada, abrí Mi firma y documentos para firmar el acta. Podés guardar tu firma y usarla al revisar y aprobar el informe de esta consulta.';
-   }
-   paragraph($('firma-documentos'),`Firmante: ${acta.nombre}`);
-   button(acta.firmada?'Acta firmada':acta.puede_firmar?'Leer y firmar el acta':'Acta: esperando registro de participación',()=>editor(acta),acta.firmada||!acta.puede_firmar);
-   if(doctor){const d=await api('/informes');for(const doc of d.informes)button(doc.firmado?`Informe ${doc.contenido.numero}: firmado`:`Leer y firmar informe ${doc.contenido.numero}`,()=>editor({...doc,numero:doc.contenido.numero,firma_guardada:acta.firma_guardada}),doc.firmado);if(!d.informes.length)paragraph($('firma-documentos'),'El informe aparecerá aquí cuando el equipo médico lo genere. Podés volver a este enlace para revisarlo y firmarlo.');}
-   $('firma-estado').textContent='';
-  }catch(e){if(!section.hidden)$('firma-estado').textContent=e.message;}finally{$('firma-actualizar').disabled=false;}
- }
- $('firma-guardar').onclick=async()=>{
-  if(busy||!target)return;
-  if((!usarGuardada&&!drawn)||!$('firma-aceptar').checked){
-   $('firma-estado').textContent=usarGuardada?'Confirmá que leíste el documento.':'Dibujá tu firma y confirmá que leíste el documento.';
-   return;
+
+  function point(event) {
+    const r = canvas.getBoundingClientRect();
+    return [(event.clientX - r.left) * canvas.width / r.width, (event.clientY - r.top) * canvas.height / r.height];
   }
-  busy=true;$('firma-guardar').disabled=true;$('firma-limpiar').disabled=true;
-  try{
-   const firma=usarGuardada?{usar_firma_guardada:true}:{firma_base64:canvas.toDataURL('image/png')};
-   const guardar=doctor&&!target.id&&$('firma-recordar-check').checked;
-   await api(target.id?`/informes/${target.id}/firma`:'/firma',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...firma,consentimiento:true,...(target.id?{revision:target.revision}:{guardar_para_informe:guardar})})});
-   $('firma-editor').hidden=true;busy=false;await load();$('firma-estado').textContent=guardar?'Tu firma quedó registrada en el acta. Volvé a este enlace para revisar y firmar el informe cuando esté disponible.':'Tu firma quedó registrada en esta consulta.';
-  }catch(e){$('firma-estado').textContent=e.message;}finally{busy=false;$('firma-guardar').disabled=false;$('firma-limpiar').disabled=false;}
- };
- $('firma-actualizar').onclick=load;load();
+
+  canvas.addEventListener('pointerdown', event => {
+    if (saving) return;
+    event.preventDefault();
+    drawing = true;
+    canvas.setPointerCapture(event.pointerId);
+    pen.beginPath();
+    pen.moveTo(...point(event));
+  });
+  canvas.addEventListener('pointermove', event => {
+    if (!drawing || saving) return;
+    event.preventDefault();
+    pen.lineTo(...point(event));
+    pen.stroke();
+    drawn = true;
+    $('firma-limpiar').disabled = false;
+    status();
+  });
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    canvas.addEventListener(event, () => { drawing = false; });
+  }
+  $('firma-limpiar').onclick = clearSignature;
+
+  async function api(path, body) {
+    const response = await fetch(base + path, {
+      cache: 'no-store',
+      headers: {...headers(), ...(body ? {'Content-Type': 'application/json'} : {})},
+      ...(body ? {method: 'POST', body: JSON.stringify(body)} : {})
+    });
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error || 'No se pudo completar la operación.');
+    return data;
+  }
+
+  function paragraph(parent, text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    parent.append(p);
+  }
+
+  function show(title, explanation) {
+    $('firma-titulo').textContent = title;
+    $('firma-persona').textContent = acta?.nombre || '';
+    $('firma-explicacion').textContent = explanation;
+    if (!dialog.open) dialog.showModal();
+    $('firma-titulo').focus({preventScroll: true});
+    dialog.scrollTop = 0;
+  }
+
+  function resetDialog() {
+    target = null;
+    status();
+    clearSignature();
+    for (const id of ['firma-acta-detalle', 'firma-preview', 'firma-documentos', 'firma-dibujo', 'firma-otra', 'firma-guardar']) {
+      $(id).hidden = true;
+    }
+    $('firma-acta-detalle').open = false;
+  }
+
+  function setSignatureMode(saved) {
+    useSaved = saved;
+    clearSignature();
+    $('firma-dibujo').hidden = saved;
+    $('firma-otra').hidden = !saved;
+    $('firma-guardar').hidden = false;
+    $('firma-guardar').textContent = target.id
+      ? (saved ? 'Firmar informe con mi firma guardada' : 'Firmar informe')
+      : (doctor ? 'Firmar acta y guardar' : 'Firmar acta');
+  }
+  $('firma-otra').onclick = () => setSignatureMode(false);
+
+  function editDocument(doc) {
+    resetDialog();
+    target = doc;
+    setSignatureMode(!!doc.id && acta.firma_guardada === true);
+    if (doc.id) {
+      const preview = $('firma-preview');
+      preview.replaceChildren();
+      const labels = {paciente:'Paciente', apellido_nombre:'Nombre', fecha_consulta:'Fecha', antecedentes:'Antecedentes',
+        hallazgos:'Hallazgos', analisis:'Análisis', conclusion:'Conclusión', diagnostico:'Diagnóstico',
+        diagnostico_desc:'Descripción del diagnóstico', diagnostico_cie:'Código diagnóstico', indicaciones:'Indicaciones',
+        informe_completo:'Informe'};
+      for (const [key, label] of Object.entries(labels)) {
+        const value = doc.contenido[key];
+        if (value !== null && value !== undefined && value !== '') paragraph(preview, label + ': ' + value);
+      }
+      preview.hidden = false;
+      preview.scrollTop = 0;
+      show('Informe ' + doc.contenido.numero, 'Revisá el informe. Al firmarlo, confirmás que estás de acuerdo con su contenido.');
+      return;
+    }
+    offered = true;
+    const details = $('firma-acta-contenido');
+    details.replaceChildren();
+    const date = String(acta.fecha || '').split('T')[0].split('-').reverse().join('/');
+    paragraph(details, [acta.tipo, acta.paciente, date, acta.hora && acta.hora + ' h'].filter(Boolean).join(' · '));
+    const eventLabels = {union_medico:'Ingreso del profesional', union_paciente:'Ingreso del paciente',
+      fin_consulta:'Finalización de consulta', inicio_medico:'Inicio del control'};
+    for (const event of acta.eventos || []) {
+      const time = new Date(event.creado_en).toLocaleTimeString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'});
+      paragraph(details, [time, eventLabels[event.tipo] || event.tipo, event.participante].filter(Boolean).join(' · '));
+    }
+    $('firma-acta-detalle').hidden = false;
+    show('Firmá el acta de asistencia', doctor
+      ? 'Al confirmar, firmás el acta y guardás tu firma para esta consulta. Podrás usarla si aprobás el informe cuando esté listo.'
+      : 'Al confirmar, dejás constancia de tu participación en esta consulta.');
+  }
+
+  function openDocuments() {
+    if (!acta || saving) return;
+    const pending = informes.filter(doc => !doc.firmado);
+    if (!acta.firmada && acta.puede_firmar) {
+      editDocument(acta);
+    } else if (pending.length === 1 && acta.puede_firmar) {
+      editDocument(pending[0]);
+    } else {
+      resetDialog();
+      if (pending.length && acta.puede_firmar) {
+        const list = $('firma-documentos');
+        list.replaceChildren();
+        for (const doc of pending) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-borde';
+          button.textContent = 'Revisar informe ' + doc.contenido.numero;
+          button.onclick = () => editDocument(doc);
+          list.append(button);
+        }
+        list.hidden = false;
+        show('Informes para firmar', 'Elegí el informe que querés revisar.');
+      } else if (!acta.firmada) {
+        show('Firma de asistencia', 'Podés firmar cuando se registre tu ingreso a la videollamada.');
+      } else {
+        show('Acta firmada', doctor && !informes.length
+          ? 'Volvé a este enlace cuando el informe esté disponible para revisarlo y firmarlo.'
+          : 'Tus firmas quedaron registradas.');
+      }
+    }
+  }
+
+  function updateShortcut() {
+    const hasPending = informes.some(doc => !doc.firmado);
+    shortcut.hidden = false;
+    notice.hidden = false;
+    shortcut.textContent = !acta.firmada ? 'Firmar acta' : hasPending ? 'Revisar informe' : 'Ver firmas';
+    notice.textContent = !acta.firmada
+      ? (acta.puede_firmar ? 'El acta está lista para firmar.' : 'La firma se habilita después de ingresar a la videollamada.')
+      : (doctor && !informes.length ? 'Acta firmada. Volvé a este enlace para revisar el informe cuando esté listo.' : 'Acta firmada.');
+  }
+
+  function load() {
+    if (loading) return loading;
+    loading = (async () => {
+      acta = await api('/firma');
+      if (doctor) {
+        informes = (await api('/informes')).informes;
+      }
+      updateShortcut();
+      if (doctor && !offered && !acta.firmada && acta.puede_firmar && (!dialog.open || !target)) editDocument(acta);
+    })().finally(() => { loading = null; });
+    return loading;
+  }
+
+  function close() {
+    if (!saving) dialog.close();
+  }
+  $('firma-cerrar').onclick = close;
+  dialog.addEventListener('close', resetDialog);
+  dialog.addEventListener('cancel', event => {
+    if (saving) event.preventDefault();
+  });
+
+  shortcut.onclick = async () => {
+    try {
+      await load();
+      openDocuments();
+    } catch (error) {
+      notice.hidden = false;
+      notice.textContent = error.message;
+    }
+  };
+
+  $('firma-guardar').onclick = async () => {
+    if (!target || saving) return;
+    if (!useSaved && !drawn) {
+      status('Dibujá tu firma para continuar.');
+      return;
+    }
+    saving = true;
+    $('firma-guardar').disabled = true;
+    $('firma-cerrar').disabled = true;
+    $('firma-limpiar').disabled = true;
+    $('firma-otra').disabled = true;
+    const firma = useSaved ? {usar_firma_guardada: true} : {firma_base64: canvas.toDataURL('image/png')};
+    const isReport = !!target.id;
+    try {
+      await api(isReport ? '/informes/' + target.id + '/firma' : '/firma', {
+        ...firma, consentimiento:true,
+        ...(isReport ? {revision:target.revision} : {guardar_para_informe:doctor})
+      });
+    } catch (error) {
+      status(error.message);
+      return;
+    } finally {
+      saving = false;
+      $('firma-guardar').disabled = false;
+      $('firma-cerrar').disabled = false;
+      $('firma-limpiar').disabled = !drawn;
+      $('firma-otra').disabled = false;
+    }
+    close();
+    notice.hidden = false;
+    notice.textContent = isReport ? 'Informe firmado.' : 'Acta firmada.';
+    try { await load(); } catch {}
+    if (isReport) notice.textContent = 'Informe firmado.';
+  };
+
+  async function waitForAttendance() {
+    try { await load(); } catch {
+      shortcut.hidden = false;
+    }
+    if (doctor && (!acta || (!acta.firmada && !acta.puede_firmar))) {
+      setTimeout(waitForAttendance, 8000);
+    }
+  }
+  waitForAttendance();
 })();
