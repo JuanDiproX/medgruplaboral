@@ -2512,11 +2512,14 @@ const REGLAS_AJUSTE_INFORME = `Para revisar un borrador, aplicá los cambios de 
 Si el pedido combina ajustes de redacción con conclusiones nuevas sin respaldo o pide redactar como un profesional distinto del autor, aplicá solo lo que se pueda: tono pericial general, claridad y distinción entre lo referido por la persona, lo observado y lo documentado. Conservá la autoría. No califiques los dichos como falsos, magnificados o inverosímiles sin un hallazgo documentado.
 Devolvé siempre el JSON completo del borrador revisado. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
 
+const PEDIDO_SOLO_TONO_PERICIAL = 'Reescribí el borrador vigente en tono pericial claro. Separá lo referido de lo documentado. Conservá todos los hechos, la autoría y las conclusiones clínicas. Aplicá estos cambios de redacción y devolvé el JSON del informe.';
+
 let revisionEditorInforme = 0;
 
-async function generarInformeIA(mensajeCorreccion){
+async function generarInformeIA(mensajeCorreccion, soloTono = false){
   const revision = revisionEditorInforme;
   const esCorreccion = !!mensajeCorreccion;
+  const permiteReintentoDeTono = esCorreccion && !soloTono && /(?:tono|estilo)\s+pericial|como\s+lo\s+har[ií]a/i.test(mensajeCorreccion);
   const desdeNotas = document.getElementById('notas-panel').style.display === 'flex';
   const textoEl = desdeNotas ? document.getElementById('notas-libre') : document.getElementById('dict-texto-libre');
   const texto = textoEl?.value?.trim();
@@ -2667,6 +2670,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
         // exigir que el texto sea JSON perfecto.
         info = leerCamposInformeIA(rawText);
         if(!info){
+          if(permiteReintentoDeTono) return await generarInformeIA(PEDIDO_SOLO_TONO_PERICIAL, true);
           throw new Error(esCorreccion
             ? 'No se aplicó el ajuste. Se conservó el informe y tu pedido. Podés reformular el pedido o editar el texto del informe directamente.'
             : 'La IA no devolvió un informe utilizable. Tus notas siguen en el editor.');
@@ -2676,6 +2680,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     }
 
     if(esCorreccion && info?.ajuste_aplicado === false){
+      if(permiteReintentoDeTono) return await generarInformeIA(PEDIDO_SOLO_TONO_PERICIAL, true);
       const motivo = typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim();
       mostrarToast(motivo ? motivo.slice(0, 240) : 'El borrador y el pedido se conservaron.', '#2c5d92');
       if(btnText) btnText.textContent = desdeNotas ? 'Generar informe con IA' : 'Generar informe';
@@ -2776,7 +2781,9 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
     // ir a buscar el textarea y leerlo como texto plano.
     if(esCorreccion){
       abrirVistaPreviaInforme(destino);
-      if(typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim()) {
+      if(soloTono){
+        mostrarToast('Se ajustó la redacción en tono pericial. Revisá el borrador antes de guardarlo.', '#2c5d92');
+      } else if(typeof info.aviso_ajuste === 'string' && info.aviso_ajuste.trim()) {
         mostrarToast(info.aviso_ajuste.trim().slice(0, 240), '#2c5d92');
       }
     }
