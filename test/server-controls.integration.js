@@ -94,5 +94,10 @@ test('rutas reales: permisos, geo sin asistencia, acta e informe con tiempos coh
     response=await schedule(planned);assert.equal(response.status,200);const notified=await response.json();assert.equal(notified.correo_invitacion,'pendiente');assert.ok(notified.link_paciente.includes('token-ficticio-existente'));
     assert.equal((await db.query('SELECT sala FROM turnos WHERE id=$1',['test'])).rows[0].sala,'sala-ficticia');
     response=await schedule(planned);assert.equal(response.status,200);assert.equal((await db.query("SELECT COUNT(*)::int AS n FROM caso_correos WHERE tipo='visita'")).rows[0].n,1,'repetir programación no duplica invitaciones');
+    await db.exec('CREATE TABLE configuracion(clave TEXT PRIMARY KEY,valor TEXT,actualizado_en TIMESTAMPTZ DEFAULT NOW())');
+    const created=await fetch(base+'/api/dictamenes',{method:'POST',headers:{...staff,'Content-Type':'application/json'},body:JSON.stringify({turno_id:'test',paciente:'Persona ficticia',medico:'Médica de prueba',informe_editado:'Versión redactada para el informe nuevo'})});
+    assert.equal(created.status,200);
+    const {dictamen:nuevo}=await created.json();
+    assert.equal(nuevo.informe_editado,'Versión redactada para el informe nuevo');
   }finally{if(http)await new Promise(resolve=>http.close(resolve));await db.close();}
 });

@@ -1037,7 +1037,7 @@ td.no-label::before{display:none;}
                 <div class="np-ajustes-tit">Pedir un ajuste</div>
                 <div id="notas-chat-historial" class="np-historial"></div>
                 <div class="np-ajuste-fila">
-                  <input type="text" id="notas-correccion-texto" placeholder="Ej: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+                  <textarea rows="2" id="notas-correccion-texto" placeholder="Ej: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();corregirInformeIA();}"></textarea>
                   <button class="btn btn-ghost np-cuadrado" onclick="abrirVistaPreviaInforme('notas')" title="Ver cómo queda el informe" aria-label="Ver cómo queda el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
                   <button class="btn btn-primary" onclick="corregirInformeIA()" id="btn-corregir-ia">Corregir</button>
                   <button class="btn btn-ghost" onclick="deshacerCorreccionIA()" id="btn-deshacer-ia" style="display:none;" title="Volver al informe de antes de la última corrección">Deshacer</button>
@@ -1134,7 +1134,7 @@ td.no-label::before{display:none;}
                 </div>
                 <div style="padding:16px 18px;max-height:500px;overflow-y:auto;">
                   <div id="dict-alerta-diag" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fff9e6;border:1px solid #fbbf24;border-radius:8px;font-size:12px;color:#92400e;line-height:1.5;"></div>
-                  <textarea id="informe-preview-text" style="width:100%;min-height:380px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
+                  <textarea id="informe-preview-text" oninput="guardarBorradorDictamen()" style="width:100%;min-height:380px;font-size:12.5px;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;resize:vertical;outline:none;line-height:1.7;background:#fafbfc;color:var(--text);white-space:pre-wrap;box-sizing:border-box;"></textarea>
                 </div>
                 <div style="border-top:1px solid var(--border);background:var(--surface2);">
                   <div style="padding:12px 18px 4px;display:flex;align-items:center;gap:6px;">
@@ -1143,7 +1143,7 @@ td.no-label::before{display:none;}
                   </div>
                   <div id="dict-chat-historial" style="max-height:170px;overflow-y:auto;padding:4px 18px;"></div>
                   <div style="display:flex;gap:8px;padding:10px 18px 14px;">
-                    <input type="text" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;background:white;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirInformeIA();}"/>
+                    <textarea rows="2" id="dict-correccion-texto" placeholder="Pedile un ajuste: &quot;sacá los antecedentes&quot;, &quot;hacelo más corto&quot;..." style="flex:1;min-width:0;font-size:12.5px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;background:white;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();corregirInformeIA();}" oninput="guardarBorradorDictamen()"></textarea>
                     <button onclick="abrirVistaPreviaInforme('dict')" style="padding:10px 12px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;cursor:pointer;flex-shrink:0;" title="Ver así queda el informe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;pointer-events:none;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
                     <button onclick="corregirInformeIA()" id="btn-corregir-ia-dict" style="padding:10px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
                     <button onclick="deshacerCorreccionIA()" id="btn-deshacer-ia-dict" style="display:none;padding:10px 14px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Volver al informe de antes de la última corrección">Deshacer</button>
@@ -1972,7 +1972,7 @@ td.no-label::before{display:none;}
           O pedile otro ajuste a la IA sin salir de acá
         </div>
         <div style="display:flex;gap:6px;">
-          <input type="text" id="vp-correccion-texto" placeholder="Ej: sacá los antecedentes, hacelo más corto..." style="flex:1;min-width:0;font-size:12.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();corregirDesdeVistaPrevia();}"/>
+          <textarea rows="2" id="vp-correccion-texto" placeholder="Ej: sacá los antecedentes, hacelo más corto..." style="flex:1;min-width:0;font-size:12.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;font-family:'DM Sans',sans-serif;outline:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();corregirDesdeVistaPrevia();}" oninput="guardarPedidoVistaPrevia()"></textarea>
           <button onclick="corregirDesdeVistaPrevia()" id="btn-vp-corregir" style="padding:9px 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Corregir</button>
         </div>
       </div>
@@ -2510,7 +2510,7 @@ JSON a devolver (todas las claves presentes; las que no correspondan, con "" o 0
 // que ya escribió en vez de redactar todo de nuevo a ciegas.
 const REGLAS_AJUSTE_INFORME = `Para revisar un borrador, aplicá los cambios de redacción que estén respaldados por el texto y preservá los datos y las conclusiones clínicas documentadas.
 Si el pedido combina ajustes de redacción con conclusiones nuevas sin respaldo o pide redactar como un profesional distinto del autor, aplicá solo lo que se pueda: tono pericial general, claridad y distinción entre lo referido por la persona, lo observado y lo documentado. Conservá la autoría. No califiques los dichos como falsos, magnificados o inverosímiles sin un hallazgo documentado.
-Tomá el texto vigente adjunto como fuente principal, incluidas las ediciones manuales. Conservá sus secciones y todo lo que el pedido no cambia. Devolvé el JSON completo e incluí texto_revisado con el texto íntegro final listo para leer, sin cercos Markdown ni explicación editorial. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
+Tomá el texto vigente adjunto como fuente principal, incluidas las ediciones manuales. Conservá sus secciones y todo lo que el pedido no cambia. Para texto_revisado seguí los pedidos editoriales concretos, incluidos subtítulos y frases textuales que no alteren hechos clínicos, incluso si cambian la estructura sugerida para el borrador inicial. Revisá el pedido completo, incluidas sus últimas instrucciones, antes de responder. Devolvé el JSON completo e incluí texto_revisado con el texto íntegro final listo para leer, sin cercos Markdown ni explicación editorial. Agregá aviso_ajuste con una explicación breve de lo que quedó pendiente si el ajuste fue parcial. Indicá ajuste_aplicado: true si hiciste cambios. Si no hay cambios respaldados, devolvé el contenido original con ajuste_aplicado: false e indicá el motivo en aviso_ajuste. No pongas esa explicación en el cuerpo clínico.`;
 
 const PEDIDO_SOLO_TONO_PERICIAL = 'Reescribí el borrador vigente en tono pericial claro. Separá lo referido de lo documentado. Conservá todos los hechos, la autoría y las conclusiones clínicas. Aplicá estos cambios de redacción y devolvé el JSON del informe.';
 
@@ -2618,7 +2618,7 @@ Redactá el informe con eso y nada más. Lo que el médico no dictó, no va: cam
       signal: cortarIA.signal,
       body: JSON.stringify({
         system: systemAEnviar,
-        max_tokens: 8000,
+        max_tokens: esCorreccion ? 16000 : 8000,
         messages: mensajesAEnviar
       })
     });
@@ -2829,11 +2829,19 @@ async function corregirInformeIA(){
   const pedido = input?.value?.trim();
   if(!pedido){ mostrarError('Escribí qué querés corregir o agregar.'); return; }
   if(!window._iaConversacion){ mostrarError('Generá el informe primero.'); return; }
+  if(!desdeNotas) guardarBorradorDictamen();
   if(btnCorregir){ btnCorregir.disabled=true; btnCorregir.textContent='Ajustando…'; }
   try{
     const revision = revisionEditorInforme;
     const aplicado = await generarInformeIA(pedido);
-    if(aplicado && revision === revisionEditorInforme && input?.value?.trim() === pedido) input.value='';
+    if(revision === revisionEditorInforme){
+      if(aplicado && input?.value?.trim() === pedido){
+        input.value='';
+        const modalInput = document.getElementById('vp-correccion-texto');
+        if(modalInput?.value?.trim() === pedido) modalInput.value='';
+      }
+      if(!desdeNotas) guardarBorradorDictamen();
+    }
     return aplicado;
   } finally {
     if(btnCorregir){ btnCorregir.disabled=false; btnCorregir.textContent='Corregir'; }
@@ -2917,7 +2925,7 @@ function abrirVistaPreviaInforme(destino){
   } else {
     derivWrap.style.display = 'none';
   }
-  document.getElementById('vp-correccion-texto').value = '';
+  document.getElementById('vp-correccion-texto').value = document.getElementById(pref+'correccion-texto')?.value || '';
   // Guardar el dictamen solo tiene sentido en la pantalla del dictamen (no durante la llamada,
   // ahí se guarda recién al finalizar la consulta).
   document.getElementById('btn-vp-guardar').style.display = destino==='dict' ? 'inline-flex' : 'none';
@@ -2926,6 +2934,12 @@ function abrirVistaPreviaInforme(destino){
 
 function cerrarVistaPreviaInforme(){
   document.getElementById('modal-vista-previa-informe').classList.remove('open');
+}
+
+function guardarPedidoVistaPrevia(){
+  if(vpDestinoActual !== 'dict') return;
+  document.getElementById('dict-correccion-texto').value = document.getElementById('vp-correccion-texto').value;
+  guardarBorradorDictamen();
 }
 
 // Vuelca lo que se está tipeando en el modal a los campos reales del informe.
@@ -2940,6 +2954,7 @@ function sincronizarDesdeVistaPrevia(){
   if(vpDestinoActual==='dict'){
     const elDeriv = document.getElementById('dict-derivacion');
     if(elDeriv) elDeriv.value = document.getElementById('vp-derivacion')?.value?.trim() || 'Sin derivación';
+    guardarBorradorDictamen();
   } else {
     guardarNotaBorrador();
   }
@@ -4934,6 +4949,7 @@ async function abrirDictamenParaTurno(t, dur, desdeLlamada = false){
   document.getElementById('dict-texto-libre').value = '';
   document.getElementById('dict-correccion-texto').value = '';
   document.getElementById('informe-preview-text').value = '';
+  document.getElementById('informe-preview-text').dataset.original = '';
   document.getElementById('informe-preview-wrap').style.display = 'none';
   document.getElementById('firma-wrap').style.display = 'none';
   limpiarFirma();
@@ -5027,6 +5043,9 @@ async function abrirDictamenParaTurno(t, dur, desdeLlamada = false){
     } else if(borrador){
       addLog('green','Notas de la llamada recuperadas','Se cargaron automáticamente en el dictamen');
     }
+    const preview = document.getElementById('informe-preview-text');
+    preview.dataset.original = preview.value;
+    recuperarBorradorDictamen();
   }
 }
 
@@ -5050,7 +5069,42 @@ function renderDictamenesExistentes(dictamenes){
   }).join('');
 }
 
+function claveBorradorDictamen(){
+  const usuario = usuarioActual?.id ?? usuarioActual?.nombre;
+  const turno = turnoDictamenActual?.id;
+  if(!usuario || !turno) return null;
+  return 'medgrup_borrador_dictamen:' + JSON.stringify([usuario, turno, dictamenActualId ?? 'nuevo']);
+}
+
+function guardarBorradorDictamen(){
+  const clave = claveBorradorDictamen();
+  if(!clave) return;
+  const preview = document.getElementById('informe-preview-text');
+  const texto = preview.value === (preview.dataset.original || '') ? null : preview.value;
+  const pedido = document.getElementById('dict-correccion-texto').value;
+  try {
+    if(texto === null && !pedido) sessionStorage.removeItem(clave);
+    else sessionStorage.setItem(clave, JSON.stringify({texto, pedido}));
+  } catch(e) {}
+}
+
+function recuperarBorradorDictamen(){
+  const clave = claveBorradorDictamen();
+  if(!clave) return;
+  try {
+    const borrador = JSON.parse(sessionStorage.getItem(clave));
+    if(!borrador) return;
+    if(typeof borrador.texto === 'string') {
+      document.getElementById('informe-preview-text').value = borrador.texto;
+      document.getElementById('informe-preview-wrap').style.display = 'block';
+    }
+    document.getElementById('dict-correccion-texto').value = borrador.pedido || '';
+  } catch(e) {}
+}
+
 function cargarDictamenEnFormulario(d){
+  cambiarContextoInforme();
+  document.getElementById('dict-texto-libre').value = '';
   document.getElementById('dict-numero').textContent=d.numero;
   document.getElementById('dict-edit-badge').style.display='inline-flex';
   document.getElementById('dict-paciente-input').value=d.paciente||'';
@@ -5129,6 +5183,7 @@ function cargarDictamenEnFormulario(d){
   if(btnDeshacerExistente) btnDeshacerExistente.style.display = 'none';
   const correccionInputExistente = document.getElementById('dict-correccion-texto');
   if(correccionInputExistente) correccionInputExistente.value = '';
+  recuperarBorradorDictamen();
   // Al abrir un dictamen ya emitido no hay nada que "dictar de cero": se arranca directo en
   // el chat de ajustes, sin el cuadro de dictado compitiendo arriba.
   window._iaCorreccionesHistorial = [];
@@ -7528,14 +7583,15 @@ async function guardarDictamen(){
 
   try{
     let res, data;
+    const revision = revisionEditorInforme;
+    const preview = document.getElementById('informe-preview-text');
+    const informeEditado = preview.value.trim() && preview.value !== (preview.dataset.original || '') ? preview.value : undefined;
     if(dictamenActualId){
       // Al regenerar con la IA sobre un dictamen que ya existe hay que mandar TAMBIÉN los
       // campos que llena la IA. Antes solo se enviaban once, así que la metodología, el
       // análisis, el CIE-10 y los datos personales se quedaban con el texto viejo y parecía
       // que el informe no se actualizaba.
       const campoIA = k => document.getElementById('ia-campo-'+k)?.value || undefined;
-      const preview = document.getElementById('informe-preview-text');
-      const informeEditado = preview.value.trim() && preview.value !== preview.dataset.original ? preview.value : undefined;
       res=await fetch('/api/dictamenes/'+dictamenActualId,{
         method:'PATCH',headers:apiHeaders(),
         body:JSON.stringify({
@@ -7558,7 +7614,9 @@ async function guardarDictamen(){
       });
       data=await res.json();
       if(!data.ok){mostrarError(data.error||'Error al actualizar');return;}
+      if(revision !== revisionEditorInforme) return;
       if(informeEditado !== undefined) preview.dataset.original = informeEditado;
+      guardarBorradorDictamen();
       addLog('blue','Dictamen actualizado','Cambios guardados');
       if(turnoDictamenActual){
         const resD=await fetch('/api/dictamenes/turno/'+turnoDictamenActual.id,{headers:apiHeaders()});
@@ -7584,6 +7642,7 @@ async function guardarDictamen(){
         paciente_dni: dni, edad, obra_social: obraSocial, profesion,
         antecedentes, hallazgos, conclusion,
         sin_aptitud: true, dias_reposo: reposo,
+        informe_editado: informeEditado,
         derivacion, indicaciones,
         sala: t?.sala||'',
         matricula: medicoActual?.matricula||'',
@@ -7604,7 +7663,12 @@ async function guardarDictamen(){
     data=await res.json();
     if(!data.ok){mostrarError('Error al guardar el dictamen');return;}
 
+    if(revision !== revisionEditorInforme) return;
+    const claveAnterior = claveBorradorDictamen();
     dictamenActualId=data.dictamen.id;
+    if(claveAnterior){try{sessionStorage.removeItem(claveAnterior);}catch(e){}}
+    if(informeEditado !== undefined) preview.dataset.original = informeEditado;
+    guardarBorradorDictamen();
     const num=data.numero;
 
     const firmaBase64 = document.getElementById('firma-base64').value;
@@ -7619,7 +7683,7 @@ async function guardarDictamen(){
     }
 
     const previewText = document.getElementById('informe-preview-text');
-    if(previewText && previewText.value){
+    if(previewText && previewText.value && informeEditado === undefined){
       try{
         await fetch('/api/dictamenes/'+data.dictamen.id+'/informe-completo',{
           method:'POST', headers:apiHeaders(),

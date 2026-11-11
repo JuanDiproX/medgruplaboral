@@ -2129,17 +2129,20 @@ app.post('/api/dictamenes', authMiddleware, async (req, res) => {
   try {
     if (!await puedeGestionarInformesDelTurno(req.body.turno_id,req.usuario)) return res.status(403).json({error:'No estás asignado a este turno'});
     const { turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,aptitud,dias_reposo,derivacion,indicaciones,sala,matricula,especialidad,
-      apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie } = req.body;
+      apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie,informe_editado } = req.body;
+    if (informe_editado !== undefined && (typeof informe_editado !== 'string' || !informe_editado.trim())) {
+      return res.status(400).json({error:'El texto del informe no puede estar vacío'});
+    }
     const dictamen = await conNumeroNuevo('DICT', 'dictamenes', (client, numero) => client.query(`INSERT INTO dictamenes
       (numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo,derivacion,indicaciones,sala,
        paciente_dni,edad,obra_social,profesion,antecedentes,hallazgos,conclusion,matricula,especialidad,
-       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33) RETURNING *`,
+       apellido_nombre,fecha_nacimiento,lugar_nacimiento,estado_civil,estudios,puesto,antiguedad,situacion_licencia,metodologia,analisis,diagnostico_cie,informe_editado)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34) RETURNING *`,
       [numero,turno_id,paciente,medico,empresa,fecha_consulta,hora_inicio,duracion,aptitud,dias_reposo||0,
        derivacion||'Sin derivación',indicaciones||'',sala||'',paciente_dni||'',edad||'',obra_social||'',profesion||'',
        antecedentes||'',hallazgos||'',conclusion||'',matricula||'',especialidad||'Medicina Laboral',
        apellido_nombre||'',fecha_nacimiento||'',lugar_nacimiento||'',estado_civil||'',estudios||'',
-       puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'']).then(r => r.rows[0]));
+       puesto||'',antiguedad||'',situacion_licencia||'',metodologia||'',analisis||'',diagnostico_cie||'',informe_editado??null]).then(r => r.rows[0]));
     // Emitir el informe es lo que cierra un caso de ausentismo: es lo que se factura
     await avanzarCasoDelTurno(turno_id, 'resuelto');
     res.json({ ok: true, dictamen, numero: dictamen.numero });
